@@ -13,7 +13,7 @@
  * matches the published package-lock).
  */
 import { execFileSync } from "node:child_process";
-import { mkdtemp, mkdir, rm, writeFile, readFile, chmod } from "node:fs/promises";
+import { mkdtemp, mkdir, rm, writeFile, readFile, chmod, copyFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -63,8 +63,10 @@ try {
     "Then connect a host once:",
     "  stinky-cobbler entry install-host --mcp                # ZCode",
     "  stinky-cobbler entry install-host --host codex --mcp   # Codex",
-    ""
+    "",
+    "Full manual: see 使用说明书.md in this directory."
   ].join("\n"), "utf8");
+  await copyFile(path.join(projectRoot, "docs", "quickstart", "使用说明书.md"), path.join(outDir, "使用说明书.md"));
 
   // 4. Zip it next to the project (relative to projectRoot).
   const zipPath = path.join(projectRoot, `stinky-cobbler-${version}-offline-full.zip`);

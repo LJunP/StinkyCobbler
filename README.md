@@ -22,71 +22,96 @@ Stinky Cobbler 不是模型、不是聊天机器人，也不是业务执行器�
 | **Lease 授权透明化** | 授权时长由你选（60 / 480 / 1440 分钟），到期同任务 15 分钟宽限不中断，续期一句话 |
 | **确认式退出** | 说"停止使用该工具"→ 确认后完全退出，工具绝不擅自介入 |
 
-## 怎么用？
+---
 
-### 1. 安装
+## 安装与使用
 
+> 完整图文教程见 [使用说明书](./docs/quickstart/使用说明书.md)（含小白 AI 代装流程与常见问题）。
+
+### 方式 A：在线安装（有网络环境）
+
+**正常用户（终端操作）：**
 ```bash
 npm install -g stinky-cobbler
-stinky-cobbler --version   # 1.0.0
-stinky-cobbler doctor --json
+stinky-cobbler --version      # 预期 1.0.0
+stinky-cobbler doctor --json  # 预期 healthy: true
 ```
 
-**离线安装（无网络，下载即用）**：从 GitHub Release 下载
-`stinky-cobbler-1.0.0-offline-full.zip`（含全部依赖，需本机已装 Node ≥ 20），解压后：
+**小白用户（把命令丢给 AI，AI 代装）：**
+```
+帮我安装 stinky-cobbler，并接入当前工具
+```
+AI 会替你执行安装与配置，**写入你的工具配置前会先预览并等你确认**——你只需要回复确认。
 
+### 方式 B：国内用户（镜像站，无需翻墙）
+
+**正常用户（终端操作）：**
 ```bash
-# macOS / Linux
-export PATH="$PWD/stinky-cobbler-1.0.0-offline-full/bin:$PATH"
-stinky-cobbler --version
+npm install -g stinky-cobbler --registry=https://registry.npmmirror.com
+```
+> npmmirror（淘宝镜像）自动同步 npmjs 的包；新版本发布后可能有几分钟到几小时同步延迟。镜像仅支持安装（发布/审计不受支持，属镜像基础设施限制）。
 
-# Windows (cmd)
-set PATH=%CD%\stinky-cobbler-1.0.0-offline-full\bin;%PATH%
-stinky-cobbler --version
+**小白用户（AI 代装）：**
+```
+帮我安装 stinky-cobbler（用国内镜像），并接入当前工具
 ```
 
-### 2. 接入你的 AI 工具（一次性）
+### 方式 C：Releases 下载（离线 / GitHub 不便时）
+
+在 [GitHub Releases](https://github.com/LJunP/StinkyCobbler/releases) 下载附件：
+
+| 附件 | 用途 |
+|---|---|
+| `stinky-cobbler-1.0.0-offline-full.zip` | **离线完整包（下载即用）**：含全部依赖，无需网络 |
+| `stinky-cobbler-1.0.0.tgz` | npm 标准包（有网时 `npm install -g ./xxx.tgz`） |
+| `stinky-cobbler-1.0.0.tgz.sha256` | 包完整性校验值（防下载被篡改） |
+| `sbom.cyclonedx.json` | 依赖物料清单（供应链审计用） |
+| `使用说明书.md` | 完整使用教程 |
+
+**正常用户（离线完整包）：**
+```bash
+# 需本机已装 Node ≥ 20；下载 zip 后：
+unzip stinky-cobbler-1.0.0-offline-full.zip -d ~/apps
+export PATH="$HOME/apps/stinky-cobbler-1.0.0-offline-full/bin:$PATH"   # macOS/Linux
+stinky-cobbler --version
+```
+> 国内访问 GitHub 不便时可用加速代理下载，**下载后务必用 sha256 校验**（附件提供校验文件）。
+
+**小白用户（AI 代装）：**
+```
+帮我安装这个 zip 里的 stinky-cobbler（离线完整包），解压并配置好，然后接入当前工具
+```
+
+---
+
+## 接入你的 AI 工具（一次性，三选一）
 
 **ZCode**（获得 `/stinky-cobbler` 命令入口）：
-
 ```bash
 stinky-cobbler entry install-host --dry-run    # 先预览
 stinky-cobbler entry install-host --mcp        # 确认后安装（含本地 MCP）
 ```
 
 **Codex**（无命令机制，走 skill 显式启用）：
-
 ```bash
-stinky-cobbler entry install-host --host codex --mcp --dry-run   # 先预览
-stinky-cobbler entry install-host --host codex --mcp              # 确认后安装
+stinky-cobbler entry install-host --host codex --mcp --dry-run
+stinky-cobbler entry install-host --host codex --mcp
 ```
 
-### 3. 开始使用
+> `install-host` 是纯本地操作，离线可用；写入 `~/.zcode/` 或 `~/.codex/` 前必须经过你的确认。
+
+## 日常使用
 
 **ZCode 里**——输入命令激活（之后本会话免前缀）：
-
 ```
 /stinky-cobbler 帮我检查当前项目的 README
 ```
-
 **Codex 里**——显式启用 skill：
-
 ```
 使用 stinky-cobbler 帮我检查当前项目的 README
 ```
 
-工具会统一按「结果 / 证据 / 边界 / 下一步」输出，你只做点选决策（授权时长、删除确认等），其余自动。
-
-### 4. 最小示例（终端直接体验）
-
-```bash
-# 初始化一个受管项目
-stinky-cobbler init --workspace-id demo --profile team --pack software-engineering --mode reviewed-workflow --json
-
-# 查看健康状态与审计
-stinky-cobbler doctor --json
-stinky-cobbler ledger verify --json
-```
+工具统一按「结果 / 证据 / 边界 / 下一步」输出；关键决策（授权时长、删除确认、停止确认）由你点选/回复，常规写入自动放行。停止：`停止使用该工具`。
 
 ## 工作原理（30 秒版）
 
@@ -103,10 +128,10 @@ stinky-cobbler ledger verify --json
 
 ## 安全与边界
 
-- 敏感路径（`.env*`、凭据、私钥）、控制面 `.stinky-cobbler/`、`.git/`、可执行文件：**永远拒绝**，任何模式都拦
+- 敏感路径（`.env*`、凭据、私钥）、控制面 `.stinky-cobbler/`、`.git/`、可执行文件：**永远拒绝**
 - 删除、覆盖、泛化范围（"所有文件"）：**必须确认**，永不自动放行
 - Lease 绝不自动签发；停止工具 ≠ 撤销 Lease；拒绝就是拒绝（不绕过、不扩大权限重试）
-- 详细的威胁模型与边界见 [SECURITY.md](./SECURITY.md)
+- 详细威胁模型见 [SECURITY.md](./SECURITY.md)
 
 ## CLI 能力矩阵
 
@@ -145,6 +170,7 @@ npm audit         # 发布前依赖审计（对官方 registry）
 
 ## 文档
 
+- [使用说明书](./docs/quickstart/使用说明书.md)（安装/小白 AI 代装/日常使用/常见问题）
 - [产品设计基线](./docs/architecture/产品设计基线.md)（全部已确认决策）
 - [零终端用户指南](./docs/quickstart/零终端用户指南.md)
 - [高级用户配置指南](./docs/quickstart/高级用户配置指南.md)
