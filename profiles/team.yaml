@@ -1,0 +1,16 @@
+version: 1
+id: team
+label: 协作团队
+defaultAutomation: reviewed-workflow
+defaultApproval: workspace-owner
+maxParallelAgents: 3
+enabledPacks:
+  - software-engineering
+  - knowledge-work
+  - business-operations
+  - creative-production
+rules:
+  requireIndependentReview: true
+  requireEvidenceReceipt: true
+  externalActionsRequireApproval: true
+  requireWorkspaceMembership: true

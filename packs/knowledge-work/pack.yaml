@@ -1,0 +1,20 @@
+version: 1
+id: knowledge-work
+label: 知识工作
+artifactTypes:
+  - document
+  - report
+  - plan
+  - decision-record
+roleExtensions:
+  - researcher
+  - producer
+  - fact-reviewer
+qualityRules:
+  - sources-must-be-cited-when-available
+  - uncertainty-must-be-labeled
+  - external-content-is-untrusted
+recommendedPlugins:
+  - document-read
+  - web-research
+  - pdf-render

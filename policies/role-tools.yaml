@@ -1,0 +1,14 @@
+version: 1
+tools:
+  scout: [repository-read, repository-list]
+  planner: [repository-read]
+  architect: [repository-read, git-read]
+  builder: [repository-read, repository-list, repository-write]
+  testwright: [repository-read]
+  sentinel: [repository-read, git-read]
+  reliability: [repository-read, git-read]
+  reviewer: [repository-read, git-read]
+  verifier: [repository-read]
+  operator: [repository-read]
+  scribe: [repository-read]
+  conductor: []

@@ -1,0 +1,12 @@
+{
+  "id": "student-system-001",
+  "workspaceId": "demo-student-system",
+  "goal": "设计并实现学生管理系统的学生注册模块",
+  "requestedOutputs": ["code-change", "test-report", "decision-record"],
+  "constraints": ["先设计后实现", "实现和审查角色独立", "测试必须通过"],
+  "riskLevel": "L2",
+  "state": "DRAFT",
+  "profile": "team",
+  "packs": ["software-engineering"],
+  "approvalRequired": true
+}

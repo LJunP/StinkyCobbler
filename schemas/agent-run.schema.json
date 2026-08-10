@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stinkycobbler.dev/schemas/agent-run.schema.json",
+  "title": "Agent Run",
+  "type": "object",
+  "required": ["version", "runId", "capsuleId", "taskId", "agentId", "role", "workspaceId", "leaseId", "policyVersion", "status", "executor", "budget", "createdAt"],
+  "properties": {
+    "version": {"oneOf": [{"type": "integer", "minimum": 1}, {"type": "string", "minLength": 1}]},
+    "runId": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"},
+    "capsuleId": {"type": "string", "minLength": 1},
+    "taskId": {"type": "string", "pattern": "^[A-Za-z0-9._-]+$"},
+    "agentId": {"type": "string", "minLength": 1},
+    "role": {"type": "string", "minLength": 1},
+    "workspaceId": {"type": "string", "minLength": 1},
+    "leaseId": {"type": "string", "minLength": 1},
+    "policyVersion": {"type": "string", "minLength": 1},
+    "status": {"enum": ["CREATED", "ADMITTED", "RUNNING", "COMPLETED", "BLOCKED", "FAILED", "TIMED_OUT", "CANCELLED"]},
+    "executor": {"type": "string", "minLength": 1},
+    "ownerToken": {"type": "string", "minLength": 32, "maxLength": 256},
+    "fenceEpoch": {"type": "integer", "minimum": 0},
+    "budget": {"$ref": "#/$defs/runtimeBudget"},
+    "budgetUsage": {"$ref": "#/$defs/runtimeBudgetUsage"},
+    "steps": {"type": "array", "items": {"$ref": "#/$defs/agentStep"}},
+    "toolCalls": {"type": "array", "items": {"oneOf": [{"type": "string"}, {"type": "object"}]}},
+    "evidenceRefs": {"type": "array", "items": {"type": "string"}},
+    "events": {"type": "array", "items": {"$ref": "#/$defs/runtimeEvent"}},
+    "gateResults": {"type": "array", "items": {"$ref": "#/$defs/gateResult"}},
+    "startedAt": {"type": "string", "format": "date-time"},
+    "heartbeatAt": {"type": "string", "format": "date-time"},
+    "finishedAt": {"type": "string", "format": "date-time"},
+    "createdAt": {"type": "string", "format": "date-time"},
+    "outputHash": {"type": "string", "minLength": 1},
+    "errorCode": {"type": "string", "minLength": 1},
+    "blockedReason": {"type": "string", "minLength": 1}
+  },
+  "$defs": {
+    "runtimeBudget": {
+      "type": "object",
+      "properties": {
+        "maxTurns": {"type": "integer", "minimum": 1},
+        "maxMinutes": {"type": "integer", "minimum": 1},
+        "maxToolCalls": {"type": "integer", "minimum": 1},
+        "maxFiles": {"type": "integer", "minimum": 1},
+        "maxBytes": {"type": "integer", "minimum": 1},
+        "maxOutputBytes": {"type": "integer", "minimum": 1}
+      },
+      "additionalProperties": false
+    },
+    "runtimeBudgetUsage": {
+      "type": "object",
+      "properties": {
+        "turns": {"type": "integer", "minimum": 0},
+        "minutes": {"type": "integer", "minimum": 0},
+        "toolCalls": {"type": "integer", "minimum": 0},
+        "files": {"type": "integer", "minimum": 0},
+        "bytes": {"type": "integer", "minimum": 0},
+        "outputBytes": {"type": "integer", "minimum": 0}
+      },
+      "additionalProperties": false
+    },
+    "agentStep": {
+      "type": "object",
+      "required": ["id", "status"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "sequence": {"type": "integer", "minimum": 1},
+        "status": {"enum": ["PENDING", "RUNNING", "COMPLETED", "BLOCKED", "FAILED", "TIMED_OUT", "CANCELLED"]},
+        "toolCallIds": {"type": "array", "items": {"type": "string"}},
+        "evidenceRefs": {"type": "array", "items": {"type": "string"}},
+        "startedAt": {"type": "string", "format": "date-time"},
+        "finishedAt": {"type": "string", "format": "date-time"},
+        "errorCode": {"type": "string", "minLength": 1},
+        "summary": {"type": "string", "maxLength": 512}
+      },
+      "additionalProperties": false
+    },
+    "runtimeEvent": {
+      "type": "object",
+      "required": ["type", "at"],
+      "properties": {
+        "type": {"type": "string", "minLength": 1},
+        "at": {"type": "string", "format": "date-time"},
+        "message": {"type": "string", "maxLength": 512},
+        "toolCallId": {"type": "string", "minLength": 1},
+        "evidenceRef": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": false
+    },
+    "gateResult": {
+      "type": "object",
+      "required": ["gate", "allowed", "reasons"],
+      "properties": {
+        "gate": {"type": "string", "minLength": 1},
+        "allowed": {"type": "boolean"},
+        "reasons": {"type": "array", "items": {"type": "string"}},
+        "policyVersion": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

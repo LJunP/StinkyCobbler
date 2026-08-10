@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stinkycobbler.dev/schemas/agent-receipt.schema.json",
+  "title": "Agent Receipt",
+  "type": "object",
+  "required": ["id", "taskId", "role", "status", "facts", "proposals", "unknowns", "evidenceRefs", "createdAt"],
+  "properties": {
+    "id": {"type": "string", "pattern": "^[A-Za-z0-9._-]+$"},
+    "taskId": {"type": "string", "pattern": "^[A-Za-z0-9._-]+$"},
+    "role": {"type": "string"},
+    "status": {"enum": ["COMPLETED", "BLOCKED", "NEEDS_CONTEXT", "FAILED"]},
+    "facts": {"type": "array", "items": {"type": "object", "required": ["statement"], "properties": {"statement": {"type": "string"}, "evidenceRef": {"type": "string"}, "evidenceRefs": {"type": "array", "items": {"type": "string"}}}, "additionalProperties": false}},
+    "findings": {"type": "array", "items": {"type": "object", "required": ["severity", "statement"], "properties": {"severity": {"enum": ["LOW", "MEDIUM", "HIGH", "CRITICAL"]}, "statement": {"type": "string"}, "evidenceRef": {"type": "string"}}, "additionalProperties": false}},
+    "proposals": {"type": "array", "items": {"type": "string"}},
+    "unknowns": {"type": "array", "items": {"type": "string"}},
+    "testResults": {"type": "array", "items": {"type": "object", "required": ["command", "exitCode"], "properties": {"command": {"type": "string"}, "exitCode": {"type": "integer"}, "reportRef": {"type": "string"}}, "additionalProperties": false}},
+    "changedPaths": {"type": "array", "items": {"type": "string"}},
+    "evidenceRefs": {"type": "array", "items": {"type": "string"}},
+    "artifactRefs": {"type": "array", "items": {"type": "string"}},
+    "approvalRefs": {"type": "array", "items": {"type": "string"}},
+    "policyVersion": {"type": "string"},
+    "toolSummary": {"type": "string", "maxLength": 512},
+    "createdAt": {"type": "string", "format": "date-time"},
+    "runId": {"type": "string", "minLength": 1},
+    "capsuleId": {"type": "string", "minLength": 1},
+    "leaseId": {"type": "string", "minLength": 1},
+    "agentId": {"type": "string", "minLength": 1},
+    "startedAt": {"type": "string", "format": "date-time"},
+    "finishedAt": {"type": "string", "format": "date-time"},
+    "executor": {"type": "string", "minLength": 1},
+    "budgetUsage": {"$ref": "#/$defs/runtimeBudgetUsage"},
+    "toolCalls": {"type": "array", "items": {"oneOf": [{"type": "string"}, {"type": "object"}]}},
+    "outputHash": {"type": "string", "minLength": 1},
+    "errorCode": {"type": "string", "minLength": 1},
+    "blockedReason": {"type": "string", "minLength": 1}
+  },
+  "$defs": {
+    "runtimeBudgetUsage": {
+      "type": "object",
+      "properties": {
+        "turns": {"type": "integer", "minimum": 0},
+        "minutes": {"type": "integer", "minimum": 0},
+        "toolCalls": {"type": "integer", "minimum": 0},
+        "files": {"type": "integer", "minimum": 0},
+        "bytes": {"type": "integer", "minimum": 0},
+        "outputBytes": {"type": "integer", "minimum": 0}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

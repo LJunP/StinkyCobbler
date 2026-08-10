@@ -1,0 +1,14 @@
+version: 1
+roles:
+  conductor: { displayName: 总控, category: orchestration, defaultLevel: L0, canWrite: false }
+  scout: { displayName: 探路者, category: discovery, defaultLevel: L0, canWrite: false }
+  planner: { displayName: 规划师, category: planning, defaultLevel: L1, canWrite: false }
+  architect: { displayName: 架构师, category: design, defaultLevel: L1, canWrite: false }
+  builder: { displayName: 构建者, category: software-engineering, defaultLevel: L2, requiresWorktree: true, canWrite: true }
+  testwright: { displayName: 测试师, category: software-engineering, defaultLevel: L1, canWrite: false }
+  sentinel: { displayName: 哨卫, category: security, defaultLevel: L1, canWrite: false }
+  reliability: { displayName: 可靠性官, category: reliability, defaultLevel: L1, canWrite: false }
+  reviewer: { displayName: 审阅者, category: review, defaultLevel: L0, canWrite: false, incompatibleWith: [builder] }
+  verifier: { displayName: 验证员, category: verification, defaultLevel: L1, canWrite: false }
+  operator: { displayName: 运营官, category: operations, defaultLevel: L0, canWrite: false }
+  scribe: { displayName: 记录员, category: evidence, defaultLevel: L1, canWrite: true, writeScope: audit-and-documentation }

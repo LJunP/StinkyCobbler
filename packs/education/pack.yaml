@@ -1,0 +1,18 @@
+version: 1
+id: education
+label: 教育
+artifactTypes:
+  - plan
+  - document
+  - dataset
+  - report
+roleExtensions:
+  - curriculum-designer
+  - assessment-reviewer
+qualityRules:
+  - learning-objectives-required
+  - assessment-must-map-to-objectives
+  - learner-data-is-confidential
+recommendedPlugins:
+  - document-read
+  - quiz-render

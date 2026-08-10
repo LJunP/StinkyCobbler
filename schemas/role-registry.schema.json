@@ -1,0 +1,27 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "$id":"https://stinkycobbler.dev/schemas/role-registry.schema.json",
+  "type":"object",
+  "required":["version","roles"],
+  "properties":{
+    "version":{"type":"integer","const":1},
+    "roles":{
+      "type":"object",
+      "additionalProperties":{
+        "type":"object",
+        "required":["displayName","category","defaultLevel","canWrite"],
+        "properties":{
+          "displayName":{"type":"string","minLength":1},
+          "category":{"type":"string","minLength":1},
+          "defaultLevel":{"enum":["L0","L1","L2","L3"]},
+          "canWrite":{"type":"boolean"},
+          "requiresWorktree":{"type":"boolean"},
+          "writeScope":{"type":"string"},
+          "incompatibleWith":{"type":"array","uniqueItems":true,"items":{"type":"string"}}
+        },
+        "additionalProperties":false
+      }
+    }
+  },
+  "additionalProperties":false
+}

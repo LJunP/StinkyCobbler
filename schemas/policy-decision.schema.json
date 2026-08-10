@@ -1,0 +1,14 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "$id":"https://stinkycobbler.dev/schemas/policy-decision.schema.json",
+  "type":"object",
+  "required":["allowed","code","reasons","policyVersion"],
+  "properties":{
+    "allowed":{"type":"boolean"},
+    "code":{"type":"string"},
+    "reasons":{"type":"array","items":{"type":"string"}},
+    "requiredApprovals":{"type":"array","items":{"type":"string"}},
+    "policyVersion":{"type":"string"}
+  },
+  "additionalProperties":false
+}

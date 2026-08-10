@@ -1,0 +1,19 @@
+version: 1
+id: creative-production
+label: 创意制作
+artifactTypes:
+  - document
+  - plan
+  - design
+  - media
+roleExtensions:
+  - creative-director
+  - brand-reviewer
+qualityRules:
+  - publish-requires-human-approval
+  - brand-guidelines-must-be-referenced
+  - generated-content-is-draft-by-default
+recommendedPlugins:
+  - asset-read
+  - media-render
+  - publishing-draft

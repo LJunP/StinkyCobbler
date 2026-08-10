@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stinkycobbler.dev/schemas/audit-event.schema.json",
+  "title": "Stinky Cobbler Audit Event",
+  "type": "object",
+  "required": ["sequence", "id", "at", "event", "summary", "prevHash", "hash"],
+  "properties": {
+    "sequence": {"type": "integer", "minimum": 1},
+    "id": {"type": "string", "format": "uuid"},
+    "at": {"type": "string", "format": "date-time"},
+    "event": {"enum": ["workspace-initialized", "workspace-config-migrated", "task-created", "task-transitioned", "task-cancelled", "receipt-recorded", "approval-requested", "approval-decided", "evidence-recorded", "validation-run", "mcp-call", "test-run", "run-created", "run-transitioned", "run-recovered"]},
+    "taskId": {"type": "string"},
+    "role": {"type": "string"},
+    "policyVersion": {"type": "string"},
+    "tool": {"type": "string"},
+    "summary": {"type": "string", "minLength": 1, "maxLength": 512},
+    "receiptRef": {"type": "string"},
+    "approvalRef": {"type": "string"},
+    "evidenceRef": {"type": "string"},
+    "runId": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"},
+    "fromStatus": {"type": "string"},
+    "toStatus": {"type": "string"},
+    "prevHash": {"type": "string", "pattern": "^(sha256:genesis|sha256:[a-f0-9]{64})$"},
+    "hash": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"}
+  },
+  "additionalProperties": false
+}

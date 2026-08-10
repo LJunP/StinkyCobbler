@@ -1,0 +1,15 @@
+version: 1
+id: individual
+label: 个人用户
+defaultAutomation: draft-first
+defaultApproval: external-actions
+maxParallelAgents: 1
+enabledPacks:
+  - knowledge-work
+  - creative-production
+  - education
+  - software-engineering
+rules:
+  requireHumanChoiceOfMode: true
+  externalActionsRequireApproval: true
+  allowPreapprovedInternalDrafts: true

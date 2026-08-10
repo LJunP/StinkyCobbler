@@ -1,0 +1,35 @@
+version: 1
+impactLevels:
+  L0:
+    label: no-side-effect
+    default: allow
+  L1:
+    label: reversible-internal-change
+    default: allow-with-audit
+  L2:
+    label: persistent-or-cross-system-change
+    default: require-explicit-approval
+  L3:
+    label: external-or-high-impact-action
+    default: require-human-approval
+    dualApprovalRecommended: true
+approvalRequiredFor:
+  - database-migration
+  - git-commit
+  - git-push
+  - deployment
+  - queue-replay
+  - delete-artifact
+  - send-message
+  - publish-publicly
+  - sign-document
+  - payment
+  - update-crm-record
+neverAutonomous:
+  - secret-read
+  - production-access
+  - payment
+  - legal-final-decision
+  - medical-final-decision
+  - investment-final-decision
+  - external-data-export

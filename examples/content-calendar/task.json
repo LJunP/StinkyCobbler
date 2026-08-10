@@ -1,0 +1,12 @@
+{
+  "id": "content-calendar-001",
+  "workspaceId": "demo-creative",
+  "goal": "为品牌生成一周内容日历和发布草稿",
+  "requestedOutputs": ["plan", "document"],
+  "constraints": ["遵循品牌规范", "发布仅生成草稿", "不得自动对外发布"],
+  "riskLevel": "L1",
+  "state": "DRAFT",
+  "profile": "team",
+  "packs": ["creative-production"],
+  "approvalRequired": true
+}

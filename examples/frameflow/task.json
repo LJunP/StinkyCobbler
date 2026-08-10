@@ -1,0 +1,12 @@
+{
+  "id": "frameflow-m1-001",
+  "workspaceId": "frameflow",
+  "goal": "实现团队成员角色与资源授权边界",
+  "requestedOutputs": ["code-change", "test-report", "decision-record"],
+  "constraints": ["不读取其他项目", "后端不信任客户端角色", "权限测试必须独立验证"],
+  "riskLevel": "L2",
+  "state": "DRAFT",
+  "profile": "team",
+  "packs": ["software-engineering"],
+  "approvalRequired": true
+}

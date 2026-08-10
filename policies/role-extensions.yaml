@@ -1,0 +1,15 @@
+version: 1
+roles:
+  researcher: { displayName: 研究员, category: knowledge-work, defaultLevel: L0, canWrite: false }
+  producer: { displayName: 产出者, category: knowledge-work, defaultLevel: L1, canWrite: false }
+  fact-reviewer: { displayName: 事实审阅者, category: knowledge-work, defaultLevel: L0, canWrite: false }
+  process-operator: { displayName: 流程执行员, category: business-operations, defaultLevel: L1, canWrite: false }
+  communication-reviewer: { displayName: 沟通审阅者, category: business-operations, defaultLevel: L0, canWrite: false }
+  creative-director: { displayName: 创意总监, category: creative-production, defaultLevel: L1, canWrite: false }
+  brand-reviewer: { displayName: 品牌审阅者, category: creative-production, defaultLevel: L0, canWrite: false }
+  data-steward: { displayName: 数据管家, category: data-analysis, defaultLevel: L1, canWrite: false }
+  analysis-reviewer: { displayName: 分析审阅者, category: data-analysis, defaultLevel: L0, canWrite: false }
+  curriculum-designer: { displayName: 课程设计师, category: education, defaultLevel: L1, canWrite: false }
+  assessment-reviewer: { displayName: 评估审阅者, category: education, defaultLevel: L0, canWrite: false }
+  policy-guardian: { displayName: 政策守护者, category: regulated-work, defaultLevel: L1, canWrite: false }
+  human-professional-approver: { displayName: 专业审批人, category: regulated-work, defaultLevel: L3, canWrite: false }

@@ -1,0 +1,56 @@
+name: release-candidate
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Target version; must exactly match the package.json version (for example 0.3.0)."
+        required: true
+        type: string
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run check:version
+      - name: Require git tag to match package version
+        if: github.ref_type == 'tag'
+        run: node scripts/release-gate.mjs --git-ref "${{ github.ref_name }}"
+      - name: Require workflow_dispatch version to match package version
+        if: github.event_name == 'workflow_dispatch'
+        run: node scripts/release-gate.mjs --expected "${{ inputs.version }}"
+      - run: npm run typecheck
+      - run: npm run build
+      - run: npm test
+      - run: npm run test:integration
+      - run: npm run test:package
+      - name: Generate dependency SBOM
+        run: node scripts/generate-sbom.mjs --out sbom.cyclonedx.json
+      - name: Generate tarball checksum
+        run: |
+          npm pack --json >/dev/null
+          node scripts/generate-checksum.mjs
+      - name: Verify SBOM and checksum artifacts
+        run: node scripts/verify-release-artifacts.mjs
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: stinky-cobbler-release-candidate
+          path: |
+            stinky-cobbler-*.tgz
+            stinky-cobbler-*.tgz.sha256
+            sbom.cyclonedx.json
+          if-no-files-found: error
+      - run: npm audit --audit-level=high

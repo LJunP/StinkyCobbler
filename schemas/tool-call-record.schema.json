@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stinkycobbler.dev/schemas/tool-call-record.schema.json",
+  "title": "Tool Call Record",
+  "type": "object",
+  "required": ["id", "runId", "capsuleId", "taskId", "leaseId", "agentId", "role", "tool", "status", "startedAt"],
+  "properties": {
+    "id": {"type": "string", "minLength": 1},
+    "runId": {"type": "string", "minLength": 1},
+    "capsuleId": {"type": "string", "minLength": 1},
+    "taskId": {"type": "string", "pattern": "^[A-Za-z0-9._-]+$"},
+    "leaseId": {"type": "string", "minLength": 1},
+    "agentId": {"type": "string", "minLength": 1},
+    "role": {"type": "string", "minLength": 1},
+    "tool": {"type": "string", "minLength": 1},
+    "capability": {"type": "string", "minLength": 1},
+    "status": {"enum": ["REQUESTED", "RUNNING", "COMPLETED", "BLOCKED", "REJECTED", "FAILED", "TIMED_OUT", "CANCELLED"]},
+    "input": {},
+    "output": {},
+    "inputHash": {"type": "string", "minLength": 1},
+    "outputHash": {"type": "string", "minLength": 1},
+    "evidenceRefs": {"type": "array", "items": {"type": "string"}},
+    "budgetUsage": {"$ref": "#/$defs/runtimeBudgetUsage"},
+    "startedAt": {"type": "string", "format": "date-time"},
+    "finishedAt": {"type": "string", "format": "date-time"},
+    "durationMs": {"type": "integer", "minimum": 0},
+    "outputBytes": {"type": "integer", "minimum": 0},
+    "inputBytes": {"type": "integer", "minimum": 0},
+    "fileLocators": {"type": "array", "items": {"type": "string"}},
+    "errorCode": {"type": "string", "minLength": 1},
+    "blockedReason": {"type": "string", "minLength": 1}
+  },
+  "$defs": {
+    "runtimeBudgetUsage": {
+      "type": "object",
+      "properties": {
+        "turns": {"type": "integer", "minimum": 0},
+        "minutes": {"type": "integer", "minimum": 0},
+        "toolCalls": {"type": "integer", "minimum": 0},
+        "files": {"type": "integer", "minimum": 0},
+        "bytes": {"type": "integer", "minimum": 0},
+        "outputBytes": {"type": "integer", "minimum": 0}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

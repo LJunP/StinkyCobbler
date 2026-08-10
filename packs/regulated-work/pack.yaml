@@ -1,0 +1,18 @@
+version: 1
+id: regulated-work
+label: 受监管工作
+artifactTypes:
+  - report
+  - decision-record
+  - evidence-pack
+roleExtensions:
+  - policy-guardian
+  - human-professional-approver
+qualityRules:
+  - advice-only-by-default
+  - provenance-required
+  - final-professional-decision-requires-human
+  - external-egress-denied-by-default
+recommendedPlugins:
+  - approved-document-read
+  - evidence-export-draft

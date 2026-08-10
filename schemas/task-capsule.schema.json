@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stinkycobbler.dev/schemas/task-capsule.schema.json",
+  "title": "Task Capsule",
+  "type": "object",
+  "required": ["taskId", "role", "goal", "scope", "nonGoals", "facts", "decisions", "allowedTools", "outputSchema"],
+  "properties": {
+    "version": {"oneOf": [{"type": "integer", "minimum": 1}, {"type": "string", "minLength": 1}]},
+    "capsuleId": {"type": "string", "minLength": 1},
+    "runId": {"type": "string", "minLength": 1},
+    "taskId": {"type": "string", "pattern": "^[A-Za-z0-9._-]+$"},
+    "agentId": {"type": "string", "minLength": 1},
+    "role": {"type": "string", "minLength": 1},
+    "workspaceId": {"type": "string", "minLength": 1},
+    "leaseId": {"type": "string", "minLength": 1},
+    "policyVersion": {"type": "string", "minLength": 1},
+    "goal": {"type": "string", "minLength": 1},
+    "scope": {"type": "array", "items": {"type": "string"}},
+    "readScope": {"type": "array", "items": {"type": "string"}},
+    "nonGoals": {"type": "array", "items": {"type": "string"}},
+    "facts": {"type": "array", "items": {"oneOf": [
+      {"type": "string"},
+      {"type": "object", "required": ["statement", "evidenceRefs"], "properties": {"statement": {"type": "string"}, "evidenceRefs": {"type": "array", "items": {"type": "string"}}}, "additionalProperties": false}
+    ]}},
+    "decisions": {"type": "array", "items": {"oneOf": [
+      {"type": "string"},
+      {"type": "object", "required": ["statement", "approvalRefs", "provenance"], "properties": {"statement": {"type": "string"}, "approvalRefs": {"type": "array", "items": {"type": "string"}}, "provenance": {"type": "string"}}, "additionalProperties": false}
+    ]}},
+    "unknowns": {"type": "array", "items": {"type": "string"}},
+    "allowedTools": {"type": "array", "items": {"type": "string"}},
+    "writeSet": {"type": "array", "items": {"type": "string"}},
+    "outputSchema": {"type": "array", "items": {"type": "string"}},
+    "budget": {"$ref": "#/$defs/runtimeBudget"},
+    "issuedAt": {"type": "string", "format": "date-time"},
+    "expiresAt": {"type": "string", "format": "date-time"}
+  },
+  "allOf": [{
+    "if": {"required": ["version"]},
+    "then": {
+      "required": ["version", "capsuleId", "runId", "taskId", "agentId", "role", "workspaceId", "leaseId", "policyVersion", "goal", "scope", "readScope", "nonGoals", "facts", "decisions", "unknowns", "allowedTools", "writeSet", "outputSchema", "budget", "issuedAt", "expiresAt"],
+      "properties": {"writeSet": {"const": []}}
+    }
+  }],
+  "$defs": {
+    "runtimeBudget": {
+      "type": "object",
+      "properties": {
+        "maxTurns": {"type": "integer", "minimum": 1},
+        "maxMinutes": {"type": "integer", "minimum": 1},
+        "maxToolCalls": {"type": "integer", "minimum": 1},
+        "maxFiles": {"type": "integer", "minimum": 1},
+        "maxBytes": {"type": "integer", "minimum": 1},
+        "maxOutputBytes": {"type": "integer", "minimum": 1}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

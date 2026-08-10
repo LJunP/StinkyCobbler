@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stinkycobbler.dev/schemas/approval.schema.json",
+  "title": "Stinky Cobbler Approval",
+  "type": "object",
+  "required": ["id", "taskId", "action", "status", "requestedAt"],
+  "properties": {
+    "id": {"type": "string", "pattern": "^[A-Za-z0-9._-]+$"},
+    "taskId": {"type": "string", "pattern": "^[A-Za-z0-9._-]+$"},
+    "action": {"type": "string", "minLength": 1},
+    "status": {"enum": ["requested", "approved", "rejected", "expired", "revoked"]},
+    "requestedAt": {"type": "string", "format": "date-time"},
+    "expiresAt": {"type": "string", "format": "date-time"},
+    "decidedAt": {"type": "string", "format": "date-time"},
+    "decidedBy": {"type": "string"},
+    "scope": {"type": "array", "items": {"type": "string"}},
+    "reason": {"type": "string", "maxLength": 512}
+  },
+  "additionalProperties": false
+}

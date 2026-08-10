@@ -1,0 +1,23 @@
+version: 1
+id: software-engineering
+label: 软件工程
+artifactTypes:
+  - code-change
+  - test-report
+  - decision-record
+  - workflow-run
+roleExtensions:
+  - architect
+  - builder
+  - testwright
+  - reliability
+qualityRules:
+  - implementation-requires-design-gate
+  - builder-and-reviewer-must-be-independent
+  - tests-required-for-behavior-change
+  - persistent-changes-require-evidence
+recommendedPlugins:
+  - repository-read
+  - git-read
+  - test-run
+  - local-observe

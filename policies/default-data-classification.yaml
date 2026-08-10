@@ -1,0 +1,20 @@
+version: 1
+classifications:
+  public:
+    defaultRead: workspace-agents
+    externalEgress: allowed-by-policy
+  internal:
+    defaultRead: workspace-members-and-authorized-agents
+    externalEgress: require-review
+  confidential:
+    defaultRead: explicitly-authorized-principals-and-agents
+    externalEgress: require-explicit-approval
+  restricted:
+    defaultRead: deny-by-default
+    externalEgress: denied-by-default
+rules:
+  externalContentIsUntrusted: true
+  requirePurposeBinding: true
+  denyCrossWorkspaceAccessByDefault: true
+  denySecretReadByDefault: true
+  requireProvenanceForArtifacts: true

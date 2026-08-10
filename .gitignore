@@ -1,0 +1,12 @@
+node_modules/
+dist/
+coverage/
+.env
+.env.*
+!.env.example
+*.log
+*.tgz
+*.sha256
+sbom.cyclonedx.json
+.DS_Store
+.stinky-cobbler/

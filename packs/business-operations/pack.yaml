@@ -1,0 +1,19 @@
+version: 1
+id: business-operations
+label: 业务运营
+artifactTypes:
+  - workflow-run
+  - message
+  - report
+  - dataset
+roleExtensions:
+  - process-operator
+  - communication-reviewer
+qualityRules:
+  - external-communication-requires-approval
+  - system-updates-require-audit
+  - recipient-and-destination-must-be-verified
+recommendedPlugins:
+  - crm-read
+  - crm-write
+  - message-draft

@@ -1,0 +1,18 @@
+version: 1
+id: organization
+label: 组织
+defaultAutomation: policy-governed
+defaultApproval: business-owner
+maxParallelAgents: 4
+enabledPacks:
+  - software-engineering
+  - knowledge-work
+  - business-operations
+  - creative-production
+  - education
+  - data-analysis
+rules:
+  requireDataClassification: true
+  requireAuditReceipt: true
+  requireIndependentReviewForPersistentChanges: true
+  externalActionsRequireApproval: true

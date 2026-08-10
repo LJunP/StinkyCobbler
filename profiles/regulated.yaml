@@ -1,0 +1,17 @@
+version: 1
+id: regulated
+label: 受监管组织
+defaultAutomation: advice-only
+defaultApproval: dual-control
+maxParallelAgents: 2
+enabledPacks:
+  - regulated-work
+  - knowledge-work
+  - data-analysis
+rules:
+  requireDataClassification: true
+  requireAuditReceipt: true
+  requireHumanApprovalForL2: true
+  requireDualApprovalForL3: true
+  denyExternalEgressByDefault: true
+  requireApprovedPlugins: true

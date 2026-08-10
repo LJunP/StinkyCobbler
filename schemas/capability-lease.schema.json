@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stinkycobbler.dev/schemas/capability-lease.schema.json",
+  "title": "Capability Lease",
+  "type": "object",
+  "required": ["id", "taskId", "agentId", "role", "capability", "level", "workspace", "readScope", "writeSet", "issuedAt", "expiresAt", "maxToolCalls", "status"],
+  "properties": {
+    "id": {"type": "string", "pattern": "^[A-Za-z0-9._-]+$"},
+    "taskId": {"type": "string", "pattern": "^[A-Za-z0-9._-]+$"},
+    "agentId": {"type": "string", "minLength": 1},
+    "role": {"type": "string", "minLength": 1},
+    "capability": {"type": "string", "minLength": 1},
+    "level": {"enum": ["L0", "L1", "L2", "L3"]},
+    "workspace": {"type": "string", "minLength": 1},
+    "readScope": {"type": "array", "items": {"type": "string"}},
+    "writeSet": {"type": "array", "items": {"type": "string"}},
+    "allowedCommands": {"type": "array", "items": {"type": "string"}},
+    "allowedDestinations": {"type": "array", "items": {"type": "string"}},
+    "approvalRefs": {"type": "array", "items": {"type": "string"}},
+    "policyVersion": {"type": "string"},
+    "issuedBy": {"type": "string"},
+    "issuedAt": {"type": "string", "format": "date-time"},
+    "expiresAt": {"type": "string", "format": "date-time"},
+    "maxToolCalls": {"type": "integer", "minimum": 1},
+    "status": {"enum": ["active", "revoked", "expired"]}
+  },
+  "additionalProperties": false
+}

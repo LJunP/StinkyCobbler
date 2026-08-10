@@ -1,0 +1,30 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "$id":"https://stinkycobbler.dev/schemas/plugin-manifest.schema.json",
+  "type":"object",
+  "required":["version","id","label","level","status","operations","inputSchemaRef","outputSchemaRef","sideEffects","requiresLease","requiresApproval","runtime","timeoutMs","auditMode","source"],
+  "properties":{
+    "version":{"type":"integer","const":2},
+    "id":{"type":"string","pattern":"^[a-z0-9][a-z0-9-]{0,63}$"},
+    "label":{"type":"string","minLength":1},
+    "level":{"enum":["L0","L1","L2","L3"]},
+    "status":{"enum":["available","internal","declared-only","unavailable"]},
+    "operations":{"type":"array","minItems":1,"uniqueItems":true,"items":{"type":"string","pattern":"^[a-z0-9][a-z0-9-]{0,63}$"}},
+    "inputSchemaRef":{"type":"string","minLength":1},
+    "outputSchemaRef":{"type":"string","minLength":1},
+    "sideEffects":{"enum":["none","control-plane","business-write","external-egress"]},
+    "requiresLease":{"type":"boolean"},
+    "requiresApproval":{"type":"boolean"},
+    "implementationRef":{"type":"string","pattern":"^[a-z0-9][a-z0-9._-]{0,127}$"},
+    "runtime":{"enum":["builtin","mcp","adapter","unavailable"]},
+    "timeoutMs":{"type":"integer","minimum":1,"maximum":300000},
+    "auditMode":{"enum":["receipt-ledger","ledger-only","none"]},
+    "source":{"enum":["builtin","workspace","user","package"]}
+  },
+  "allOf":[
+    {"if":{"properties":{"status":{"const":"available"}}},"then":{"required":["implementationRef"]}},
+    {"if":{"properties":{"status":{"const":"internal"}}},"then":{"required":["implementationRef"]}},
+    {"if":{"properties":{"status":{"const":"unavailable"}}},"then":{"properties":{"runtime":{"const":"unavailable"}}}}
+  ],
+  "additionalProperties":false
+}

@@ -1,0 +1,66 @@
+{
+  "name": "stinky-cobbler",
+  "version": "1.0.0",
+  "description": "Evidence-gated local control plane for AI agent collaboration.",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/LJunP/StinkyCobbler.git"
+  },
+  "homepage": "https://github.com/LJunP/StinkyCobbler#readme",
+  "bugs": {
+    "url": "https://github.com/LJunP/StinkyCobbler/issues"
+  },
+  "license": "Apache-2.0",
+  "files": [
+    "dist",
+    "schemas",
+    "profiles",
+    "packs",
+    "policies",
+    "plugins",
+    ".zcode/skills",
+    ".zcode/commands",
+    ".codex/skills",
+    "docs",
+    "examples",
+    "README.md",
+    "LICENSE",
+    "SECURITY.md",
+    "CHANGELOG.md"
+  ],
+  "bin": {
+    "stinky-cobbler": "./dist/cli.js",
+    "stinky-cobbler-mcp": "./dist/mcp-server.js"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node scripts/add-shebang.mjs",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:integration": "npm run build && vitest run test/mcp-stdio.integration.test.ts",
+    "test:package": "npm run build && node scripts/package-smoke.mjs",
+    "lint": "npm run typecheck",
+    "check:version": "node scripts/check-version.mjs",
+    "prepack": "npm run build && npm run check:version",
+    "dev": "tsx src/cli.ts",
+    "dev:mcp": "tsx src/mcp-server.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
+    "commander": "^13.1.0",
+    "smol-toml": "^1.7.1",
+    "yaml": "^2.7.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.3",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.3",
+    "vitest": "^3.1.2"
+  }
+}
