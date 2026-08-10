@@ -32,6 +32,19 @@ stinky-cobbler --version   # 1.0.0
 stinky-cobbler doctor --json
 ```
 
+**离线安装（无网络，下载即用）**：从 GitHub Release 下载
+`stinky-cobbler-1.0.0-offline-full.zip`（含全部依赖，需本机已装 Node ≥ 20），解压后：
+
+```bash
+# macOS / Linux
+export PATH="$PWD/stinky-cobbler-1.0.0-offline-full/bin:$PATH"
+stinky-cobbler --version
+
+# Windows (cmd)
+set PATH=%CD%\stinky-cobbler-1.0.0-offline-full\bin;%PATH%
+stinky-cobbler --version
+```
+
 ### 2. 接入你的 AI 工具（一次性）
 
 **ZCode**（获得 `/stinky-cobbler` 命令入口）：
