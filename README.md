@@ -66,7 +66,7 @@ npm install -g stinky-cobbler --registry=https://registry.npmmirror.com
 | `stinky-cobbler-1.0.0.tgz` | npm 标准包（有网时 `npm install -g ./xxx.tgz`） |
 | `stinky-cobbler-1.0.0.tgz.sha256` | 包完整性校验值（防下载被篡改） |
 | `sbom.cyclonedx.json` | 依赖物料清单（供应链审计用） |
-| `使用说明书.md` | 完整使用教程 |
+| `STINKY-COBBLER-MANUAL.md` | 完整使用教程（使用说明书） |
 
 **正常用户（离线完整包）：**
 ```bash
