@@ -1,0 +1,65 @@
+{
+  "title": "TaskContract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "contractId",
+    "taskId",
+    "goal",
+    "globalAcceptanceCriteria",
+    "scope",
+    "createdAt",
+    "status"
+  ],
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "contractId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+    },
+    "goal": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512
+    },
+    "globalAcceptanceCriteria": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 20,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 512
+      }
+    },
+    "scope": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 50,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 512
+      }
+    },
+    "createdAt": {
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "ACTIVE",
+        "COMPLETED",
+        "FAILED",
+        "CANCELLED"
+      ]
+    },
+    "taskId": {
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stinkycobbler.dev/schemas/orchestration-contract.schema.json"
+}

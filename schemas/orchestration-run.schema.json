@@ -1,0 +1,129 @@
+{
+  "title": "OrchestrationRun",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "runId",
+    "contractRef",
+    "status",
+    "round",
+    "budget",
+    "subtasks",
+    "artifacts",
+    "reviews",
+    "goalConsistency",
+    "createdAt"
+  ],
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "runId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+    },
+    "contractRef": {
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "DRAFT",
+        "RUNNING",
+        "COMPLETED",
+        "FAILED",
+        "CANCELLED",
+        "ESCALATED"
+      ]
+    },
+    "round": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "maxRounds",
+        "maxRetriesPerSubtask",
+        "maxSubtaskTokens",
+        "usedTokens"
+      ],
+      "properties": {
+        "maxRounds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "maxRetriesPerSubtask": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "maxSubtaskTokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "usedTokens": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "subtasks": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "reviews": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "goalConsistency": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "round",
+          "passed",
+          "note"
+        ],
+        "properties": {
+          "round": {
+            "type": "integer"
+          },
+          "passed": {
+            "type": "boolean"
+          },
+          "note": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "createdAt": {
+      "type": "string"
+    },
+    "completedAt": {
+      "type": "string"
+    },
+    "escalatedAt": {
+      "type": "string"
+    },
+    "escalationReason": {
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stinkycobbler.dev/schemas/orchestration-run.schema.json"
+}

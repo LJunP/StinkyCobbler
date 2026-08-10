@@ -54,6 +54,21 @@ For every Stinky Cobbler response, output:
 - **停止工具 ≠ 撤销 lease**：用户"停止使用该工具"只退出交互（不再询问/介入）；已签发的 lease 不随之失效（撤销需显式 revoke）。重新启用后，**未过期的 lease 继续有效，无需重新授权**；过期的才需一句话续授权。
 - **到期宽限期**：lease 到期后，**同一任务**在宽限期（固定 15 分钟）内继续放行——进行中的任务不被中断，跑完为止；超宽限期、或开始**新任务**才需要续期/新授权（调用被拒时报告"授权已到期"，一句话续期即可）。- **到期不中断任务**：lease 到期（调用被拒）时，向用户报告"授权已到期"，并提供**一句话续期**（"授权续期 N 分钟"→ 签发同参数新 lease），不要求用户中断任务重走流程。建议用户任务开始时按规模选够时长以避免中断。
 
+## 编排指挥（2.0 orchestrator-worker）
+
+复杂任务（多文件/多模块/需交付质量）使用 `orchestration` 命令组走多 agent 编排循环。主 agent 是唯一指挥者：
+
+1. **拆解**：`orchestration contract create`（固化任务契约：目标 + 全局验收标准 + 范围）→ 若推荐 `direct`（简单契约）则走 1.0 计划路径，不强行编排。
+2. **预算确认**：`orchestration run create` 前向用户展示预估（轮次/子任务/token 上限），用户确认后创建；预算全局累计，不随轮重置。
+3. **分配**：`orchestration subtask add`（任务定义 + 输入产物引用 + 完成标准 + 范围 + 能力）→ `dispatch`（引擎签发绑定子任务的 Lease，校验输入产物哈希与依赖）。
+4. **执行**：主 agent 用宿主能力开子 agent；子 agent **只使用 subtask.goal 与 inputArtifacts，忽略其他会话内容**，持 Lease 通过 MCP 工具干活，**不得再派生子 agent**。
+5. **产物**：`orchestration artifact report`（引擎校验内容哈希与范围；范围外产物直接 REJECTED）。
+6. **审查（双通道）**：工具能验证的优先（哈希/存在性/范围）；LLM 按完成标准逐项勾选，REJECTED 必须有可操作缺陷清单，原因必填。
+7. **决策**：ACCEPTED → 产物入池供下一轮引用；REJECTED → 携带缺陷重做（有上限），振荡（同缺陷重复）/退化（分数下降）/预算超限 → **升级用户点选**，绝不无限循环。
+8. **汇总**：每轮 `orchestration round complete` 记录目标一致性检查（产物 vs 契约）；全部接受 → COMPLETED。
+9. **失败隔离**：单子任务重做耗尽 → FAILED 不阻塞无依赖子任务；REJECTED 产物可回滚。
+10. **约束不可绕过**：引擎四类约束（预算/振荡/退化/范围）是硬规则，主 agent 不得通过改范围/换子任务规避拒绝。
+
 ## Available CLI (facts)
 
 - `doctor` / `recommend` / `validate` — health, recommendation, contract/policy checks.

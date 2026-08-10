@@ -165,6 +165,8 @@ export interface CapabilityLease {
   approvalRefs?: string[];
   policyVersion?: string;
   issuedBy?: string;
+  /** 2.0: binds the lease to an orchestration subtask (worker). */
+  subtaskRef?: string;
 }
 
 export interface PolicyDecision {

@@ -104,6 +104,21 @@ For every `/stinky-cobbler` response, output:
 - Never expose raw internal error codes (for example `RUNTIME_RUN_FENCED`, ledger sequence numbers, `EVIDENCE_*`) as the final user-visible conclusion. Summarize them as "被拒绝 / 失败（原因）" and, only when the user is debugging, show `--json` details.
 - A denied admission or blocked tool call is reported as `BLOCKED` / 被拒绝; do not retry by changing scope, role, Lease, or policy on the user's behalf.
 
+## 编排指挥（2.0 orchestrator-worker）
+
+复杂任务（多文件/多模块/需交付质量）使用 `orchestration` 命令组走多 agent 编排循环。主 agent 是唯一指挥者：
+
+1. **拆解**：`orchestration contract create`（固化任务契约：目标 + 全局验收标准 + 范围）→ 若推荐 `direct`（简单契约）则走 1.0 计划路径，不强行编排。
+2. **预算确认**：`orchestration run create` 前向用户展示预估（轮次/子任务/token 上限），用户确认后创建；预算全局累计，不随轮重置。
+3. **分配**：`orchestration subtask add`（任务定义 + 输入产物引用 + 完成标准 + 范围 + 能力）→ `dispatch`（引擎签发绑定子任务的 Lease，校验输入产物哈希与依赖）。
+4. **执行**：主 agent 用宿主能力开子 agent；子 agent **只使用 subtask.goal 与 inputArtifacts，忽略其他会话内容**，持 Lease 通过 MCP 工具干活，**不得再派生子 agent**。
+5. **产物**：`orchestration artifact report`（引擎校验内容哈希与范围；范围外产物直接 REJECTED）。
+6. **审查（双通道）**：工具能验证的优先（哈希/存在性/范围）；LLM 按完成标准逐项勾选，REJECTED 必须有可操作缺陷清单，原因必填。
+7. **决策**：ACCEPTED → 产物入池供下一轮引用；REJECTED → 携带缺陷重做（有上限），振荡（同缺陷重复）/退化（分数下降）/预算超限 → **升级用户点选**，绝不无限循环。
+8. **汇总**：每轮 `orchestration round complete` 记录目标一致性检查（产物 vs 契约）；全部接受 → COMPLETED。
+9. **失败隔离**：单子任务重做耗尽 → FAILED 不阻塞无依赖子任务；REJECTED 产物可回滚。
+10. **约束不可绕过**：引擎四类约束（预算/振荡/退化/范围）是硬规则，主 agent 不得通过改范围/换子任务规避拒绝。
+
 ## Available CLI
 
 - `doctor`; `recommend`; `validate` — local health, recommendation, and contract/policy checks.

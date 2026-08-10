@@ -4,7 +4,7 @@ import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import { StinkyCobblerError, ExitCode } from "../errors.js";
 
-export type ContractKind = "task" | "artifact" | "capsule" | "lease" | "receipt" | "approval" | "audit" | "config" | "profile" | "pack" | "role" | "plugin" | "policy-decision" | "evidence-ref" | "agent-run" | "tool-call-record" | "plan";
+export type ContractKind = "task" | "artifact" | "capsule" | "lease" | "receipt" | "approval" | "audit" | "config" | "profile" | "pack" | "role" | "plugin" | "policy-decision" | "evidence-ref" | "agent-run" | "tool-call-record" | "plan" | "orchestration-contract" | "orchestration-subtask" | "orchestration-artifact" | "orchestration-review" | "orchestration-run";
 
 const FILE_BY_KIND: Record<ContractKind, string> = {
   task: "task.schema.json",
@@ -23,7 +23,12 @@ const FILE_BY_KIND: Record<ContractKind, string> = {
   "evidence-ref": "evidence-ref.schema.json",
   "agent-run": "agent-run.schema.json",
   "tool-call-record": "tool-call-record.schema.json",
-  plan: "plan.schema.json"
+  plan: "plan.schema.json",
+  "orchestration-contract": "orchestration-contract.schema.json",
+  "orchestration-subtask": "orchestration-subtask.schema.json",
+  "orchestration-artifact": "orchestration-artifact.schema.json",
+  "orchestration-review": "orchestration-review.schema.json",
+  "orchestration-run": "orchestration-run.schema.json"
 };
 
 export class SchemaRegistry {

@@ -1,0 +1,67 @@
+{
+  "title": "Artifact",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "artifactId",
+    "runRef",
+    "subtaskRef",
+    "kind",
+    "path",
+    "contentHash",
+    "round",
+    "status",
+    "createdAt"
+  ],
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "artifactId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+    },
+    "runRef": {
+      "type": "string"
+    },
+    "subtaskRef": {
+      "type": "string"
+    },
+    "kind": {
+      "enum": [
+        "file",
+        "summary",
+        "evidence"
+      ]
+    },
+    "path": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512
+    },
+    "contentHash": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "round": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "status": {
+      "enum": [
+        "VERIFIED",
+        "MISMATCH",
+        "REJECTED"
+      ]
+    },
+    "createdAt": {
+      "type": "string"
+    },
+    "verifiedAt": {
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stinkycobbler.dev/schemas/orchestration-artifact.schema.json"
+}

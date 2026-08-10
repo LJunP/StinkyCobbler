@@ -1,0 +1,176 @@
+{
+  "title": "SubtaskPackage",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "subtaskId",
+    "contractRef",
+    "runRef",
+    "goal",
+    "inputArtifacts",
+    "acceptanceCriteria",
+    "scope",
+    "maxRetries",
+    "capabilities",
+    "status",
+    "round",
+    "retriesUsed",
+    "dependsOn",
+    "createdAt"
+  ],
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "subtaskId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+    },
+    "contractRef": {
+      "type": "string"
+    },
+    "runRef": {
+      "type": "string"
+    },
+    "goal": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512
+    },
+    "inputArtifacts": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "artifactId",
+          "contentHash"
+        ],
+        "properties": {
+          "artifactId": {
+            "type": "string"
+          },
+          "contentHash": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "acceptanceCriteria": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 10,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 512
+      }
+    },
+    "scope": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 50,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 512
+      }
+    },
+    "maxRetries": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 10
+    },
+    "capabilities": {
+      "type": "array",
+      "maxItems": 10,
+      "items": {
+        "type": "string"
+      }
+    },
+    "status": {
+      "enum": [
+        "PENDING",
+        "DISPATCHED",
+        "RUNNING",
+        "REVIEWING",
+        "ACCEPTED",
+        "REJECTED",
+        "FAILED",
+        "SKIPPED"
+      ]
+    },
+    "round": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "retriesUsed": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "dependsOn": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "createdAt": {
+      "type": "string"
+    },
+    "dispatchedAt": {
+      "type": "string"
+    },
+    "completedAt": {
+      "type": "string"
+    },
+    "leaseRefs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "artifactRefs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "reviewRefs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "lastDefects": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "location",
+          "problem",
+          "suggestion"
+        ],
+        "properties": {
+          "location": {
+            "type": "string"
+          },
+          "problem": {
+            "type": "string"
+          },
+          "suggestion": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "failReason": {
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stinkycobbler.dev/schemas/orchestration-subtask.schema.json"
+}

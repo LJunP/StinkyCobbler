@@ -29,6 +29,8 @@ export interface LeaseIssueInput {
   maxToolCalls?: number;
   expiresInMinutes?: number;
   issuedBy?: string;
+  /** 2.0: binds the lease to an orchestration subtask (worker). */
+  subtaskRef?: string;
 }
 
 /** Issues a user-confirmed, read-only L0 lease and persists it for later use. */
@@ -53,7 +55,8 @@ export async function issueLease(workspace: LocalWorkspace, schemas: SchemaRegis
       issuedAt: now.toISOString(),
       expiresAt: new Date(now.getTime() + (input.expiresInMinutes ?? DEFAULT_EXPIRES_IN_MINUTES) * 60_000).toISOString(),
       maxToolCalls: input.maxToolCalls ?? DEFAULT_MAX_TOOL_CALLS,
-      status: "active"
+      status: "active",
+      ...(input.subtaskRef === undefined ? {} : { subtaskRef: input.subtaskRef })
     };
     schemas.validate("lease", lease);
     await createWorkspaceJson(workspace, fileName(lease.id), lease);

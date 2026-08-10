@@ -9,10 +9,10 @@ import { withWorkspaceLock } from "./workspace-lock.js";
 export const LEDGER_FILE = "ledger.jsonl";
 export const GENESIS_HASH = "sha256:genesis";
 
-const LEDGER_EVENTS = ["workspace-initialized", "workspace-config-migrated", "task-created", "task-transitioned", "task-cancelled", "receipt-recorded", "approval-requested", "approval-decided", "evidence-recorded", "validation-run", "mcp-call", "test-run", "run-created", "run-transitioned", "run-recovered", "lease-issued", "lease-revoked", "plan-created", "plan-approved", "plan-cancelled", "plan-executing", "plan-step-completed", "plan-step-failed", "plan-completed", "plan-failed", "write-requested", "write-confirmed", "write-auto-allowed", "write-rejected", "write-applied", "write-rolled-back", "delete-applied"] as const;
+const LEDGER_EVENTS = ["workspace-initialized", "workspace-config-migrated", "task-created", "task-transitioned", "task-cancelled", "receipt-recorded", "approval-requested", "approval-decided", "evidence-recorded", "validation-run", "mcp-call", "test-run", "run-created", "run-transitioned", "run-recovered", "lease-issued", "lease-revoked", "plan-created", "plan-approved", "plan-cancelled", "plan-executing", "plan-step-completed", "plan-step-failed", "plan-completed", "plan-failed", "write-requested", "write-confirmed", "write-auto-allowed", "write-rejected", "write-applied", "write-rolled-back", "delete-applied", "contract-created", "run-created", "subtask-dispatched", "subtask-started", "subtask-completed", "artifact-recorded", "artifact-mismatch", "review-recorded", "subtask-accepted", "subtask-rejected", "round-completed", "orchestration-completed", "orchestration-failed", "orchestration-escalated", "orchestration-cancelled"] as const;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const HASH_PATTERN = /^sha256:[a-f0-9]{64}$/;
-const OPTIONAL_FIELDS = ["taskId", "role", "policyVersion", "tool", "receiptRef", "approvalRef", "evidenceRef", "runId", "fromStatus", "toStatus", "leaseRef", "planRef", "stepId", "writeIntentRef"] as const;
+const OPTIONAL_FIELDS = ["taskId", "role", "policyVersion", "tool", "receiptRef", "approvalRef", "evidenceRef", "runId", "fromStatus", "toStatus", "leaseRef", "planRef", "stepId", "writeIntentRef", "contractRef", "runRef", "subtaskRef", "artifactRef", "reviewRef", "round"] as const;
 const appendQueues = new Map<string, Promise<void>>();
 
 export type LedgerEventName = (typeof LEDGER_EVENTS)[number];
@@ -40,6 +40,12 @@ export interface LedgerEntry {
   planRef?: string;
   stepId?: string;
   writeIntentRef?: string;
+  contractRef?: string;
+  runRef?: string;
+  subtaskRef?: string;
+  artifactRef?: string;
+  reviewRef?: string;
+  round?: number;
 }
 
 /** Caller-supplied audit data. Storage exclusively assigns sequence, id, timestamp, and hash-chain fields. */
@@ -60,6 +66,12 @@ export interface AppendLedgerEntry {
   planRef?: string;
   stepId?: string;
   writeIntentRef?: string;
+  contractRef?: string;
+  runRef?: string;
+  subtaskRef?: string;
+  artifactRef?: string;
+  reviewRef?: string;
+  round?: number;
 }
 
 export interface AppendLedgerOptions {

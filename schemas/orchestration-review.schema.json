@@ -1,0 +1,136 @@
+{
+  "title": "ReviewRecord",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "reviewId",
+    "runRef",
+    "subtaskRef",
+    "round",
+    "decision",
+    "criteriaResults",
+    "defects",
+    "score",
+    "reason",
+    "validatorEvidence",
+    "createdAt",
+    "reviewedBy"
+  ],
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "reviewId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+    },
+    "runRef": {
+      "type": "string"
+    },
+    "subtaskRef": {
+      "type": "string"
+    },
+    "round": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "decision": {
+      "enum": [
+        "ACCEPTED",
+        "REJECTED"
+      ]
+    },
+    "criteriaResults": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "criterion",
+          "passed",
+          "note"
+        ],
+        "properties": {
+          "criterion": {
+            "type": "string"
+          },
+          "passed": {
+            "type": "boolean"
+          },
+          "note": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "defects": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "location",
+          "problem",
+          "suggestion"
+        ],
+        "properties": {
+          "location": {
+            "type": "string"
+          },
+          "problem": {
+            "type": "string"
+          },
+          "suggestion": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "score": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1024
+    },
+    "validatorEvidence": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "validator",
+          "passed",
+          "detail"
+        ],
+        "properties": {
+          "validator": {
+            "type": "string"
+          },
+          "passed": {
+            "type": "boolean"
+          },
+          "detail": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "createdAt": {
+      "type": "string"
+    },
+    "reviewedBy": {
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stinkycobbler.dev/schemas/orchestration-review.schema.json"
+}
