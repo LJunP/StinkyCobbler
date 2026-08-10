@@ -5,7 +5,7 @@ import type { CapabilityLease, EvidenceRef } from "../contracts/types.js";
 import type { SchemaRegistry } from "../contracts/schema-registry.js";
 import { ExitCode, StinkyCobblerError } from "../errors.js";
 import { evaluateLease } from "../policy/evaluate.js";
-import { isSensitivePath, isForbiddenWriteTarget } from "../policy/path-policy.js";
+import { isSensitivePath, isForbiddenWriteTarget, targetInWriteSet } from "../policy/path-policy.js";
 import { appendLedgerEntry } from "./ledger.js";
 import { recordEvidence } from "./evidence.js";
 import type { LocalWorkspace } from "./workspace.js";
@@ -47,7 +47,7 @@ export async function applyDelete(
     const current = await getWriteIntent(workspace, writeIntent.writeIntentId);
     const decision = evaluateLease(lease, { taskId: lease.taskId, role: lease.role, workspace: workspace.root, capability: "repository-write" });
     if (!decision.allowed) throw writeError("WRITE_LEASE_DENIED", decision.reasons[0] ?? "Write lease denied.");
-    if (!lease.writeSet.includes(target)) throw writeError("WRITE_TARGET_NOT_IN_LEASE", "Target is outside the write lease writeSet.", { target });
+    if (!targetInWriteSet(lease.writeSet, target)) throw writeError("WRITE_TARGET_NOT_IN_LEASE", "Target is outside the write lease writeSet.", { target });
     if (current.status === "APPLIED") throw writeError("WRITE_ALREADY_APPLIED", "This write request has already been applied.", { writeIntentId: current.writeIntentId });
     if (current.status !== "CONFIRMED") throw writeError("WRITE_INTENT_NOT_CONFIRMED", "The write request must be CONFIRMED before applying.", { writeIntentId: current.writeIntentId, status: current.status });
     if (!(current.confirmedTargets ?? []).includes(target)) throw writeError("WRITE_TARGET_NOT_CONFIRMED", "Target was not part of the confirmed write targets.", { target, confirmedTargets: current.confirmedTargets });
@@ -120,7 +120,7 @@ export async function applyWrite(
     const current = await getWriteIntent(workspace, writeIntent.writeIntentId);
     const decision = evaluateLease(lease, { taskId: lease.taskId, role: lease.role, workspace: workspace.root, capability: "repository-write" });
     if (!decision.allowed) throw writeError("WRITE_LEASE_DENIED", decision.reasons[0] ?? "Write lease denied.");
-    if (!lease.writeSet.includes(target)) throw writeError("WRITE_TARGET_NOT_IN_LEASE", "Target is outside the write lease writeSet.", { target });
+    if (!targetInWriteSet(lease.writeSet, target)) throw writeError("WRITE_TARGET_NOT_IN_LEASE", "Target is outside the write lease writeSet.", { target });
     if (current.status === "APPLIED") throw writeError("WRITE_ALREADY_APPLIED", "This write request has already been applied.", { writeIntentId: current.writeIntentId });
     if (current.status !== "CONFIRMED") throw writeError("WRITE_INTENT_NOT_CONFIRMED", "The write request must be CONFIRMED before applying.", { writeIntentId: current.writeIntentId, status: current.status });
     if (!(current.confirmedTargets ?? []).includes(target)) throw writeError("WRITE_TARGET_NOT_CONFIRMED", "Target was not part of the confirmed write targets.", { target, confirmedTargets: current.confirmedTargets });

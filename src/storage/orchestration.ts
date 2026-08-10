@@ -248,6 +248,7 @@ export async function dispatchSubtask(workspace: LocalWorkspace, schemas: Schema
         agentId,
         role: "worker",
         capability,
+        ...(capability === "repository-write" ? { writeSet: subtask.scope } : {}),
         subtaskRef: subtask.subtaskId,
         expiresInMinutes: 60,
         issuedBy: "user-confirmed"

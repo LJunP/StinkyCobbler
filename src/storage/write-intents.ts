@@ -25,6 +25,9 @@ export interface WriteIntentRecord {
   writeIntentId: string;
   planId: string;
   stepId: string;
+  /** 2.0 orchestration mode: bound to a run/subtask instead of a plan step. */
+  runRef?: string;
+  subtaskRef?: string;
   status: "PENDING" | "CONFIRMED" | "REJECTED" | "APPLIED" | "FAILED" | "ROLLED_BACK";
   writes: WriteIntent[];
   confirmedTargets?: string[];
@@ -36,19 +39,43 @@ export interface WriteIntentRecord {
 }
 
 /**
- * Requests write confirmation for one plan step. Never writes content.
- * With `autoAllow`, regular create/modify intents are created already CONFIRMED
- * (no write-confirm Approval required) — the write is audited via a
- * `write-auto-allowed` ledger event and remains fully backed up and rollback-able.
- * Delete intents can never be auto-allowed.
+ * Requests write confirmation for one plan step — or, in 2.0 orchestration mode,
+ * for one subtask (pass `runRef` + `subtaskRef` instead of `planId`/`stepId`).
+ * Never writes content. With `autoAllow`, regular create/modify intents are
+ * created already CONFIRMED (no write-confirm Approval required) — the write is
+ * audited via a `write-auto-allowed` ledger event and remains fully backed up
+ * and rollback-able. Delete intents can never be auto-allowed.
  */
-export async function requestWrites(workspace: LocalWorkspace, schemas: SchemaRegistry, planId: string, stepId: string, writes: WriteIntent[], options: { autoAllow?: boolean } = {}): Promise<WriteIntentRecord> {
+export async function requestWrites(
+  workspace: LocalWorkspace,
+  schemas: SchemaRegistry,
+  planId: string,
+  stepId: string,
+  writes: WriteIntent[],
+  options: { autoAllow?: boolean; runRef?: string; subtaskRef?: string } = {}
+): Promise<WriteIntentRecord> {
   return withWorkspaceLock(workspace, async () => {
-    const plan = await getPlan(workspace, planId);
-    if (plan.status !== "EXECUTING") throw writeError("WRITE_PLAN_STATE", "Writes can only be requested for EXECUTING plans.", { planId, status: plan.status });
-    const step = plan.steps.find((candidate) => candidate.stepId === stepId);
-    if (!step) throw writeError("WRITE_STEP_NOT_FOUND", "Plan step does not exist.", { planId, stepId });
-    if (step.status !== "RUNNING") throw writeError("WRITE_STEP_STATE", "Writes can only be requested for RUNNING steps.", { planId, stepId, status: step.status });
+    const isSubtaskMode = options.subtaskRef !== undefined;
+    let taskId: string;
+    if (isSubtaskMode) {
+      const runRef = options.runRef;
+      const subtaskRef = options.subtaskRef;
+      if (runRef === undefined || subtaskRef === undefined) throw writeError("WRITE_SUBTASK_REF_REQUIRED", "Subtask-mode writes require runRef and subtaskRef.");
+      const { getRun, getSubtask } = await import("./orchestration.js");
+      const run = await getRun(workspace, runRef);
+      if (run.status !== "RUNNING") throw writeError("WRITE_RUN_STATE", "Writes can only be requested for RUNNING orchestration runs.", { runId: runRef, status: run.status });
+      const subtask = await getSubtask(workspace, subtaskRef);
+      if (subtask.status !== "RUNNING") throw writeError("WRITE_SUBTASK_STATE", "Writes can only be requested for RUNNING subtasks.", { subtaskId: subtaskRef, status: subtask.status });
+      const { getContract } = await import("./orchestration.js");
+      taskId = (await getContract(workspace, run.contractRef)).taskId;
+    } else {
+      const plan = await getPlan(workspace, planId);
+      if (plan.status !== "EXECUTING") throw writeError("WRITE_PLAN_STATE", "Writes can only be requested for EXECUTING plans.", { planId, status: plan.status });
+      const step = plan.steps.find((candidate) => candidate.stepId === stepId);
+      if (!step) throw writeError("WRITE_STEP_NOT_FOUND", "Plan step does not exist.", { planId, stepId });
+      if (step.status !== "RUNNING") throw writeError("WRITE_STEP_STATE", "Writes can only be requested for RUNNING steps.", { planId, stepId, status: step.status });
+      taskId = plan.taskId;
+    }
     assertWrites(writes);
     const autoAllow = options.autoAllow === true;
     if (autoAllow && writes.some((write) => write.action === "delete")) {
@@ -60,15 +87,30 @@ export async function requestWrites(workspace: LocalWorkspace, schemas: SchemaRe
       writeIntentId: `write-${randomUUID()}`,
       planId,
       stepId,
+      ...(isSubtaskMode ? { runRef: options.runRef, subtaskRef: options.subtaskRef } : {}),
       status: autoAllow ? "CONFIRMED" : "PENDING",
       writes,
       ...(autoAllow ? { confirmedTargets: writes.map((write) => write.target), confirmedAt: new Date().toISOString(), autoAllowed: true } : {}),
       createdAt: new Date().toISOString()
     };
     await createWorkspaceJson(workspace, fileName(record.writeIntentId), record);
-    await appendLedgerEntry(workspace, { event: "write-requested", taskId: plan.taskId, planRef: planId, writeIntentRef: record.writeIntentId, summary: `Write request ${record.writeIntentId} for ${writes.length} target(s).` });
+    await appendLedgerEntry(workspace, {
+      event: "write-requested",
+      taskId,
+      planRef: planId,
+      ...(isSubtaskMode ? { runRef: options.runRef, subtaskRef: options.subtaskRef } : {}),
+      writeIntentRef: record.writeIntentId,
+      summary: `Write request ${record.writeIntentId} for ${writes.length} target(s).`
+    });
     if (autoAllow) {
-      await appendLedgerEntry(workspace, { event: "write-auto-allowed", taskId: plan.taskId, planRef: planId, writeIntentRef: record.writeIntentId, summary: `Write request ${record.writeIntentId} auto-allowed (${writes.length} target(s)); no human write-confirm Approval.` });
+      await appendLedgerEntry(workspace, {
+        event: "write-auto-allowed",
+        taskId,
+        planRef: planId,
+        ...(isSubtaskMode ? { runRef: options.runRef, subtaskRef: options.subtaskRef } : {}),
+        writeIntentRef: record.writeIntentId,
+        summary: `Write request ${record.writeIntentId} auto-allowed (${writes.length} target(s)); no human write-confirm Approval.`
+      });
     }
     return record;
   });

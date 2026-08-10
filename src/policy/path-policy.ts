@@ -19,3 +19,12 @@ export function isForbiddenWriteTarget(path: string): boolean {
 export function containsShellMetacharacter(value: string): boolean {
   return SHELL_METACHARACTER.test(value);
 }
+
+/** True when the target equals a writeSet entry or falls inside it as a directory prefix ("docs" admits "docs/guide.md", never "docs-evil"). */
+export function targetInWriteSet(writeSet: string[], target: string): boolean {
+  const normalized = target.replace(/^\.\//, "").replace(/[\\/]+$/, "");
+  return writeSet.some((prefix) => {
+    const p = prefix.replace(/^\.\//, "").replace(/[\\/]+$/, "");
+    return normalized === p || normalized.startsWith(`${p}/`);
+  });
+}

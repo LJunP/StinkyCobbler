@@ -1,5 +1,6 @@
 import type { SchemaRegistry } from "../contracts/schema-registry.js";
 import { authorize, denied, type ToolAccess, type ToolOutcome } from "./shared.js";
+import { targetInWriteSet } from "../policy/path-policy.js";
 import { getWriteIntent } from "../storage/write-intents.js";
 import { applyWrite, applyDelete } from "../storage/writes.js";
 import { openWorkspace } from "../storage/workspace.js";
@@ -31,7 +32,7 @@ export interface DeleteRepositoryFileResult {
 export async function writeRepositoryFile(access: ToolAccess, schemas: SchemaRegistry, request: WriteRepositoryFileRequest): Promise<ToolOutcome<WriteRepositoryFileResult>> {
   const decision = authorize(access, "repository-write");
   if (!decision.allowed) return denied(decision);
-  if (!access.lease.writeSet.includes(request.target)) {
+  if (!targetInWriteSet(access.lease.writeSet, request.target)) {
     return denied({ allowed: false, code: "WRITE_TARGET_NOT_IN_LEASE", reasons: ["Target is outside the write lease writeSet."], policyVersion: "1" });
   }
   const workspace = await openWorkspace(access.workspace);
@@ -44,7 +45,7 @@ export async function writeRepositoryFile(access: ToolAccess, schemas: SchemaReg
 export async function deleteRepositoryFile(access: ToolAccess, schemas: SchemaRegistry, request: DeleteRepositoryFileRequest): Promise<ToolOutcome<DeleteRepositoryFileResult>> {
   const decision = authorize(access, "repository-write");
   if (!decision.allowed) return denied(decision);
-  if (!access.lease.writeSet.includes(request.target)) {
+  if (!targetInWriteSet(access.lease.writeSet, request.target)) {
     return denied({ allowed: false, code: "WRITE_TARGET_NOT_IN_LEASE", reasons: ["Target is outside the write lease writeSet."], policyVersion: "1" });
   }
   const workspace = await openWorkspace(access.workspace);
