@@ -6,6 +6,7 @@ import type { SchemaRegistry } from "../contracts/schema-registry.js";
 import { ExitCode, StinkyCobblerError } from "../errors.js";
 import { evaluateLease } from "../policy/evaluate.js";
 import { isSensitivePath, isForbiddenWriteTarget, targetInWriteSet } from "../policy/path-policy.js";
+import { loadOrchestrationConfig, type OrchestrationConfig } from "../config/tiered.js";
 import { appendLedgerEntry } from "./ledger.js";
 import { recordEvidence } from "./evidence.js";
 import type { LocalWorkspace } from "./workspace.js";
@@ -43,6 +44,7 @@ export async function applyDelete(
   target: string
 ): Promise<ApplyDeleteResult> {
   return withWorkspaceLock(workspace, async () => {
+    const cfg = await loadOrchestrationConfig(workspace);
     // Storage is authoritative: re-read the intent so stale in-memory copies cannot bypass APPLIED state.
     const current = await getWriteIntent(workspace, writeIntent.writeIntentId);
     const decision = evaluateLease(lease, { taskId: lease.taskId, role: lease.role, workspace: workspace.root, capability: "repository-write" });
@@ -53,7 +55,7 @@ export async function applyDelete(
     if (!(current.confirmedTargets ?? []).includes(target)) throw writeError("WRITE_TARGET_NOT_CONFIRMED", "Target was not part of the confirmed write targets.", { target, confirmedTargets: current.confirmedTargets });
     const intentAction = current.writes.find((write) => write.target === target)?.action;
     if (intentAction !== "delete") throw writeError("WRITE_ACTION_MISMATCH", "Target is not a delete intent.", { target, action: intentAction });
-    assertTarget(target);
+    assertTarget(target, cfg);
 
     const absoluteTarget = path.resolve(workspace.root, target);
     if (!absoluteTarget.startsWith(`${workspace.root}${path.sep}`)) throw writeError("WRITE_TARGET_INVALID", "Write target escapes the workspace.", { target });
@@ -116,6 +118,8 @@ export async function applyWrite(
   content: string
 ): Promise<ApplyWriteResult> {
   return withWorkspaceLock(workspace, async () => {
+    const cfg = await loadOrchestrationConfig(workspace);
+    const maxContentBytes = cfg.defaults?.maxWriteContentBytes ?? MAX_CONTENT_BYTES;
     // Storage is authoritative: re-read the intent so stale in-memory copies cannot bypass APPLIED state.
     const current = await getWriteIntent(workspace, writeIntent.writeIntentId);
     const decision = evaluateLease(lease, { taskId: lease.taskId, role: lease.role, workspace: workspace.root, capability: "repository-write" });
@@ -124,9 +128,9 @@ export async function applyWrite(
     if (current.status === "APPLIED") throw writeError("WRITE_ALREADY_APPLIED", "This write request has already been applied.", { writeIntentId: current.writeIntentId });
     if (current.status !== "CONFIRMED") throw writeError("WRITE_INTENT_NOT_CONFIRMED", "The write request must be CONFIRMED before applying.", { writeIntentId: current.writeIntentId, status: current.status });
     if (!(current.confirmedTargets ?? []).includes(target)) throw writeError("WRITE_TARGET_NOT_CONFIRMED", "Target was not part of the confirmed write targets.", { target, confirmedTargets: current.confirmedTargets });
-    assertTarget(target);
+    assertTarget(target, cfg);
     if (typeof content !== "string") throw writeError("WRITE_CONTENT_INVALID", "Write content must be a string.");
-    if (Buffer.byteLength(content, "utf8") > MAX_CONTENT_BYTES) throw writeError("WRITE_CONTENT_INVALID", "Write content exceeds 1 MiB.", { bytes: Buffer.byteLength(content, "utf8") });
+    if (Buffer.byteLength(content, "utf8") > maxContentBytes) throw writeError("WRITE_CONTENT_INVALID", `Write content exceeds the ${maxContentBytes}-byte limit.`, { bytes: Buffer.byteLength(content, "utf8") });
 
     const absoluteTarget = path.resolve(workspace.root, target);
     if (!absoluteTarget.startsWith(`${workspace.root}${path.sep}`)) throw writeError("WRITE_TARGET_INVALID", "Write target escapes the workspace.", { target });
@@ -177,10 +181,10 @@ export async function applyWrite(
   });
 }
 
-function assertTarget(target: string): void {
+function assertTarget(target: string, cfg?: OrchestrationConfig): void {
   if (!target || target.includes("\0") || target.startsWith("/") || target.split(/[\\/]/).includes("..")) throw writeError("WRITE_TARGET_INVALID", "Write targets must be workspace-relative paths.", { target });
   if (target === ".stinky-cobbler" || target.startsWith(".stinky-cobbler/") || target === ".git" || target.startsWith(".git/")) throw writeError("WRITE_TARGET_FORBIDDEN", "Control-plane and git metadata paths are never writable.", { target });
-  if (isSensitivePath(target)) throw writeError("WRITE_TARGET_FORBIDDEN", "Sensitive paths are never writable.", { target });
+  if (isSensitivePath(target, cfg?.sensitiveExtraPaths)) throw writeError("WRITE_TARGET_FORBIDDEN", "Sensitive paths are never writable.", { target });
   if (isForbiddenWriteTarget(target)) throw writeError("WRITE_TARGET_FORBIDDEN", "Executable and binary-derived targets are never writable.", { target });
 }
 

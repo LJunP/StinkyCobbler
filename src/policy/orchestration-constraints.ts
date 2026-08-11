@@ -27,17 +27,18 @@ export function defectFingerprint(defect: Defect): string {
 }
 
 /**
- * Oscillation: the same defect fingerprint appears in >= 2 reviews of the same subtask
+ * Oscillation: the same defect fingerprint appears in >= threshold reviews of the same subtask
  * (across rounds) — the worker is going in circles; escalate instead of retrying forever.
+ * Threshold is tighten-only (config rejects values above 2); default 2.
  */
-export function oscillationDetected(reviews: ReviewRecord[], subtaskRef: string): boolean {
+export function oscillationDetected(reviews: ReviewRecord[], subtaskRef: string, threshold = 2): boolean {
   const fingerprints = new Map<string, number>();
   for (const review of reviews) {
     if (review.subtaskRef !== subtaskRef) continue;
     for (const defect of review.defects) {
       const fp = defectFingerprint(defect);
       fingerprints.set(fp, (fingerprints.get(fp) ?? 0) + 1);
-      if (fingerprints.get(fp)! >= 2) return true;
+      if (fingerprints.get(fp)! >= threshold) return true;
     }
   }
   return false;
@@ -85,13 +86,15 @@ export function evaluateConstraints(input: {
   subtask: SubtaskPackage;
   reviews: ReviewRecord[];
   artifact?: Artifact;
+  /** Tighten-only oscillation threshold (default 2); config rejects values above 2. */
+  oscillationThreshold?: number;
 }): ConstraintDecision {
-  const { run, subtask, reviews, artifact } = input;
+  const { run, subtask, reviews, artifact, oscillationThreshold } = input;
 
   if (artifact !== undefined && scopeViolation(subtask, artifact)) {
     return { action: "fail", code: "SCOPE_VIOLATION", detail: `Artifact ${artifact.artifactId} path ${artifact.path} is outside subtask scope.` };
   }
-  if (oscillationDetected(reviews, subtask.subtaskId)) {
+  if (oscillationDetected(reviews, subtask.subtaskId, oscillationThreshold)) {
     return { action: "escalate", code: "OSCILLATION", detail: `Same defect fingerprint repeated across reviews of ${subtask.subtaskId}.` };
   }
   if (regressionDetected(reviews, subtask.subtaskId)) {

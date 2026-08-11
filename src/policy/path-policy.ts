@@ -7,7 +7,14 @@ const FORBIDDEN_WRITE_EXTENSION = /\.(?:pem|p12|pfx|key|keystore|exe|bin|dll|so|
 const SHELL_METACHARACTER = /[;&|`$<>\n\r\\]/;
 
 /** Name- and type-level sensitive-path policy shared by read and write boundaries. */
-export function isSensitivePath(path: string): boolean {
+export function isSensitivePath(path: string, extraPaths?: string[]): boolean {
+  if (extraPaths !== undefined && extraPaths.length > 0) {
+    const normalized = path.replace(/^\.\//, "").replace(/[\\/]+$/, "");
+    for (const extra of extraPaths) {
+      const e = extra.replace(/^\.\//, "").replace(/[\\/]+$/, "");
+      if (normalized === e || normalized.startsWith(`${e}/`)) return true;
+    }
+  }
   return path.split(/[\\/]/).some((part) => part === ".stinky-cobbler" || SENSITIVE_NAME.test(part) || SENSITIVE_EXTENSION.test(part) || PRIVATE_KEY_NAME.test(part) || PRIVATE_KEY_EXTENSION.test(part));
 }
 

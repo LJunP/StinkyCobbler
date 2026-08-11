@@ -1,0 +1,19 @@
+# Interaction templates (builtin tier).
+# Guidance dictionaries consumed by the orchestrator skill and shown via
+# `orchestration config show`. Customize by copying into
+#   .stinky-cobbler/policies/templates.yaml
+version: 1
+domainConfirmation:
+  prompt: "识别到问题领域：{domain}。请确认或一句话修正（例：改成「{example}」）。"
+  exampleHint: "不确认就按识别结果继续"
+  unknownHint: "未识别出明确领域，将使用通用专才。"
+reviewStyle:
+  default: "reason 直述结论与依据；defects 每条含位置、问题、可操作建议。"
+  concise: "reason ≤2 句；defects 每条一行。"
+  detailed: "reason 分条论证；defects 附证据引用与优先级。"
+instructionsLanguage:
+  default: "zh"
+  options:
+    - zh
+    - en
+  note: "专才指令语言由 specialists.yaml 中的内容本身决定；此处仅声明偏好供 skill 参考。"

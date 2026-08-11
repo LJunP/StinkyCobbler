@@ -1,7 +1,8 @@
 import { lstat, realpath } from "node:fs/promises";
-import { relative, resolve, sep } from "node:path";
+import { join, relative, resolve, sep } from "node:path";
 import { evaluateLease } from "../policy/evaluate.js";
 import { containsShellMetacharacter, isSensitivePath } from "../policy/path-policy.js";
+import { loadOrchestrationConfig } from "../config/tiered.js";
 import type { CapabilityLease, PolicyDecision } from "../contracts/types.js";
 
 export interface ToolAccess {
@@ -53,7 +54,8 @@ export async function resolveReadablePath(workspace: string, requestedPath: stri
   if (relativePath === ".." || relativePath.startsWith(`..${sep}`) || resolve(workspaceRealPath, relativePath) !== candidate) {
     throw new Error("Path escapes the workspace.");
   }
-  if (isSensitivePath(relativePath)) throw new Error("Sensitive files are not readable through local tools.");
+  const cfg = await loadOrchestrationConfig({ root: workspaceRealPath, directory: join(workspaceRealPath, ".stinky-cobbler") });
+  if (isSensitivePath(relativePath, cfg.sensitiveExtraPaths)) throw new Error("Sensitive files are not readable through local tools.");
   await assertNoSymlinks(candidate, workspaceRealPath);
 
   return { workspace: workspaceRealPath, absolutePath: candidate, relativePath };

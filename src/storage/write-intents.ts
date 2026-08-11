@@ -12,6 +12,7 @@ import { getPlan } from "./plans.js";
 import { listApprovals } from "./approvals.js";
 import { isApprovalExpired } from "../policy/approval.js";
 import { isSensitivePath, isForbiddenWriteTarget } from "../policy/path-policy.js";
+import { loadOrchestrationConfig } from "../config/tiered.js";
 import { recordEvidence } from "./evidence.js";
 
 const DIRECTORY = "write-intents";
@@ -76,7 +77,8 @@ export async function requestWrites(
       if (step.status !== "RUNNING") throw writeError("WRITE_STEP_STATE", "Writes can only be requested for RUNNING steps.", { planId, stepId, status: step.status });
       taskId = plan.taskId;
     }
-    assertWrites(writes);
+    const cfg = await loadOrchestrationConfig(workspace);
+    assertWrites(writes, cfg.sensitiveExtraPaths);
     const autoAllow = options.autoAllow === true;
     if (autoAllow && writes.some((write) => write.action === "delete")) {
       throw writeError("WRITE_AUTO_ALLOW_DELETE_DENIED", "Delete intents can never be auto-allowed; use the explicit write-confirm flow.", { planId, stepId });
@@ -247,7 +249,7 @@ export async function rollbackWrite(workspace: LocalWorkspace, schemas: SchemaRe
   });
 }
 
-export function assertWrites(writes: WriteIntent[]): void {
+export function assertWrites(writes: WriteIntent[], extraSensitivePaths?: string[]): void {
   if (writes.length === 0 || writes.length > MAX_WRITES) throw writeError("WRITE_LIST_INVALID", `A write request must contain 1-${MAX_WRITES} intents.`, { count: writes.length });
   const seen = new Set<string>();
   for (const write of writes) {
@@ -259,7 +261,7 @@ export function assertWrites(writes: WriteIntent[]): void {
     if (target === ".stinky-cobbler" || target.startsWith(".stinky-cobbler/") || target === ".git" || target.startsWith(".git/")) {
       throw writeError("WRITE_TARGET_FORBIDDEN", "Control-plane and git metadata paths are never writable.", { target });
     }
-    if (isSensitivePath(target)) throw writeError("WRITE_TARGET_FORBIDDEN", "Sensitive paths are never writable.", { target });
+    if (isSensitivePath(target, extraSensitivePaths)) throw writeError("WRITE_TARGET_FORBIDDEN", "Sensitive paths are never writable.", { target });
     if (isForbiddenWriteTarget(target)) throw writeError("WRITE_TARGET_FORBIDDEN", "Executable and binary-derived targets are never writable.", { target });
     if (typeof write.purpose !== "string" || write.purpose.length === 0 || write.purpose.length > 512) throw writeError("WRITE_PURPOSE_INVALID", "Write intent purpose must be 1-512 characters.");
     if (seen.has(target)) throw writeError("WRITE_TARGET_DUPLICATE", "Write targets must be unique.", { target });

@@ -1,4 +1,4 @@
-import { open, readFile } from "node:fs/promises";
+import { open, readFile, readdir, mkdir, writeFile } from "node:fs/promises";
 import { createHash, randomUUID } from "node:crypto";
 import path from "node:path";
 import { ExitCode, StinkyCobblerError } from "../errors.js";
@@ -8,8 +8,10 @@ import { withWorkspaceLock } from "./workspace-lock.js";
 
 export const LEDGER_FILE = "ledger.jsonl";
 export const GENESIS_HASH = "sha256:genesis";
+/** Archived ledger segments (verifyLedger chains across them). */
+export const LEDGER_ARCHIVES_DIRECTORY = "ledger-archives";
 
-const LEDGER_EVENTS = ["workspace-initialized", "workspace-config-migrated", "task-created", "task-transitioned", "task-cancelled", "receipt-recorded", "approval-requested", "approval-decided", "evidence-recorded", "validation-run", "mcp-call", "test-run", "run-created", "run-transitioned", "run-recovered", "lease-issued", "lease-revoked", "plan-created", "plan-approved", "plan-cancelled", "plan-executing", "plan-step-completed", "plan-step-failed", "plan-completed", "plan-failed", "write-requested", "write-confirmed", "write-auto-allowed", "write-rejected", "write-applied", "write-rolled-back", "delete-applied", "contract-created", "run-created", "subtask-dispatched", "subtask-started", "subtask-completed", "artifact-recorded", "artifact-mismatch", "review-recorded", "subtask-accepted", "subtask-rejected", "round-completed", "orchestration-completed", "orchestration-failed", "orchestration-escalated", "orchestration-cancelled"] as const;
+const LEDGER_EVENTS = ["workspace-initialized", "workspace-config-migrated", "task-created", "task-transitioned", "task-cancelled", "receipt-recorded", "approval-requested", "approval-decided", "evidence-recorded", "validation-run", "mcp-call", "test-run", "run-created", "run-transitioned", "run-recovered", "lease-issued", "lease-revoked", "plan-created", "plan-approved", "plan-cancelled", "plan-executing", "plan-step-completed", "plan-step-failed", "plan-completed", "plan-failed", "write-requested", "write-confirmed", "write-auto-allowed", "write-rejected", "write-applied", "write-rolled-back", "delete-applied", "contract-created", "run-created", "subtask-dispatched", "subtask-started", "subtask-completed", "artifact-recorded", "artifact-mismatch", "review-recorded", "subtask-accepted", "subtask-rejected", "round-completed", "orchestration-completed", "orchestration-failed", "orchestration-escalated", "orchestration-cancelled", "ledger-archived"] as const;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const HASH_PATTERN = /^sha256:[a-f0-9]{64}$/;
 const OPTIONAL_FIELDS = ["taskId", "role", "policyVersion", "tool", "receiptRef", "approvalRef", "evidenceRef", "runId", "fromStatus", "toStatus", "leaseRef", "planRef", "stepId", "writeIntentRef", "contractRef", "runRef", "subtaskRef", "artifactRef", "reviewRef", "round"] as const;
@@ -96,12 +98,13 @@ export async function appendLedgerEntry(workspace: LocalWorkspace, entry: Append
     assertAppendEntry(entry);
     const ledgerPath = await workspaceFile(workspace, LEDGER_FILE);
     const prior = await readLedger(ledgerPath);
-    const verification = verifyEntries(prior);
+    // Cross-segment check: after archiving, the main chain's first prevHash points at the archive tail.
+    const verification = await verifyLedger(workspace);
     if (!verification.valid) throw invalid("Cannot append to an invalid ledger.", verification.error ?? {});
 
     const summary = protectSummary(entry.summary, options.sensitiveSummary ?? "reject");
     const record: Omit<LedgerEntry, "hash"> = {
-      sequence: prior.length + 1,
+      sequence: prior.length === 0 ? 1 : prior[prior.length - 1]!.sequence + 1,
       id: randomUUID(),
       at: new Date().toISOString(),
       event: entry.event,
@@ -119,12 +122,14 @@ export async function appendLedgerEntry(workspace: LocalWorkspace, entry: Append
 export async function listLedgerEntries(workspace: LocalWorkspace): Promise<LedgerEntry[]> {
   const ledgerPath = await workspaceFile(workspace, LEDGER_FILE);
   const entries = await readLedger(ledgerPath);
-  const verification = verifyEntries(entries);
+  const verification = await verifyLedger(workspace);
   if (!verification.valid) throw invalid("Cannot read an invalid ledger.", verification.error ?? {});
   return entries;
 }
 
-/** Verifies JSON syntax, exact sequences, strict record shape, predecessor links, and SHA-256 hashes. */
+/** Verifies JSON syntax, exact sequences, strict record shape, predecessor links, and SHA-256 hashes.
+ *  Chained across archived segments: main chain's first prevHash must equal the last archive's tail hash
+ *  (or genesis when no archive exists); each archive file chains internally and to its predecessor. */
 export async function verifyLedger(workspace: LocalWorkspace): Promise<LedgerVerification> {
   const ledgerPath = await workspaceFile(workspace, LEDGER_FILE);
   let entries: LedgerEntry[];
@@ -136,7 +141,97 @@ export async function verifyLedger(workspace: LocalWorkspace): Promise<LedgerVer
     }
     throw error;
   }
-  return verifyEntries(entries);
+  const archives = await listArchives(workspace);
+  let anchor = GENESIS_HASH;
+  let nextSequence = 1;
+  let archivedCount = 0;
+  for (const archive of archives) {
+    let archived: LedgerEntry[];
+    try {
+      archived = await readLedger(archive);
+    } catch (error: unknown) {
+      if (error instanceof LedgerParseError) {
+        return { valid: false, entries: error.index, lastHash: error.lastHash, error: { index: error.index, code: "INVALID_JSON" } };
+      }
+      throw error;
+    }
+    const verification = verifyEntries(archived, anchor, nextSequence);
+    if (!verification.valid) return verification;
+    anchor = verification.lastHash;
+    archivedCount += archived.length;
+    nextSequence = archived.length === 0 ? nextSequence : archived[archived.length - 1]!.sequence + 1;
+  }
+  const tail = verifyEntries(entries, anchor, nextSequence);
+  return { ...tail, entries: tail.entries + archivedCount };
+}
+
+/** Archive segments: verifiable prefix chain (see verifyLedger). */
+export async function listArchives(workspace: LocalWorkspace): Promise<string[]> {
+  const directory = await workspaceFile(workspace, LEDGER_ARCHIVES_DIRECTORY);
+  const names = await readdir(directory).catch((error: unknown) => (isNotFound(error) ? [] as string[] : Promise.reject(error)));
+  return names.filter((name) => /^ledger-archive-\d{4}-\d{2}-\d{2}T.*\.jsonl$/.test(name)).sort().map((name) => path.join(directory, name));
+}
+
+/**
+ * Archives the oldest contiguous prefix of the ledger (entries older than `beforeDays` days).
+ * The archived segment keeps its original lines (chain intact internally). The main ledger is
+ * rewritten with its remaining entries re-hashed (first prevHash links to the archive tail), and a
+ * `ledger-archived` event records the operation on the new main chain — so verification stays
+ * possible across segments and the rewrite is itself audited. Never archives the last entry.
+ */
+export async function archiveLedger(workspace: LocalWorkspace, beforeDays: number): Promise<{ archived: number; archiveFile: string }> {
+  return withWorkspaceLock(workspace, async () => {
+    const ledgerPath = await workspaceFile(workspace, LEDGER_FILE);
+    const entries = await readLedger(ledgerPath);
+    const verification = verifyEntries(entries);
+    if (!verification.valid) throw invalid("Cannot archive an invalid ledger.", verification.error ?? {});
+    if (!Number.isSafeInteger(beforeDays) || beforeDays < 1) throw invalid("beforeDays must be a positive integer.", { beforeDays });
+    const cutoff = Date.now() - beforeDays * 86_400_000;
+    let prefixCount = 0;
+    for (const entry of entries) {
+      if (new Date(entry.at).getTime() < cutoff) prefixCount += 1; else break;
+    }
+    if (prefixCount === 0) return { archived: 0, archiveFile: "" };
+    if (prefixCount >= entries.length) prefixCount = entries.length - 1; // never archive the entire chain
+    const archived = entries.slice(0, prefixCount);
+    const remaining = entries.slice(prefixCount);
+    const archiveDirectory = await workspaceFile(workspace, LEDGER_ARCHIVES_DIRECTORY);
+    await mkdir(archiveDirectory, { recursive: true, mode: 0o700 });
+    const archiveFile = path.join(archiveDirectory, `ledger-archive-${new Date().toISOString().replace(/[:.]/g, "-")}.jsonl`);
+    const archiveContents = archived.map((entry) => `${JSON.stringify(entry)}\n`).join("");
+    const tail = archived[archived.length - 1]!;
+    // Re-hash the remaining chain: first entry links to the archived tail.
+    const rewritten: LedgerEntry[] = [];
+    let previous = tail.hash;
+    for (const [index, entry] of remaining.entries()) {
+      const { hash: _discard, ...unsigned } = entry;
+      const record = { ...unsigned, prevHash: previous };
+      const complete = { ...record, hash: hashEntry(record) };
+      rewritten.push(complete);
+      previous = complete.hash;
+    }
+    await writeFile(archiveFile, archiveContents, { encoding: "utf8", mode: 0o600 });
+    const handle = await open(archiveFile, "a");
+    try { await handle.sync(); } finally { await handle.close(); }
+    await writeFile(ledgerPath, rewritten.map((entry) => `${JSON.stringify(entry)}\n`).join(""), { encoding: "utf8", mode: 0o600 });
+    await syncDirectory(path.dirname(ledgerPath));
+    // Audit the archive on the NEW main chain (sequence continues after the rewritten chain).
+    const event = buildArchivedEntry(rewritten, archived.length, path.basename(archiveFile), tail.hash);
+    await durableAppend(ledgerPath, `${JSON.stringify(event)}\n`);
+    return { archived: archived.length, archiveFile: path.basename(archiveFile) };
+  });
+}
+
+function buildArchivedEntry(chain: LedgerEntry[], archivedCount: number, archiveName: string, archivedTailHash: string): LedgerEntry {
+  const record: Omit<LedgerEntry, "hash"> = {
+    sequence: chain.length === 0 ? 1 : chain[chain.length - 1]!.sequence + 1,
+    id: randomUUID(),
+    at: new Date().toISOString(),
+    event: "ledger-archived",
+    summary: `Archived ${archivedCount} entries to ${archiveName}; archive tail ${archivedTailHash.slice(0, 20)}...`,
+    prevHash: chain.length === 0 ? GENESIS_HASH : chain[chain.length - 1]!.hash
+  };
+  return { ...record, hash: hashEntry(record) };
 }
 
 export function redactSensitiveSummary(summary: string): string {
@@ -147,11 +242,12 @@ export function redactSensitiveSummary(summary: string): string {
     .replace(/\b[A-Za-z0-9+/]{32,}={0,2}\b/g, "[REDACTED]");
 }
 
-function verifyEntries(entries: LedgerEntry[]): LedgerVerification {
-  let previous = GENESIS_HASH;
+function verifyEntries(entries: LedgerEntry[], anchor = GENESIS_HASH, expectedFirstSequence?: number): LedgerVerification {
+  let previous = anchor;
   for (const [index, entry] of entries.entries()) {
     if (!isLedgerEntry(entry)) return verificationFailure(index, previous, "INVALID_ENTRY");
-    if (entry.sequence !== index + 1) return verificationFailure(index, previous, "SEQUENCE_MISMATCH");
+    const expected = expectedFirstSequence === undefined ? index + 1 : expectedFirstSequence + index;
+    if (entry.sequence !== expected) return verificationFailure(index, previous, "SEQUENCE_MISMATCH");
     if (entry.prevHash !== previous) return verificationFailure(index, previous, "PREVIOUS_HASH_MISMATCH");
     const { hash, ...unsigned } = entry;
     if (hash !== hashEntry(unsigned)) return verificationFailure(index, previous, "HASH_MISMATCH");

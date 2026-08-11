@@ -7,11 +7,12 @@ import type {
 } from "../contracts/orchestration.js";
 import {
   DEFAULT_MAX_RETRIES_PER_SUBTASK, DEFAULT_MAX_ROUNDS, DEFAULT_MAX_SUBTASK_TOKENS,
-  MAX_CONTRACT_CRITERIA, MAX_CONTRACT_SCOPE, MAX_DEFECTS, MAX_DOMAIN_LENGTH,
+  MAX_CONTRACT_CRITERIA, MAX_CONTRACT_SCOPE, MAX_DEFECTS, MAX_DOMAIN_INSTRUCTIONS, MAX_DOMAIN_LENGTH,
   MAX_INPUT_ARTIFACTS, MAX_SUBTASK_CRITERIA, MAX_SUBTASK_SCOPE
 } from "../contracts/orchestration.js";
 import { domainInstructionsFor } from "./specialists.js";
 import { ExitCode, StinkyCobblerError } from "../errors.js";
+import { loadOrchestrationConfig, type OrchestrationConfig } from "../config/tiered.js";
 import { appendLedgerEntry } from "./ledger.js";
 import { issueLease } from "./leases.js";
 import { evaluateConstraints } from "../policy/orchestration-constraints.js";
@@ -39,7 +40,8 @@ export interface CreateContractInput {
 /** Creates the immutable task contract (contract anchor). Ledger: contract-created. */
 export async function createContract(workspace: LocalWorkspace, schemas: SchemaRegistry, input: CreateContractInput): Promise<TaskContract> {
   return withWorkspaceLock(workspace, async () => {
-    assertContractInput(input);
+    const cfg = await loadOrchestrationConfig(workspace);
+    assertContractInput(input, cfg);
     await mkdir(await workspaceFile(workspace, DIRECTORY), { recursive: true, mode: 0o700 });
     const contract: TaskContract = {
       version: 1,
@@ -112,6 +114,7 @@ export async function createRun(workspace: LocalWorkspace, schemas: SchemaRegist
   return withWorkspaceLock(workspace, async () => {
     const contract = await getContract(workspace, input.contractRef);
     if (contract.status !== "ACTIVE") throw orchError("CONTRACT_NOT_ACTIVE", "Contract must be ACTIVE to create a run.", { contractId: input.contractRef });
+    const cfg = await loadOrchestrationConfig(workspace);
     const run: OrchestrationRun = {
       version: 1,
       runId: `run-${randomUUID()}`,
@@ -119,9 +122,9 @@ export async function createRun(workspace: LocalWorkspace, schemas: SchemaRegist
       status: "RUNNING",
       round: 0,
       budget: {
-        maxRounds: input.maxRounds ?? DEFAULT_MAX_ROUNDS,
-        maxRetriesPerSubtask: input.maxRetriesPerSubtask ?? DEFAULT_MAX_RETRIES_PER_SUBTASK,
-        maxSubtaskTokens: input.maxSubtaskTokens ?? DEFAULT_MAX_SUBTASK_TOKENS,
+        maxRounds: input.maxRounds ?? cfg.defaults?.maxRounds ?? DEFAULT_MAX_ROUNDS,
+        maxRetriesPerSubtask: input.maxRetriesPerSubtask ?? cfg.defaults?.maxRetriesPerSubtask ?? DEFAULT_MAX_RETRIES_PER_SUBTASK,
+        maxSubtaskTokens: input.maxSubtaskTokens ?? cfg.defaults?.maxSubtaskTokens ?? DEFAULT_MAX_SUBTASK_TOKENS,
         usedTokens: 0
       },
       subtasks: [],
@@ -175,15 +178,19 @@ export interface AddSubtaskInput {
 /** Adds a subtask to the run (PENDING). Ledger: none (dispatch records). */
 export async function addSubtask(workspace: LocalWorkspace, schemas: SchemaRegistry, runId: string, input: AddSubtaskInput): Promise<SubtaskPackage> {
   return withWorkspaceLock(workspace, async () => {
+    const cfg = await loadOrchestrationConfig(workspace);
     const run = await getRun(workspace, runId);
     if (run.status !== "RUNNING" && run.status !== "DRAFT") throw orchError("RUN_STATE_CONFLICT", "Subtasks can only be added to a RUNNING run.", { runId, status: run.status });
     if (input.capabilities.length === 0 || !input.capabilities.every((cap) => ISSUE_CAPABILITIES.has(cap))) {
       throw orchError("SUBTASK_CAPABILITY_INVALID", "Subtask capabilities must be non-empty and within the issuable set.", { capabilities: input.capabilities });
     }
     if (input.goal.length < 1 || input.goal.length > 512) throw orchError("SUBTASK_GOAL_INVALID", "Subtask goal must be 1-512 characters.");
-    if (input.acceptanceCriteria.length < 1 || input.acceptanceCriteria.length > MAX_SUBTASK_CRITERIA) throw orchError("SUBTASK_CRITERIA_INVALID", `Subtask acceptance criteria must be 1-${MAX_SUBTASK_CRITERIA} items.`);
-    if (input.scope.length < 1 || input.scope.length > MAX_SUBTASK_SCOPE) throw orchError("SUBTASK_SCOPE_INVALID", `Subtask scope must be 1-${MAX_SUBTASK_SCOPE} workspace-relative prefixes.`);
-    if (input.inputArtifactIds.length > MAX_INPUT_ARTIFACTS) throw orchError("SUBTASK_INPUT_INVALID", `Subtask input artifacts must be at most ${MAX_INPUT_ARTIFACTS}.`);
+    const maxSubtaskCriteria = cfg.defaults?.maxSubtaskCriteria ?? MAX_SUBTASK_CRITERIA;
+    const maxSubtaskScope = cfg.defaults?.maxSubtaskScopeItems ?? MAX_SUBTASK_SCOPE;
+    const maxInputArtifacts = cfg.defaults?.maxInputArtifacts ?? MAX_INPUT_ARTIFACTS;
+    if (input.acceptanceCriteria.length < 1 || input.acceptanceCriteria.length > maxSubtaskCriteria) throw orchError("SUBTASK_CRITERIA_INVALID", `Subtask acceptance criteria must be 1-${maxSubtaskCriteria} items.`);
+    if (input.scope.length < 1 || input.scope.length > maxSubtaskScope) throw orchError("SUBTASK_SCOPE_INVALID", `Subtask scope must be 1-${maxSubtaskScope} workspace-relative prefixes.`);
+    if (input.inputArtifactIds.length > maxInputArtifacts) throw orchError("SUBTASK_INPUT_INVALID", `Subtask input artifacts must be at most ${maxInputArtifacts}.`);
     const inputArtifacts = [];
     for (const artifactId of input.inputArtifactIds) {
       const artifact = await getArtifact(workspace, artifactId);
@@ -191,14 +198,18 @@ export async function addSubtask(workspace: LocalWorkspace, schemas: SchemaRegis
     }
     const contract = await getContract(workspace, run.contractRef);
     const subtaskDomain = input.domain ?? contract.domain;
-    if (subtaskDomain.length > MAX_DOMAIN_LENGTH) throw orchError("SUBTASK_DOMAIN_INVALID", `Subtask domain must be at most ${MAX_DOMAIN_LENGTH} characters.`);
+    const maxDomainLength = cfg.defaults?.maxDomainLength ?? MAX_DOMAIN_LENGTH;
+    if (subtaskDomain.length > maxDomainLength) throw orchError("SUBTASK_DOMAIN_INVALID", `Subtask domain must be at most ${maxDomainLength} characters.`);
+    const domainInstructions = await domainInstructionsFor(workspace, subtaskDomain);
+    const maxDomainInstructions = cfg.defaults?.maxDomainInstructions ?? MAX_DOMAIN_INSTRUCTIONS;
+    if (domainInstructions.length > maxDomainInstructions) throw orchError("SUBTASK_DOMAIN_INSTRUCTIONS_INVALID", `Subtask domain instructions must be at most ${maxDomainInstructions} items.`);
     const subtask: SubtaskPackage = {
       version: 1,
       subtaskId: `subtask-${randomUUID()}`,
       contractRef: contract.contractId,
       runRef: run.runId,
       domain: subtaskDomain,
-      domainInstructions: domainInstructionsFor(subtaskDomain),
+      domainInstructions: domainInstructions,
       goal: input.goal,
       inputArtifacts: inputArtifacts,
       acceptanceCriteria: input.acceptanceCriteria,
@@ -388,6 +399,19 @@ export async function recordReview(workspace: LocalWorkspace, schemas: SchemaReg
     if (input.reason.length < 1 || input.reason.length > 1024) throw orchError("REVIEW_REASON_REQUIRED", "Review reason is required (1-1024 characters).");
     if (input.score < 0 || input.score > 100) throw orchError("REVIEW_SCORE_INVALID", "Review score must be 0-100.");
     if (input.defects.length > MAX_DEFECTS) throw orchError("REVIEW_DEFECTS_TOO_MANY", `At most ${MAX_DEFECTS} defects per review.`);
+    // Engine auto-reject: ACCEPTED reviews scoring below the configured threshold are forced REJECTED
+    // (guards against an LLM passing low-quality output with a high score).
+    const cfg = await loadOrchestrationConfig(workspace);
+    const autoRejectThreshold = cfg.defaults?.autoRejectScoreThreshold ?? 0;
+    let decision = input.decision;
+    let defects = input.defects;
+    let reason = input.reason;
+    let score = input.score;
+    if (decision === "ACCEPTED" && autoRejectThreshold > 0 && score < autoRejectThreshold) {
+      decision = "REJECTED";
+      defects = [...defects, { location: "engine", problem: `自动否决：分数 ${score} 低于阈值 ${autoRejectThreshold}`, suggestion: "按缺陷清单重做并重新提交" }];
+      reason = `Engine auto-reject: score ${score} below threshold ${autoRejectThreshold}. ${reason}`;
+    }
     const contract = await getContract(workspace, run.contractRef);
     const review: ReviewRecord = {
       version: 1,
@@ -395,11 +419,11 @@ export async function recordReview(workspace: LocalWorkspace, schemas: SchemaReg
       runRef: runId,
       subtaskRef: subtaskId,
       round: run.round,
-      decision: input.decision,
+      decision,
       criteriaResults: input.criteriaResults,
-      defects: input.defects,
-      score: input.score,
-      reason: input.reason,
+      defects,
+      score,
+      reason,
       validatorEvidence: input.validatorEvidence,
       createdAt: new Date().toISOString(),
       reviewedBy: input.reviewedBy
@@ -411,7 +435,7 @@ export async function recordReview(workspace: LocalWorkspace, schemas: SchemaReg
     let nextRun = { ...run, reviews: [...run.reviews, review.reviewId] };
     let nextSubtask: SubtaskPackage;
 
-    if (input.decision === "ACCEPTED") {
+    if (decision === "ACCEPTED") {
       nextSubtask = { ...subtask, status: "ACCEPTED", completedAt: new Date().toISOString(), reviewRefs: [...(subtask.reviewRefs ?? []), review.reviewId] };
       await writeWorkspaceJson(workspace, subtaskFile(subtaskId), nextSubtask);
       await writeWorkspaceJson(workspace, runFile(runId), nextRun);
@@ -426,7 +450,8 @@ export async function recordReview(workspace: LocalWorkspace, schemas: SchemaReg
     }
 
     // Constraint engine: oscillation / regression escalate; budgets fail.
-    const constraint = evaluateConstraints({ run: nextRun, subtask: nextSubtask, reviews });
+    const oscillationThreshold = cfg.defaults?.oscillationThreshold;
+    const constraint = evaluateConstraints({ run: nextRun, subtask: nextSubtask, reviews, ...(oscillationThreshold === undefined ? {} : { oscillationThreshold }) });
     if (constraint.action === "escalate") {
       nextRun = { ...nextRun, status: "ESCALATED", escalatedAt: new Date().toISOString(), escalationReason: constraint.code === null ? constraint.detail : `${constraint.code}: ${constraint.detail}` };
       await writeWorkspaceJson(workspace, runFile(runId), nextRun);
@@ -453,14 +478,22 @@ export async function recordReview(workspace: LocalWorkspace, schemas: SchemaReg
   });
 }
 
-/** Completes a round: records the orchestrator's goal-consistency check and advances the round. Ledger: round-completed. */
+/** Completes a round: records the orchestrator's goal-consistency check and advances the round.
+ *  When autoEscalateOnConsistencyFail is configured and the check failed, the run escalates instead. Ledger: round-completed. */
 export async function completeRound(workspace: LocalWorkspace, runId: string, input: { passed: boolean; note: string }): Promise<OrchestrationRun> {
   return withWorkspaceLock(workspace, async () => {
     const run = await getRun(workspace, runId);
     if (run.status !== "RUNNING") throw orchError("RUN_STATE_CONFLICT", "Only RUNNING runs can complete a round.", { runId, status: run.status });
-    const nextRun: OrchestrationRun = { ...run, round: run.round + 1, goalConsistency: [...run.goalConsistency, { round: run.round, passed: input.passed, note: input.note }] };
-    await writeWorkspaceJson(workspace, runFile(runId), nextRun);
+    const cfg = await loadOrchestrationConfig(workspace);
+    let nextRun: OrchestrationRun = { ...run, round: run.round + 1, goalConsistency: [...run.goalConsistency, { round: run.round, passed: input.passed, note: input.note }] };
     const contract = await getContract(workspace, run.contractRef);
+    if (!input.passed && cfg.defaults?.autoEscalateOnConsistencyFail === true) {
+      nextRun = { ...nextRun, status: "ESCALATED", escalatedAt: new Date().toISOString(), escalationReason: `Goal-consistency check failed: ${input.note}` };
+      await writeWorkspaceJson(workspace, runFile(runId), nextRun);
+      await appendLedgerEntry(workspace, { event: "orchestration-escalated", taskId: contract.taskId, contractRef: contract.contractId, runRef: runId, summary: `Run ${runId} escalated (auto): consistency check failed: ${input.note}` });
+      return nextRun;
+    }
+    await writeWorkspaceJson(workspace, runFile(runId), nextRun);
     await appendLedgerEntry(workspace, { event: "round-completed", taskId: contract.taskId, contractRef: contract.contractId, runRef: runId, summary: `Round ${run.round} completed; consistency ${input.passed ? "passed" : "failed"}: ${input.note}` });
     return nextRun;
   });
@@ -515,14 +548,17 @@ async function loadReviews(workspace: LocalWorkspace, run: OrchestrationRun, sub
   return reviews;
 }
 
-function assertContractInput(input: CreateContractInput): void {
+function assertContractInput(input: CreateContractInput, cfg: OrchestrationConfig): void {
   if (!input.taskId || input.taskId.length > 128) throw orchError("CONTRACT_TASK_INVALID", "A valid taskId is required.");
-  if (!input.domain || input.domain.length > MAX_DOMAIN_LENGTH) throw orchError("CONTRACT_DOMAIN_INVALID", `Contract domain (user-confirmed) is required and must be at most ${MAX_DOMAIN_LENGTH} characters.`);
+  const maxDomainLength = cfg.defaults?.maxDomainLength ?? MAX_DOMAIN_LENGTH;
+  if (!input.domain || input.domain.length > maxDomainLength) throw orchError("CONTRACT_DOMAIN_INVALID", `Contract domain (user-confirmed) is required and must be at most ${maxDomainLength} characters.`);
   if (input.goal.length < 1 || input.goal.length > 512) throw orchError("CONTRACT_GOAL_INVALID", "Contract goal must be 1-512 characters.");
-  if (input.globalAcceptanceCriteria.length < 1 || input.globalAcceptanceCriteria.length > MAX_CONTRACT_CRITERIA) {
-    throw orchError("CONTRACT_CRITERIA_INVALID", `Global acceptance criteria must be 1-${MAX_CONTRACT_CRITERIA} items.`);
+  const maxContractCriteria = cfg.defaults?.maxContractCriteria ?? MAX_CONTRACT_CRITERIA;
+  const maxContractScope = cfg.defaults?.maxContractScopeItems ?? MAX_CONTRACT_SCOPE;
+  if (input.globalAcceptanceCriteria.length < 1 || input.globalAcceptanceCriteria.length > maxContractCriteria) {
+    throw orchError("CONTRACT_CRITERIA_INVALID", `Global acceptance criteria must be 1-${maxContractCriteria} items.`);
   }
-  if (input.scope.length < 1 || input.scope.length > MAX_CONTRACT_SCOPE) throw orchError("CONTRACT_SCOPE_INVALID", `Contract scope must be 1-${MAX_CONTRACT_SCOPE} workspace-relative prefixes.`);
+  if (input.scope.length < 1 || input.scope.length > maxContractScope) throw orchError("CONTRACT_SCOPE_INVALID", `Contract scope must be 1-${maxContractScope} workspace-relative prefixes.`);
 }
 
 function assertRelativePath(target: string): void {
@@ -563,17 +599,19 @@ export interface RunCostEstimate {
 }
 
 /** Simple cost model: subtasks × rounds × per-round tokens; shown to the user before run create (budget confirmation). */
-export function estimateRunCost(contract: TaskContract, options: { plannedSubtasks?: number; maxRounds?: number } = {}): RunCostEstimate {
+export function estimateRunCost(contract: TaskContract, options: { plannedSubtasks?: number; maxRounds?: number } = {}, config?: OrchestrationConfig): RunCostEstimate {
   const planned = options.plannedSubtasks ?? Math.min(Math.max(Math.ceil(contract.globalAcceptanceCriteria.length / 2), 1), 10);
-  const maxRounds = options.maxRounds ?? DEFAULT_MAX_ROUNDS;
+  const maxRounds = options.maxRounds ?? config?.defaults?.maxRounds ?? DEFAULT_MAX_ROUNDS;
   const rounds = Math.min(Math.max(Math.ceil(planned / 3), 1), maxRounds);
-  const tokens = planned * rounds * ESTIMATED_TOKENS_PER_SUBTASK_ROUND;
-  const mode = tokens >= ORCHESTRATE_TOKEN_THRESHOLD ? "orchestrate" : "direct";
+  const tokensPerRound = config?.defaults?.costTokensPerSubtaskRound ?? ESTIMATED_TOKENS_PER_SUBTASK_ROUND;
+  const threshold = config?.defaults?.orchestrateTokenThreshold ?? ORCHESTRATE_TOKEN_THRESHOLD;
+  const tokens = planned * rounds * tokensPerRound;
+  const mode = tokens >= threshold ? "orchestrate" : "direct";
   return {
     mode,
     estimatedSubtasks: planned,
     estimatedRounds: rounds,
     estimatedTokens: tokens,
-    reason: `~${planned} subtasks × ~${rounds} rounds × ${ESTIMATED_TOKENS_PER_SUBTASK_ROUND} tokens per subtask-round.`
+    reason: `~${planned} subtasks × ~${rounds} rounds × ${tokensPerRound} tokens per subtask-round.`
   };
 }

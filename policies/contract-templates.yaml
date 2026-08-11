@@ -1,0 +1,36 @@
+# Contract templates (builtin tier): prebuilt goal/criteria/scope/domain bundles
+# for one-command contract creation (`orchestration contract from-template <name>`).
+# Advanced users: add your own templates in .stinky-cobbler/policies/contract-templates.yaml
+# (same name = replace; new name = append).
+version: 1
+templates:
+  - name: docs-audit
+    description: 文档合规审计与修订（典型内容任务）
+    domain: compliance
+    goal: 审计并修订项目文档，使其与工具实际行为一致且无敏感泄露
+    criteria:
+      - 术语与既有文档一致，无自造词
+      - 与工具实际行为逐条核对，无夸大或虚构能力
+      - 无敏感信息（凭据/密钥/内部路径）泄露
+    scope:
+      - docs
+  - name: feature-ui
+    description: 前端功能实现（典型开发任务）
+    domain: frontend
+    goal: 按需求实现前端功能并保持既有设计体系
+    criteria:
+      - 关键交互在代码层面可验证，不留死路径
+      - 不破坏既有布局与响应式断点
+      - 改动最小化，不动无关组件
+    scope:
+      - src
+  - name: api-change
+    description: 后端接口新增或修改（典型开发任务）
+    domain: backend
+    goal: 实现接口改动并保持调用方兼容
+    criteria:
+      - 接口签名与调用方一致
+      - 错误路径有明确返回与日志
+      - 鉴权与校验不被放宽
+    scope:
+      - src
