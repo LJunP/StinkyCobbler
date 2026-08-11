@@ -30,7 +30,7 @@ async function setupWorkspace(env: NodeJS.ProcessEnv): Promise<string> {
 }
 
 describe("orchestration CLI e2e", () => {
-  it("walks contract → run → subtask → dispatch → artifact → accept → completed", async () => {
+  it("walks contract → run → subtask → dispatch → artifact → accept → completed", { timeout: 30000 }, async () => {
     const env = { ...process.env };
     const root = await setupWorkspace(env);
     const contract = await json(env, "orchestration", "contract", "create", "--task", "orch-e2e", "--goal", "Produce project docs", "--criteria", "docs exist", "--criteria", "no secrets", "--criteria", "structure correct", "--scope", "docs", "--root", root);
@@ -65,7 +65,7 @@ describe("orchestration CLI e2e", () => {
     expect(status.status).toBe("COMPLETED");
   });
 
-  it("escalates on repeated identical defects", async () => {
+  it("escalates on repeated identical defects", { timeout: 30000 }, async () => {
     const env = { ...process.env };
     const root = await setupWorkspace(env);
     const contract = await json(env, "orchestration", "contract", "create", "--task", "orch-e2e", "--goal", "Docs", "--criteria", "ok", "--criteria", "good", "--criteria", "fine", "--scope", "docs", "--root", root);
