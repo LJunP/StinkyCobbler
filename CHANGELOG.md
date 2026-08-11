@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.0 (in development)
+## 2.0
 
 - Orchestrator-worker multi-agent loop (`orchestration` CLI group): immutable TaskContract anchor, subtask packages with engine-authoritative input artifact hashes, per-subtask leases bound via `subtaskRef`, dual-channel review (tool verification first + LLM checklist with required reasons/defects), artifact immutability (contentHash verification, MISMATCH rejection), scope enforcement, round completion with goal-consistency checks, failure isolation, complexity adaptation (simple contracts recommend the direct 1.0 path), and budget confirmation upfront.
 - Global constraint engine (`src/policy/orchestration-constraints.ts`): round/token budgets accumulate globally and never reset, defect-fingerprint oscillation detection (>=2 identical fingerprints escalates), cross-round score regression escalation, scope violation rejection — all engine-computed facts persisted via 16 new ledger events (contract-created … orchestration-cancelled); every escalation hands control to the user, so automatic loops always have a ceiling.
