@@ -34,10 +34,10 @@ async function setup() {
   return { workspace, schemas, contract, run, root };
 }
 
-function reviewInput(decision: "ACCEPTED" | "REJECTED", score: number, defects: { location: string; problem: string; suggestion: string }[] = [], reason = "reviewed") {
+function reviewInput(decision: "ACCEPTED" | "REJECTED", score: number, defects: { location: string; problem: string; suggestion: string }[] = [], reason = "reviewed", criteria: string[] = ["guide.md exists"]) {
   return {
     decision,
-    criteriaResults: [{ criterion: "docs exist", passed: decision === "ACCEPTED", note: "checked" }],
+    criteriaResults: criteria.map((criterion) => ({ criterion, passed: decision === "ACCEPTED", note: "checked" })),
     defects,
     score,
     reason,
@@ -97,7 +97,7 @@ describe("orchestration loop (storage)", () => {
     await beginSubtask(workspace, run.runId, subtask.subtaskId);
     await writeFile(path.join(workspace.root, "docs", "guide.md"), "v1\n", "utf8");
     await reportArtifact(workspace, schemas, run.runId, subtask.subtaskId, { path: "docs/guide.md", kind: "file" });
-    const rejected = await recordReview(workspace, schemas, run.runId, subtask.subtaskId, reviewInput("REJECTED", 40, [{ location: "docs/guide.md", problem: "too short", suggestion: "expand" }]));
+    const rejected = await recordReview(workspace, schemas, run.runId, subtask.subtaskId, reviewInput("REJECTED", 40, [{ location: "docs/guide.md", problem: "too short", suggestion: "expand" }], "reviewed", ["good"]));
     expect(rejected.subtask.status).toBe("REJECTED");
     expect(rejected.subtask.retriesUsed).toBe(1);
     expect(rejected.run.status).toBe("RUNNING"); // failure isolation: run continues
@@ -107,7 +107,7 @@ describe("orchestration loop (storage)", () => {
     await beginSubtask(workspace, run.runId, subtask.subtaskId);
     await writeFile(path.join(workspace.root, "docs", "guide.md"), "v2\n", "utf8");
     await reportArtifact(workspace, schemas, run.runId, subtask.subtaskId, { path: "docs/guide.md", kind: "file" });
-    const rejectedAgain = await recordReview(workspace, schemas, run.runId, subtask.subtaskId, reviewInput("REJECTED", 40, [{ location: "docs/guide.md", problem: "still too short", suggestion: "expand more" }]));
+    const rejectedAgain = await recordReview(workspace, schemas, run.runId, subtask.subtaskId, reviewInput("REJECTED", 40, [{ location: "docs/guide.md", problem: "still too short", suggestion: "expand more" }], "reviewed", ["good"]));
     expect(rejectedAgain.subtask.status).toBe("REJECTED");
     expect(rejectedAgain.subtask.retriesUsed).toBe(2); // exhausted → run fails (isolation: only this run)
     expect(rejectedAgain.run.status).toBe("FAILED");
@@ -122,13 +122,13 @@ describe("orchestration loop (storage)", () => {
     await beginSubtask(workspace, run.runId, subtask.subtaskId);
     await writeFile(path.join(workspace.root, "docs", "guide.md"), "v1\n", "utf8");
     await reportArtifact(workspace, schemas, run.runId, subtask.subtaskId, { path: "docs/guide.md", kind: "file" });
-    await recordReview(workspace, schemas, run.runId, subtask.subtaskId, reviewInput("REJECTED", 40, [{ location: "docs/guide.md", problem: "same bug", suggestion: "fix it" }]));
+    await recordReview(workspace, schemas, run.runId, subtask.subtaskId, reviewInput("REJECTED", 40, [{ location: "docs/guide.md", problem: "same bug", suggestion: "fix it" }], "reviewed", ["good"]));
     // round 2: same defect again → oscillation
     await dispatchSubtask(workspace, schemas, run.runId, subtask.subtaskId, "worker-agent");
     await beginSubtask(workspace, run.runId, subtask.subtaskId);
     await writeFile(path.join(workspace.root, "docs", "guide.md"), "v2\n", "utf8");
     await reportArtifact(workspace, schemas, run.runId, subtask.subtaskId, { path: "docs/guide.md", kind: "file" });
-    const escalated = await recordReview(workspace, schemas, run.runId, subtask.subtaskId, reviewInput("REJECTED", 40, [{ location: "docs/guide.md", problem: "same bug", suggestion: "fix it" }]));
+    const escalated = await recordReview(workspace, schemas, run.runId, subtask.subtaskId, reviewInput("REJECTED", 40, [{ location: "docs/guide.md", problem: "same bug", suggestion: "fix it" }], "reviewed", ["good"]));
     expect(escalated.run.status).toBe("ESCALATED");
     expect(escalated.run.escalationReason).toContain("OSCILLATION");
     const events = (await listLedgerEntries(workspace)).map((entry) => entry.event);
@@ -172,13 +172,13 @@ describe("2.0 gap coverage", () => {
     const subtask = await runOneSubtaskFlow(workspace, schemas, run, "Write docs/guide.md", "");
     await writeFile(path.join(workspace.root, "docs", "guide.md"), "v1\n", "utf8");
     await reportArtifact(workspace, schemas, run.runId, subtask.subtaskId, { path: "docs/guide.md", kind: "file" });
-    await recordReview(workspace, schemas, run.runId, subtask.subtaskId, reviewInput("REJECTED", 50, [{ location: "docs/guide.md", problem: "missing sections", suggestion: "add all sections" }]));
+    await recordReview(workspace, schemas, run.runId, subtask.subtaskId, reviewInput("REJECTED", 50, [{ location: "docs/guide.md", problem: "missing sections", suggestion: "add all sections" }], "reviewed", ["good"]));
     // redispatch the rejected subtask
     await dispatchSubtask(workspace, schemas, run.runId, subtask.subtaskId, "worker-agent");
     await beginSubtask(workspace, run.runId, subtask.subtaskId);
     await writeFile(path.join(workspace.root, "docs", "guide.md"), "# Guide\n\n## Overview\n...\n\n## Usage\n...\n\n## Install\n...\n", "utf8");
     await reportArtifact(workspace, schemas, run.runId, subtask.subtaskId, { path: "docs/guide.md", kind: "file" });
-    const accepted = await recordReview(workspace, schemas, run.runId, subtask.subtaskId, reviewInput("ACCEPTED", 90));
+    const accepted = await recordReview(workspace, schemas, run.runId, subtask.subtaskId, reviewInput("ACCEPTED", 90, [], "reviewed", ["good"]));
     expect(accepted.subtask.status).toBe("ACCEPTED");
     expect(accepted.run.status).toBe("COMPLETED");
   });
@@ -197,7 +197,7 @@ describe("2.0 gap coverage", () => {
     expect(writeLease).toBeDefined();
     await applyWrite(workspace, schemas, writeLease, intent, "docs/existing.md", "worker changed it\n");
     await reportArtifact(workspace, schemas, run.runId, subtask.subtaskId, { path: "docs/existing.md", kind: "file" });
-    await recordReview(workspace, schemas, run.runId, subtask.subtaskId, reviewInput("REJECTED", 30, [{ location: "docs/existing.md", problem: "regressed", suggestion: "revert" }]));
+    await recordReview(workspace, schemas, run.runId, subtask.subtaskId, reviewInput("REJECTED", 30, [{ location: "docs/existing.md", problem: "regressed", suggestion: "revert" }], "reviewed", ["good"]));
     // rollback restores the pre-write content (subtask-mode intent rollback)
     await rollbackWrite(workspace, schemas, "-", "-", intent.writeIntentId, "Worker output rejected; revert.");
     expect(await readFile(path.join(root, "docs", "existing.md"), "utf8")).toBe("original\n");
@@ -214,7 +214,7 @@ describe("2.0 gap coverage", () => {
     // complete A, then B dispatches fine
     await writeFile(path.join(workspace.root, "docs", "a.md"), "A\n", "utf8");
     await reportArtifact(workspace, schemas, run.runId, a.subtaskId, { path: "docs/a.md", kind: "file" });
-    await recordReview(workspace, schemas, run.runId, a.subtaskId, reviewInput("ACCEPTED", 90));
+    await recordReview(workspace, schemas, run.runId, a.subtaskId, reviewInput("ACCEPTED", 90, [], "reviewed", ["good"]));
     const dispatchedB = await dispatchSubtask(workspace, schemas, run.runId, b.subtaskId, "worker-agent");
     expect(dispatchedB.subtask.status).toBe("DISPATCHED");
   });
@@ -224,7 +224,7 @@ describe("2.0 gap coverage", () => {
     const subtask = await runOneSubtaskFlow(workspace, schemas, run, "Write docs/guide.md", "");
     await writeFile(path.join(workspace.root, "docs", "guide.md"), "v1\n", "utf8");
     await reportArtifact(workspace, schemas, run.runId, subtask.subtaskId, { path: "docs/guide.md", kind: "file" });
-    await recordReview(workspace, schemas, run.runId, subtask.subtaskId, reviewInput("REJECTED", 40, [{ location: "x", problem: "p1", suggestion: "s1" }]));
+    await recordReview(workspace, schemas, run.runId, subtask.subtaskId, reviewInput("REJECTED", 40, [{ location: "x", problem: "p1", suggestion: "s1" }], "reviewed", ["good"]));
     // advance rounds beyond budget (maxRounds default 5)
     for (let i = 0; i < 5; i++) await completeRound(workspace, run.runId, { passed: true, note: "advance" });
     // next review sees run.round=5 > maxRounds=5 → ROUND_BUDGET fails the run
@@ -232,7 +232,7 @@ describe("2.0 gap coverage", () => {
     await beginSubtask(workspace, run.runId, subtask.subtaskId);
     await writeFile(path.join(workspace.root, "docs", "guide.md"), "v2\n", "utf8");
     await reportArtifact(workspace, schemas, run.runId, subtask.subtaskId, { path: "docs/guide.md", kind: "file" });
-    const result = await recordReview(workspace, schemas, run.runId, subtask.subtaskId, reviewInput("REJECTED", 40, [{ location: "x", problem: "p2", suggestion: "s2" }]));
+    const result = await recordReview(workspace, schemas, run.runId, subtask.subtaskId, reviewInput("REJECTED", 40, [{ location: "x", problem: "p2", suggestion: "s2" }], "reviewed", ["good"]));
     expect(result.run.status).toBe("FAILED");
     expect(result.run.escalationReason ?? result.run.completedAt).toBeDefined();
   });
@@ -299,7 +299,7 @@ describe("token budget (P0-1: host-reported tokens)", () => {
     await beginSubtask(workspace, run.runId, subtask.subtaskId);
     await writeFile(path.join(workspace.root, "docs", "guide.md"), "v1\n", "utf8");
     await reportArtifact(workspace, schemas, run.runId, subtask.subtaskId, { path: "docs/guide.md", kind: "file" });
-    const first = await recordReview(workspace, schemas, run.runId, subtask.subtaskId, { ...reviewInput("REJECTED", 40, [{ location: "a", problem: "p1", suggestion: "s1" }]), tokensUsed: 3000 });
+    const first = await recordReview(workspace, schemas, run.runId, subtask.subtaskId, { ...reviewInput("REJECTED", 40, [{ location: "a", problem: "p1", suggestion: "s1" }], "reviewed", ["x"]), tokensUsed: 3000 });
     expect(first.run.budget.usedTokens).toBe(3000);
     expect(first.run.status).toBe("RUNNING");
     // second round: cumulative 6000 > 5000 → TOKEN_BUDGET fails the run
@@ -307,7 +307,7 @@ describe("token budget (P0-1: host-reported tokens)", () => {
     await beginSubtask(workspace, run.runId, subtask.subtaskId);
     await writeFile(path.join(workspace.root, "docs", "guide.md"), "v2\n", "utf8");
     await reportArtifact(workspace, schemas, run.runId, subtask.subtaskId, { path: "docs/guide.md", kind: "file" });
-    const second = await recordReview(workspace, schemas, run.runId, subtask.subtaskId, { ...reviewInput("REJECTED", 40, [{ location: "b", problem: "p2", suggestion: "s2" }]), tokensUsed: 3000 });
+    const second = await recordReview(workspace, schemas, run.runId, subtask.subtaskId, { ...reviewInput("REJECTED", 40, [{ location: "b", problem: "p2", suggestion: "s2" }], "reviewed", ["x"]), tokensUsed: 3000 });
     expect(second.run.budget.usedTokens).toBe(6000);
     expect(second.run.status).toBe("FAILED");
     expect(second.run.escalationReason ?? "").toContain("TOKEN_BUDGET");
@@ -343,6 +343,46 @@ describe("resume after escalation (P0-2: human decision path)", () => {
     const contract = await createContract(workspace, schemas, { taskId: "orch-task", domain: "compliance", goal: "g", globalAcceptanceCriteria: ["a", "b", "c", "d"], scope: ["docs"] });
     const run = await createRun(workspace, schemas, { contractRef: contract.contractId });
     await expect(resumeRun(workspace, run.runId)).rejects.toMatchObject({ code: "RUN_STATE_CONFLICT" });
+  });
+});
+
+describe("criterion correspondence + same-source review (P2)", () => {
+  it("rejects reviews with invented or skipped acceptance criteria", async () => {
+    const { workspace, schemas, run } = await setup();
+    const subtask = await addSubtask(workspace, schemas, run.runId, { goal: "write", inputArtifactIds: [], acceptanceCriteria: ["a", "b"], scope: ["docs"], capabilities: ["repository-read"] });
+    await dispatchSubtask(workspace, schemas, run.runId, subtask.subtaskId, "worker-agent");
+    await beginSubtask(workspace, run.runId, subtask.subtaskId);
+    await writeFile(path.join(workspace.root, "docs", "guide.md"), "x\n", "utf8");
+    await reportArtifact(workspace, schemas, run.runId, subtask.subtaskId, { path: "docs/guide.md", kind: "file" });
+    // invented standard "c" (not declared)
+    await expect(recordReview(workspace, schemas, run.runId, subtask.subtaskId, {
+      ...reviewInput("ACCEPTED", 90, [], "reviewed", ["a", "c"]), reviewedBy: "reviewer-1"
+    })).rejects.toMatchObject({ code: "REVIEW_CRITERION_MISMATCH" });
+    // skipped standard "b"
+    await expect(recordReview(workspace, schemas, run.runId, subtask.subtaskId, {
+      ...reviewInput("ACCEPTED", 90, [], "reviewed", ["a"]), reviewedBy: "reviewer-1"
+    })).rejects.toMatchObject({ code: "REVIEW_CRITERION_MISMATCH" });
+    // exact match passes
+    const accepted = await recordReview(workspace, schemas, run.runId, subtask.subtaskId, {
+      ...reviewInput("ACCEPTED", 90, [], "reviewed", ["a", "b"]), reviewedBy: "reviewer-1"
+    });
+    expect(accepted.subtask.status).toBe("ACCEPTED");
+  });
+
+  it("flags same-source reviews (reviewer === executor) but allows them", async () => {
+    async function reviewOnce(reviewedBy: string) {
+      const { workspace, schemas, run } = await setup();
+      const subtask = await addSubtask(workspace, schemas, run.runId, { goal: "write", inputArtifactIds: [], acceptanceCriteria: ["x"], scope: ["docs"], capabilities: ["repository-read"] });
+      await dispatchSubtask(workspace, schemas, run.runId, subtask.subtaskId, "worker-1");
+      await beginSubtask(workspace, run.runId, subtask.subtaskId);
+      await writeFile(path.join(workspace.root, "docs", "guide.md"), "x\n", "utf8");
+      await reportArtifact(workspace, schemas, run.runId, subtask.subtaskId, { path: "docs/guide.md", kind: "file" });
+      return recordReview(workspace, schemas, run.runId, subtask.subtaskId, { ...reviewInput("ACCEPTED", 90, [], "reviewed", ["x"]), reviewedBy });
+    }
+    const sameSource = await reviewOnce("worker-1");
+    expect(sameSource.review.sameSourceReview).toBe(true);
+    const independent = await reviewOnce("reviewer-2");
+    expect(independent.review.sameSourceReview).toBeUndefined();
   });
 });
 

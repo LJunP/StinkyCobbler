@@ -276,7 +276,7 @@ export async function dispatchSubtask(workspace: LocalWorkspace, schemas: Schema
       });
       leaseIds.push(lease.id);
     }
-    const nextSubtask: SubtaskPackage = { ...subtask, status: "DISPATCHED", dispatchedAt: new Date().toISOString(), leaseRefs: [...(subtask.leaseRefs ?? []), ...leaseIds] };
+    const nextSubtask: SubtaskPackage = { ...subtask, status: "DISPATCHED", dispatchedAt: new Date().toISOString(), dispatchedAgentId: agentId, leaseRefs: [...(subtask.leaseRefs ?? []), ...leaseIds] };
     await writeWorkspaceJson(workspace, subtaskFile(subtaskId), nextSubtask);
     await appendLedgerEntry(workspace, { event: "subtask-dispatched", taskId: contract.taskId, contractRef: contract.contractId, runRef: runId, subtaskRef: subtaskId, summary: `Subtask ${subtaskId} dispatched (${leaseIds.length} lease(s)).` });
     return { subtask: nextSubtask, leases: leaseIds };
@@ -404,6 +404,17 @@ export async function recordReview(workspace: LocalWorkspace, schemas: SchemaReg
     if (input.tokensUsed !== undefined && (!Number.isSafeInteger(input.tokensUsed) || input.tokensUsed < 0 || input.tokensUsed > MAX_REVIEW_TOKENS)) {
       throw orchError("REVIEW_TOKENS_INVALID", `tokensUsed must be a non-negative integer at most ${MAX_REVIEW_TOKENS}.`);
     }
+    // Criterion correspondence (P2): every reviewed criterion must be a declared acceptance criterion,
+    // and every acceptance criterion must be evaluated — no invented standards, no skipped standards.
+    {
+      const declared = new Set(subtask.acceptanceCriteria);
+      const evaluated = new Set(input.criteriaResults.map((result) => result.criterion));
+      const missing = [...declared].filter((criterion) => !evaluated.has(criterion));
+      const extra = [...evaluated].filter((criterion) => !declared.has(criterion));
+      if (missing.length > 0 || extra.length > 0) {
+        throw orchError("REVIEW_CRITERION_MISMATCH", `Review criteria must exactly match the subtask acceptance criteria.${missing.length > 0 ? ` Missing: ${missing.join(", ")}` : ""}${extra.length > 0 ? ` Not declared: ${extra.join(", ")}` : ""}`);
+      }
+    }
     // Engine auto-reject: ACCEPTED reviews scoring below the configured threshold are forced REJECTED
     // (guards against an LLM passing low-quality output with a high score).
     const cfg = await loadOrchestrationConfig(workspace);
@@ -417,6 +428,8 @@ export async function recordReview(workspace: LocalWorkspace, schemas: SchemaReg
       defects = [...defects, { location: "engine", problem: `自动否决：分数 ${score} 低于阈值 ${autoRejectThreshold}`, suggestion: "按缺陷清单重做并重新提交" }];
       reason = `Engine auto-reject: score ${score} below threshold ${autoRejectThreshold}. ${reason}`;
     }
+    // Same-source flag (P2): reviewer === executor is allowed but audit-visible.
+    const sameSourceReview = subtask.dispatchedAgentId !== undefined && input.reviewedBy === subtask.dispatchedAgentId;
     const contract = await getContract(workspace, run.contractRef);
     const review: ReviewRecord = {
       version: 1,
@@ -432,7 +445,8 @@ export async function recordReview(workspace: LocalWorkspace, schemas: SchemaReg
       validatorEvidence: input.validatorEvidence,
       createdAt: new Date().toISOString(),
       reviewedBy: input.reviewedBy,
-      ...(input.tokensUsed === undefined ? {} : { tokensUsed: input.tokensUsed })
+      ...(input.tokensUsed === undefined ? {} : { tokensUsed: input.tokensUsed }),
+      ...(sameSourceReview ? { sameSourceReview: true } : {})
     };
     schemas.validate("orchestration-review", review);
     await createWorkspaceJson(workspace, reviewFile(review.reviewId), review);
@@ -447,13 +461,13 @@ export async function recordReview(workspace: LocalWorkspace, schemas: SchemaReg
       nextSubtask = { ...subtask, status: "ACCEPTED", completedAt: new Date().toISOString(), reviewRefs: [...(subtask.reviewRefs ?? []), review.reviewId] };
       await writeWorkspaceJson(workspace, subtaskFile(subtaskId), nextSubtask);
       await writeWorkspaceJson(workspace, runFile(runId), nextRun);
-      await appendLedgerEntry(workspace, { event: "review-recorded", taskId: contract.taskId, contractRef: contract.contractId, runRef: runId, subtaskRef: subtaskId, reviewRef: review.reviewId, summary: `Review ${review.reviewId}: ACCEPTED (score ${review.score}).` });
+      await appendLedgerEntry(workspace, { event: "review-recorded", taskId: contract.taskId, contractRef: contract.contractId, runRef: runId, subtaskRef: subtaskId, reviewRef: review.reviewId, summary: `Review ${review.reviewId}: ACCEPTED (score ${review.score})${sameSourceReview ? " [same-source]" : ""}.` });
       await appendLedgerEntry(workspace, { event: "subtask-accepted", taskId: contract.taskId, contractRef: contract.contractId, runRef: runId, subtaskRef: subtaskId, summary: `Subtask ${subtaskId} accepted.` });
     } else {
       nextSubtask = { ...subtask, status: "REJECTED", retriesUsed: subtask.retriesUsed + 1, reviewRefs: [...(subtask.reviewRefs ?? []), review.reviewId], lastDefects: input.defects };
       await writeWorkspaceJson(workspace, subtaskFile(subtaskId), nextSubtask);
       await writeWorkspaceJson(workspace, runFile(runId), nextRun);
-      await appendLedgerEntry(workspace, { event: "review-recorded", taskId: contract.taskId, contractRef: contract.contractId, runRef: runId, subtaskRef: subtaskId, reviewRef: review.reviewId, summary: `Review ${review.reviewId}: REJECTED (score ${review.score}).` });
+      await appendLedgerEntry(workspace, { event: "review-recorded", taskId: contract.taskId, contractRef: contract.contractId, runRef: runId, subtaskRef: subtaskId, reviewRef: review.reviewId, summary: `Review ${review.reviewId}: REJECTED (score ${review.score})${sameSourceReview ? " [same-source]" : ""}.` });
       await appendLedgerEntry(workspace, { event: "subtask-rejected", taskId: contract.taskId, contractRef: contract.contractId, runRef: runId, subtaskRef: subtaskId, summary: `Subtask ${subtaskId} rejected with ${input.defects.length} defect(s).` });
     }
 

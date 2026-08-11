@@ -133,6 +133,9 @@
     "tokensUsed": {
       "type": "integer",
       "minimum": 0
+    },
+    "sameSourceReview": {
+      "type": "boolean"
     }
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",

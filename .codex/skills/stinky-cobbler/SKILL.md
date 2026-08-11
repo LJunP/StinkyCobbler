@@ -65,7 +65,7 @@ For every Stinky Cobbler response, output:
 4. **分配（领域路由）**：`orchestration subtask add`（任务定义 + 输入产物引用 + 完成标准 + 范围 + 能力；可选 `--domain` 收窄子领域）→ 引擎按领域从专才注册表（`orchestration specialist list/show`）解析专才，**自动注入该领域的专业指令/验收清单/禁区**到任务包 domainInstructions → `dispatch`（引擎签发绑定子任务的 Lease，校验输入产物哈希与依赖）。
 5. **执行**：主 agent 用宿主能力开子 agent；子 agent **只使用 subtask.goal、domainInstructions 与 inputArtifacts，忽略其他会话内容**，持 Lease 通过 MCP 工具干活，**不得再派生子 agent**。
 6. **产物**：`orchestration artifact report`（引擎校验内容哈希与范围；范围外产物直接 REJECTED）。
-7. **审查（双通道）**：工具能验证的优先（哈希/存在性/范围）；LLM 按完成标准逐项勾选，REJECTED 必须有可操作缺陷清单，原因必填。
+7. **审查（双通道，推荐独立视角）**：工具能验证的优先（哈希/存在性/范围）；LLM 按完成标准逐项勾选——**review 的 criteriaResults 必须与子任务 acceptanceCriteria 完全一致**（不许编造标准、不许漏评标准，否则引擎拒绝 REVIEW_CRITERION_MISMATCH）；REJECTED 必须有可操作缺陷清单，原因必填；**推荐由独立 reviewer 子 agent 审查**（主 agent 开 reviewer：子任务包 + 产物 + 领域验收清单，reviewer 提交 review 且 reviewedBy 用 reviewer 身份）；主 agent 自审（reviewedBy=执行者）被允许但引擎标记 `sameSourceReview` 供审计。
 8. **决策**：ACCEPTED → 产物入池供下一轮引用；REJECTED → 携带缺陷重做（有上限），振荡（同缺陷重复）/退化（分数下降）/预算超限 → **升级用户点选**：继续（`run resume`，可调整预算）/ 终止（`run cancel`），绝不无限循环；**全局轮次护栏依赖主 agent 每轮执行 `round complete` 汇总（单子任务护栏由引擎强制，不依赖主 agent）**。
 9. **汇总**：每轮 `orchestration round complete` 记录目标一致性检查（产物 vs 契约）；全部接受 → COMPLETED。
 10. **失败隔离**：单子任务重做耗尽 → FAILED 不阻塞无依赖子任务；REJECTED 产物可回滚。

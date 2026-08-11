@@ -77,6 +77,8 @@ export interface SubtaskPackage {
   reviewRefs?: string[];
   lastDefects?: Defect[];
   failReason?: string;
+  /** Executor recorded at dispatch (audit trace; used to flag same-source reviews). */
+  dispatchedAgentId?: string;
 }
 
 export type ArtifactStatus = "VERIFIED" | "MISMATCH" | "REJECTED";
@@ -120,6 +122,8 @@ export interface ReviewRecord {
   reviewedBy: string;
   /** Tokens consumed by this subtask round (host-reported; engine accumulates into the run budget). */
   tokensUsed?: number;
+  /** True when the reviewer is the same agent that executed the subtask (self-review; audit-visible). */
+  sameSourceReview?: boolean;
 }
 
 export type OrchestrationRunStatus = "DRAFT" | "RUNNING" | "COMPLETED" | "FAILED" | "CANCELLED" | "ESCALATED";
