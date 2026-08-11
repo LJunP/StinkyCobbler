@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { SchemaRegistry } from "../src/contracts/schema-registry.js";
@@ -153,5 +153,86 @@ describe("orchestration loop (storage)", () => {
     expect(completed.goalConsistency).toHaveLength(1);
     const cancelled = await cancelRun(workspace, run.runId);
     expect(cancelled.status).toBe("CANCELLED");
+  });
+});
+
+describe("2.0 gap coverage", () => {
+  async function runOneSubtaskFlow(workspace: any, schemas: any, run: any, goal: string, content: string, maxRetries?: number) {
+    const subtask = await addSubtask(workspace, schemas, run.runId, {
+      goal, inputArtifactIds: [], acceptanceCriteria: ["good"], scope: ["docs"], capabilities: ["repository-read", "repository-write"], ...(maxRetries === undefined ? {} : { maxRetries })
+    });
+    await dispatchSubtask(workspace, schemas, run.runId, subtask.subtaskId, "worker-agent");
+    await beginSubtask(workspace, run.runId, subtask.subtaskId);
+    return subtask;
+  }
+
+  it("completes a positive rework loop: reject → redispatch → corrected → accept", async () => {
+    const { workspace, schemas, run } = await setup();
+    const subtask = await runOneSubtaskFlow(workspace, schemas, run, "Write docs/guide.md", "");
+    await writeFile(path.join(workspace.root, "docs", "guide.md"), "v1\n", "utf8");
+    await reportArtifact(workspace, schemas, run.runId, subtask.subtaskId, { path: "docs/guide.md", kind: "file" });
+    await recordReview(workspace, schemas, run.runId, subtask.subtaskId, reviewInput("REJECTED", 50, [{ location: "docs/guide.md", problem: "missing sections", suggestion: "add all sections" }]));
+    // redispatch the rejected subtask
+    await dispatchSubtask(workspace, schemas, run.runId, subtask.subtaskId, "worker-agent");
+    await beginSubtask(workspace, run.runId, subtask.subtaskId);
+    await writeFile(path.join(workspace.root, "docs", "guide.md"), "# Guide\n\n## Overview\n...\n\n## Usage\n...\n\n## Install\n...\n", "utf8");
+    await reportArtifact(workspace, schemas, run.runId, subtask.subtaskId, { path: "docs/guide.md", kind: "file" });
+    const accepted = await recordReview(workspace, schemas, run.runId, subtask.subtaskId, reviewInput("ACCEPTED", 90));
+    expect(accepted.subtask.status).toBe("ACCEPTED");
+    expect(accepted.run.status).toBe("COMPLETED");
+  });
+
+  it("rolls back a rejected worker artifact via write rollback (subtask-mode intent)", async () => {
+    const { workspace, schemas, run, root } = await setup();
+    await writeFile(path.join(root, "docs", "existing.md"), "original\n", "utf8");
+    const subtask = await runOneSubtaskFlow(workspace, schemas, run, "Modify docs/existing.md", "");
+    // worker applies a controlled write (subtask-mode intent + write lease)
+    const { requestWrites, rollbackWrite } = await import("../src/storage/write-intents.js");
+    const { applyWrite } = await import("../src/storage/writes.js");
+    const { getLease } = await import("../src/storage/leases.js");
+    const intent = await requestWrites(workspace, schemas, "-", "-", [{ target: "docs/existing.md", action: "modify", purpose: "worker change" }], { autoAllow: true, runRef: run.runId, subtaskRef: subtask.subtaskId });
+    const leases = await import("../src/storage/leases.js").then((m) => m.listLeases(workspace));
+    const writeLease = leases.find((l: any) => l.capability === "repository-write" && l.subtaskRef === subtask.subtaskId);
+    expect(writeLease).toBeDefined();
+    await applyWrite(workspace, schemas, writeLease, intent, "docs/existing.md", "worker changed it\n");
+    await reportArtifact(workspace, schemas, run.runId, subtask.subtaskId, { path: "docs/existing.md", kind: "file" });
+    await recordReview(workspace, schemas, run.runId, subtask.subtaskId, reviewInput("REJECTED", 30, [{ location: "docs/existing.md", problem: "regressed", suggestion: "revert" }]));
+    // rollback restores the pre-write content (subtask-mode intent rollback)
+    await rollbackWrite(workspace, schemas, "-", "-", intent.writeIntentId, "Worker output rejected; revert.");
+    expect(await readFile(path.join(root, "docs", "existing.md"), "utf8")).toBe("original\n");
+  });
+
+  it("enforces dependency batches: B cannot dispatch before A is accepted", async () => {
+    const { workspace, schemas, run } = await setup();
+    const a = await runOneSubtaskFlow(workspace, schemas, run, "Write docs/a.md", "");
+    const b = await addSubtask(workspace, schemas, run.runId, {
+      goal: "Write docs/b.md based on a.md", inputArtifactIds: [], acceptanceCriteria: ["good"], scope: ["docs"], capabilities: ["repository-read"], dependsOn: [a.subtaskId]
+    });
+    // B dispatch while A is RUNNING → dependency pending
+    await expect(dispatchSubtask(workspace, schemas, run.runId, b.subtaskId, "worker-agent")).rejects.toMatchObject({ code: "SUBTASK_DEPENDENCY_PENDING" });
+    // complete A, then B dispatches fine
+    await writeFile(path.join(workspace.root, "docs", "a.md"), "A\n", "utf8");
+    await reportArtifact(workspace, schemas, run.runId, a.subtaskId, { path: "docs/a.md", kind: "file" });
+    await recordReview(workspace, schemas, run.runId, a.subtaskId, reviewInput("ACCEPTED", 90));
+    const dispatchedB = await dispatchSubtask(workspace, schemas, run.runId, b.subtaskId, "worker-agent");
+    expect(dispatchedB.subtask.status).toBe("DISPATCHED");
+  });
+
+  it("fails the run when the round budget is exhausted", async () => {
+    const { workspace, schemas, run } = await setup();
+    const subtask = await runOneSubtaskFlow(workspace, schemas, run, "Write docs/guide.md", "");
+    await writeFile(path.join(workspace.root, "docs", "guide.md"), "v1\n", "utf8");
+    await reportArtifact(workspace, schemas, run.runId, subtask.subtaskId, { path: "docs/guide.md", kind: "file" });
+    await recordReview(workspace, schemas, run.runId, subtask.subtaskId, reviewInput("REJECTED", 40, [{ location: "x", problem: "p1", suggestion: "s1" }]));
+    // advance rounds beyond budget (maxRounds default 5)
+    for (let i = 0; i < 5; i++) await completeRound(workspace, run.runId, { passed: true, note: "advance" });
+    // next review sees run.round=5 > maxRounds=5 → ROUND_BUDGET fails the run
+    await dispatchSubtask(workspace, schemas, run.runId, subtask.subtaskId, "worker-agent");
+    await beginSubtask(workspace, run.runId, subtask.subtaskId);
+    await writeFile(path.join(workspace.root, "docs", "guide.md"), "v2\n", "utf8");
+    await reportArtifact(workspace, schemas, run.runId, subtask.subtaskId, { path: "docs/guide.md", kind: "file" });
+    const result = await recordReview(workspace, schemas, run.runId, subtask.subtaskId, reviewInput("REJECTED", 40, [{ location: "x", problem: "p2", suggestion: "s2" }]));
+    expect(result.run.status).toBe("FAILED");
+    expect(result.run.escalationReason ?? result.run.completedAt).toBeDefined();
   });
 });

@@ -220,10 +220,23 @@ export async function rollbackWrite(workspace: LocalWorkspace, schemas: SchemaRe
       await recordEvidence(workspace, schemas, evidence);
       restored.push(target);
     }
-    const plan = await getPlan(workspace, planId);
+    let taskId: string;
+    let runRef: string | undefined;
+    let subtaskRef: string | undefined;
+    if (current.runRef !== undefined && current.subtaskRef !== undefined) {
+      const { getRun, getContract } = await import("./orchestration.js");
+      const run = await getRun(workspace, current.runRef);
+      taskId = (await getContract(workspace, run.contractRef)).taskId;
+      runRef = current.runRef;
+      subtaskRef = current.subtaskRef;
+    } else {
+      taskId = (await getPlan(workspace, planId)).taskId;
+    }
     await appendLedgerEntry(workspace, {
       event: "write-rolled-back",
-      taskId: plan.taskId,
+      taskId,
+      ...(runRef === undefined ? {} : { runRef }),
+      ...(subtaskRef === undefined ? {} : { subtaskRef }),
       planRef: planId,
       writeIntentRef: writeIntentId,
       summary: `Write request ${writeIntentId} rolled back (${restored.length} restored, ${skipped.length} skipped): ${reason}`
