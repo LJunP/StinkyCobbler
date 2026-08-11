@@ -6,6 +6,7 @@
     "version",
     "contractId",
     "taskId",
+    "domain",
     "goal",
     "globalAcceptanceCriteria",
     "scope",
@@ -58,6 +59,11 @@
     },
     "taskId": {
       "type": "string"
+    },
+    "domain": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
     }
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",

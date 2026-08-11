@@ -25,6 +25,7 @@ async function setup() {
   const schemas = await SchemaRegistry.create(projectRoot);
   const contract = await createContract(workspace, schemas, {
     taskId: "orch-task",
+    domain: "compliance",
     goal: "Produce project documentation",
     globalAcceptanceCriteria: ["docs exist", "no sensitive data", "structure correct", "consistency with code"],
     scope: ["docs"]
@@ -237,15 +238,66 @@ describe("2.0 gap coverage", () => {
   });
 });
 
+describe("domain routing (specialist)", () => {
+  it("requires a user-confirmed domain on contract creation", async () => {
+    const { workspace, schemas } = await setup();
+    await expect(createContract(workspace, schemas, { taskId: "orch-task", domain: "", goal: "g", globalAcceptanceCriteria: ["a"], scope: ["docs"] })).rejects.toMatchObject({ code: "CONTRACT_DOMAIN_INVALID" });
+  });
+
+  it("injects the contract-domain specialist instructions into every subtask", async () => {
+    const { workspace, schemas, run } = await setup(); // setup uses domain "compliance"
+    const subtask = await addSubtask(workspace, schemas, run.runId, {
+      goal: "Write docs/guide.md",
+      inputArtifactIds: [],
+      acceptanceCriteria: ["guide.md exists"],
+      scope: ["docs"],
+      capabilities: ["repository-read"]
+    });
+    expect(subtask.domain).toBe("compliance");
+    expect(subtask.domainInstructions[0]).toContain("合规");
+    expect(subtask.domainInstructions.some((i) => i.startsWith("验收："))).toBe(true);
+    expect(subtask.domainInstructions.some((i) => i.startsWith("禁止："))).toBe(true);
+  });
+
+  it("narrows to a sub-domain (prefix match) via subtask domain override", async () => {
+    const { workspace, schemas, run } = await setup(); // contract domain "compliance"
+    const subtask = await addSubtask(workspace, schemas, run.runId, {
+      goal: "Write docs/guide.md",
+      inputArtifactIds: [],
+      acceptanceCriteria: ["guide.md exists"],
+      scope: ["docs"],
+      capabilities: ["repository-read"],
+      domain: "content"
+    });
+    expect(subtask.domain).toBe("content");
+    expect(subtask.domainInstructions[0]).toContain("内容创作");
+  });
+
+  it("falls back to the general specialist for unknown contract domains", async () => {
+    const { workspace, schemas } = await setup();
+    const contract = await createContract(workspace, schemas, { taskId: "orch-task", domain: "quantum-physics", goal: "g", globalAcceptanceCriteria: ["a", "b", "c", "d"], scope: ["docs"] });
+    const run = await createRun(workspace, schemas, { contractRef: contract.contractId });
+    const subtask = await addSubtask(workspace, schemas, run.runId, {
+      goal: "Write docs/guide.md",
+      inputArtifactIds: [],
+      acceptanceCriteria: ["guide.md exists"],
+      scope: ["docs"],
+      capabilities: ["repository-read"]
+    });
+    expect(subtask.domain).toBe("quantum-physics");
+    expect(subtask.domainInstructions[0]).toContain("通用工程执行者");
+  });
+});
+
 describe("cost estimation", () => {
   it("estimates tokens and mode from the contract", async () => {
     const { workspace, schemas } = await setup();
-    const simple = await createContract(workspace, schemas, { taskId: "orch-task", goal: "g", globalAcceptanceCriteria: ["a"], scope: ["docs/guide.md"] });
+    const simple = await createContract(workspace, schemas, { taskId: "orch-task", domain: "frontend", goal: "g", globalAcceptanceCriteria: ["a"], scope: ["docs/guide.md"] });
     const simpleEstimate = estimateRunCost(simple);
     expect(simpleEstimate.mode).toBe("direct");
     expect(simpleEstimate.estimatedSubtasks).toBe(1);
     expect(simpleEstimate.estimatedTokens).toBeLessThan(50000);
-    const complex = await createContract(workspace, schemas, { taskId: "orch-task", goal: "g", globalAcceptanceCriteria: ["a", "b", "c", "d", "e", "f", "g", "h"], scope: ["docs", "src"] });
+    const complex = await createContract(workspace, schemas, { taskId: "orch-task", domain: "backend", goal: "g", globalAcceptanceCriteria: ["a", "b", "c", "d", "e", "f", "g", "h"], scope: ["docs", "src"] });
     const complexEstimate = estimateRunCost(complex);
     expect(complexEstimate.estimatedSubtasks).toBe(4);
     expect(complexEstimate.estimatedTokens).toBeGreaterThanOrEqual(50000);

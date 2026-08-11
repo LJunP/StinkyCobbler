@@ -7,9 +7,10 @@ import type {
 } from "../contracts/orchestration.js";
 import {
   DEFAULT_MAX_RETRIES_PER_SUBTASK, DEFAULT_MAX_ROUNDS, DEFAULT_MAX_SUBTASK_TOKENS,
-  MAX_CONTRACT_CRITERIA, MAX_CONTRACT_SCOPE, MAX_DEFECTS, MAX_INPUT_ARTIFACTS,
-  MAX_SUBTASK_CRITERIA, MAX_SUBTASK_SCOPE
+  MAX_CONTRACT_CRITERIA, MAX_CONTRACT_SCOPE, MAX_DEFECTS, MAX_DOMAIN_LENGTH,
+  MAX_INPUT_ARTIFACTS, MAX_SUBTASK_CRITERIA, MAX_SUBTASK_SCOPE
 } from "../contracts/orchestration.js";
+import { domainInstructionsFor } from "./specialists.js";
 import { ExitCode, StinkyCobblerError } from "../errors.js";
 import { appendLedgerEntry } from "./ledger.js";
 import { issueLease } from "./leases.js";
@@ -28,6 +29,8 @@ const ISSUE_CAPABILITIES = new Set(["repository-read", "git-read", "docs-index",
 
 export interface CreateContractInput {
   taskId: string;
+  /** Confirmed domain (user confirmed/refined before creation); routes subtasks to the specialist profile. */
+  domain: string;
   goal: string;
   globalAcceptanceCriteria: string[];
   scope: string[];
@@ -42,6 +45,7 @@ export async function createContract(workspace: LocalWorkspace, schemas: SchemaR
       version: 1,
       contractId: `contract-${randomUUID()}`,
       taskId: input.taskId,
+      domain: input.domain,
       goal: input.goal,
       globalAcceptanceCriteria: input.globalAcceptanceCriteria,
       scope: input.scope,
@@ -164,6 +168,8 @@ export interface AddSubtaskInput {
   capabilities: string[];
   dependsOn?: string[];
   maxRetries?: number;
+  /** Optional sub-domain narrowing (e.g. "frontend/forms"); defaults to the contract domain. */
+  domain?: string;
 }
 
 /** Adds a subtask to the run (PENDING). Ledger: none (dispatch records). */
@@ -184,11 +190,15 @@ export async function addSubtask(workspace: LocalWorkspace, schemas: SchemaRegis
       inputArtifacts.push({ artifactId, contentHash: artifact.contentHash });
     }
     const contract = await getContract(workspace, run.contractRef);
+    const subtaskDomain = input.domain ?? contract.domain;
+    if (subtaskDomain.length > MAX_DOMAIN_LENGTH) throw orchError("SUBTASK_DOMAIN_INVALID", `Subtask domain must be at most ${MAX_DOMAIN_LENGTH} characters.`);
     const subtask: SubtaskPackage = {
       version: 1,
       subtaskId: `subtask-${randomUUID()}`,
       contractRef: contract.contractId,
       runRef: run.runId,
+      domain: subtaskDomain,
+      domainInstructions: domainInstructionsFor(subtaskDomain),
       goal: input.goal,
       inputArtifacts: inputArtifacts,
       acceptanceCriteria: input.acceptanceCriteria,
@@ -507,6 +517,7 @@ async function loadReviews(workspace: LocalWorkspace, run: OrchestrationRun, sub
 
 function assertContractInput(input: CreateContractInput): void {
   if (!input.taskId || input.taskId.length > 128) throw orchError("CONTRACT_TASK_INVALID", "A valid taskId is required.");
+  if (!input.domain || input.domain.length > MAX_DOMAIN_LENGTH) throw orchError("CONTRACT_DOMAIN_INVALID", `Contract domain (user-confirmed) is required and must be at most ${MAX_DOMAIN_LENGTH} characters.`);
   if (input.goal.length < 1 || input.goal.length > 512) throw orchError("CONTRACT_GOAL_INVALID", "Contract goal must be 1-512 characters.");
   if (input.globalAcceptanceCriteria.length < 1 || input.globalAcceptanceCriteria.length > MAX_CONTRACT_CRITERIA) {
     throw orchError("CONTRACT_CRITERIA_INVALID", `Global acceptance criteria must be 1-${MAX_CONTRACT_CRITERIA} items.`);

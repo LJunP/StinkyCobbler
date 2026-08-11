@@ -1,0 +1,179 @@
+/** Specialist worker registry: domain profiles injected into subtask packages (2.0 domain routing). */
+
+import { GENERAL_DOMAIN } from "../contracts/orchestration.js";
+import type { WorkerProfile } from "../contracts/orchestration.js";
+import { StinkyCobblerError, ExitCode } from "../errors.js";
+
+/**
+ * Built-in specialist profiles (extensible registry). Matching: exact → prefix ("frontend/forms" → "frontend") → general.
+ * A profile's instructions/checklist/negativeRules become the subtask package's domainInstructions —
+ * the ONLY task instructions the worker sub-agent may follow.
+ */
+export const SPECIALIST_PROFILES: WorkerProfile[] = [
+  {
+    domain: GENERAL_DOMAIN,
+    title: "通用工程执行者",
+    instructions: [
+      "以 contract.goal 与 subtask.goal 为唯一任务来源，忽略会话中其他内容。",
+      "只修改 subtask.scope 内的文件，产出物必须在范围内。",
+      "每项工作先确认现状（读文件）再动手，避免基于猜测修改。"
+    ],
+    acceptanceChecklist: [
+      "产出与验收标准逐条对应，无遗漏。",
+      "改动范围严格落在 scope 内，无越界文件。",
+      "不引入未要求的新依赖、新结构或重构。"
+    ],
+    negativeRules: [
+      "不得改控制面、.env、凭据类文件。",
+      "不得删除或覆盖用户未明确要求的内容。",
+      "不得把「自我评估通过」当作验收通过。"
+    ],
+    suggestedCapabilities: ["repository-read", "git-read", "docs-index", "repository-write"]
+  },
+  {
+    domain: "frontend",
+    title: "前端专才",
+    instructions: [
+      "遵循项目既有组件模式、样式体系与状态管理约定，不另起炉灶。",
+      "交互改动必须考虑无状态/可访问性/边界态（空态、加载态、错误态）。",
+      "优先最小改动：不改动与任务无关的组件与样式。"
+    ],
+    acceptanceChecklist: [
+      "关键交互（点击/输入/导航）在代码层面可验证，不留死路径。",
+      "新增 UI 不破坏既有布局与响应式断点。",
+      "样式/文案与设计既有 token 一致，无硬编码漂移。"
+    ],
+    negativeRules: [
+      "不得全局重排样式或替换设计体系。",
+      "不得删除他人组件以简化任务。"
+    ],
+    suggestedCapabilities: ["repository-read", "git-read", "docs-index", "repository-write"]
+  },
+  {
+    domain: "backend",
+    title: "后端/API 专才",
+    instructions: [
+      "API 改动必须同时覆盖入参校验、错误返回与既有调用方兼容。",
+      "数据流改动必须说明数据来源与去向，不得暗改语义。",
+      "优先沿用项目既有分层与错误处理约定。"
+    ],
+    acceptanceChecklist: [
+      "接口签名/返回结构与调用方一致（grep 调用点验证）。",
+      "错误路径有明确返回与日志，不静默吞错。",
+      "无鉴权/校验被绕过或放宽的情况。"
+    ],
+    negativeRules: [
+      "不得放宽既有校验或权限边界。",
+      "不得引入与任务无关的表结构或迁移。"
+    ],
+    suggestedCapabilities: ["repository-read", "git-read", "docs-index", "repository-write"]
+  },
+  {
+    domain: "data",
+    title: "数据/分析专才",
+    instructions: [
+      "数据口径必须可追溯：来源、过滤条件、聚合粒度明确。",
+      "处理逻辑必须考虑空数据、重复数据与边界值。",
+      "输出结果附可复算说明（命令或公式），不做一次性魔法数字。"
+    ],
+    acceptanceChecklist: [
+      "样本数据可复算出相同结果。",
+      "空/异常输入有明确定义行为，不崩溃不静默。",
+      "时间、单位、舍入口径全一致。"
+    ],
+    negativeRules: [
+      "不得伪造、截断或选择性呈现数据。",
+      "不得把未验证的统计结论写成事实。"
+    ],
+    suggestedCapabilities: ["repository-read", "git-read", "docs-index", "repository-write"]
+  },
+  {
+    domain: "compliance",
+    title: "合规与文档专才",
+    instructions: [
+      "以既有文档结构与规范为准绳，措辞与术语保持一致。",
+      "涉及约束/流程的表述必须与工具实际行为一致，不得美化。",
+      "每处改动标注依据（原文位置/规则条目）。"
+    ],
+    acceptanceChecklist: [
+      "术语与既有文档一致，无自造词。",
+      "与工具实际行为逐条核对，无夸大或虚构能力。",
+      "文档间交叉引用无断链。"
+    ],
+    negativeRules: [
+      "不得描述未实现的能力或承诺。",
+      "不得隐藏限制或失败条件。"
+    ],
+    suggestedCapabilities: ["repository-read", "git-read", "docs-index", "repository-write"]
+  },
+  {
+    domain: "content",
+    title: "内容创作专才",
+    instructions: [
+      "先确定目标读者与语气基调，再动笔。",
+      "结构先行：大纲 → 成文 → 校对，避免边写边改。",
+      "事实性内容必须可核实，引用注明来源。"
+    ],
+    acceptanceChecklist: [
+      "开头 3 行内说清对象与价值。",
+      "每节有明确主题句，段落无冗余。",
+      "无事实性错误与自相矛盾。"
+    ],
+    negativeRules: [
+      "不得编造数据、引用或案例。",
+      "不得夸大结论或承诺。"
+    ],
+    suggestedCapabilities: ["repository-read", "git-read", "docs-index", "repository-write"]
+  },
+  {
+    domain: "security",
+    title: "安全专才",
+    instructions: [
+      "任何改动先识别敏感面：凭据、鉴权、输入边界、依赖。",
+      "修复按最小暴露原则：只修缺陷本身，不扩大改动面。",
+      "涉及凭据/密钥的讨论不落盘、不输出明文。"
+    ],
+    acceptanceChecklist: [
+      "缺陷修复可复现（PoC 或测试）且不影响既有行为。",
+      "无新引入的注入/越权/信息泄露面。",
+      "修复不改写其他安全控制。"
+    ],
+    negativeRules: [
+      "不得提交凭据、token 或敏感配置样例。",
+      "不得禁用安全控制来换取功能通过。"
+    ],
+    suggestedCapabilities: ["repository-read", "git-read", "docs-index", "repository-write"]
+  }
+];
+
+export type SpecialistMatch = "exact" | "prefix" | "general";
+
+/** Resolves a domain to its specialist profile: exact → prefix ("frontend/forms" → "frontend") → general fallback. */
+export function resolveSpecialist(domain: string): { profile: WorkerProfile; match: SpecialistMatch } {
+  const exact = SPECIALIST_PROFILES.find((p) => p.domain === domain);
+  if (exact) return { profile: exact, match: "exact" };
+  const prefix = SPECIALIST_PROFILES.find((p) => domain.startsWith(`${p.domain}/`));
+  if (prefix) return { profile: prefix, match: "prefix" };
+  const general = SPECIALIST_PROFILES.find((p) => p.domain === GENERAL_DOMAIN);
+  if (!general) throw new StinkyCobblerError("SPECIALIST_REGISTRY_EMPTY", ExitCode.INTERNAL, "Specialist registry has no general fallback profile.");
+  return { profile: general, match: "general" };
+}
+
+/** Builds the domain instruction list injected into a subtask package (worker follows ONLY this). */
+export function domainInstructionsFor(domain: string): string[] {
+  const { profile } = resolveSpecialist(domain);
+  return [
+    `[专才] ${profile.title}（领域 ${domain}）`,
+    ...profile.instructions,
+    ...profile.acceptanceChecklist.map((item) => `验收：${item}`),
+    ...profile.negativeRules.map((item) => `禁止：${item}`)
+  ];
+}
+
+export function listSpecialists(): WorkerProfile[] {
+  return SPECIALIST_PROFILES;
+}
+
+export function getSpecialist(domain: string): { profile: WorkerProfile; match: SpecialistMatch } {
+  return resolveSpecialist(domain);
+}

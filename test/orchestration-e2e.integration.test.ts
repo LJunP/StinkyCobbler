@@ -33,7 +33,7 @@ describe("orchestration CLI e2e", () => {
   it("walks contract → run → subtask → dispatch → artifact → accept → completed", { timeout: 30000 }, async () => {
     const env = { ...process.env };
     const root = await setupWorkspace(env);
-    const contract = await json(env, "orchestration", "contract", "create", "--task", "orch-e2e", "--goal", "Produce project docs", "--criteria", "docs exist", "--criteria", "no secrets", "--criteria", "structure correct", "--scope", "docs", "--root", root);
+    const contract = await json(env, "orchestration", "contract", "create", "--task", "orch-e2e", "--domain", "compliance", "--goal", "Produce project docs", "--criteria", "docs exist", "--criteria", "no secrets", "--criteria", "structure correct", "--scope", "docs", "--root", root);
     expect(contract.contract.contractId).toMatch(/^contract-/);
 
     const created = await json(env, "orchestration", "run", "create", "--contract", contract.contract.contractId, "--root", root);
@@ -68,7 +68,7 @@ describe("orchestration CLI e2e", () => {
   it("escalates on repeated identical defects", { timeout: 30000 }, async () => {
     const env = { ...process.env };
     const root = await setupWorkspace(env);
-    const contract = await json(env, "orchestration", "contract", "create", "--task", "orch-e2e", "--goal", "Docs", "--criteria", "ok", "--criteria", "good", "--criteria", "fine", "--scope", "docs", "--root", root);
+    const contract = await json(env, "orchestration", "contract", "create", "--task", "orch-e2e", "--domain", "content", "--goal", "Docs", "--criteria", "ok", "--criteria", "good", "--criteria", "fine", "--scope", "docs", "--root", root);
     const created = await json(env, "orchestration", "run", "create", "--contract", contract.contract.contractId, "--root", root);
     const run = created.run;
     const subtask = await json(env, "orchestration", "subtask", "add", "--run", run.runId, "--goal", "Write guide", "--criteria", "good", "--scope", "docs", "--capability", "repository-read", "--max-retries", "5", "--root", root);
