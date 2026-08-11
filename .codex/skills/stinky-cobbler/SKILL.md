@@ -61,7 +61,7 @@ For every Stinky Cobbler response, output:
 
 1. **领域确认（先于契约）**：先展示识别到的领域/方向（如"识别到：前端/表单"），让用户点选确认或一句话修正，**得到用户确认的领域后才创建契约**。领域是路由依据：未知领域自动回退通用专才，不阻塞任务。
 2. **拆解**：`orchestration contract create --domain <确认的领域>`（固化任务契约：领域 + 目标 + 全局验收标准 + 范围）→ 若推荐 `direct`（简单契约）则走 1.0 计划路径，不强行编排。预置模板可用 `orchestration template list` / `contract from-template <name>` 一键建契约；生效配置用 `orchestration config show` 只读查看（默认 vs 用户覆盖）。
-3. **预算确认**：`orchestration run create` 前向用户展示预估（轮次/子任务/token 上限），用户确认后创建；预算全局累计，不随轮重置；**每轮 `review record` 时上报本轮 token 消耗**（review JSON 带 `tokensUsed`，引擎累计进 run 预算，超限 TOKEN_BUDGET → 失败）。
+3. **预算确认**：`orchestration run create` 前向用户展示预估（轮次/子任务/token 上限），用户确认后创建；预算全局累计，不随轮重置；**每次 `review record` 的 JSON 必须显式包含 `tokensUsed` 字段**（本轮 token 消耗估算值，引擎累计进 run 预算、超限 TOKEN_BUDGET → 失败）——这是编排流程必填项，不是可选（Codex 实测发现漏带会导致 token 护栏失效）。
 4. **分配（领域路由）**：`orchestration subtask add`（任务定义 + 输入产物引用 + 完成标准 + 范围 + 能力；可选 `--domain` 收窄子领域）→ 引擎按领域从专才注册表（`orchestration specialist list/show`）解析专才，**自动注入该领域的专业指令/验收清单/禁区**到任务包 domainInstructions → `dispatch`（引擎签发绑定子任务的 Lease，校验输入产物哈希与依赖）。
 5. **执行**：主 agent 用宿主能力开子 agent；子 agent **只使用 subtask.goal、domainInstructions 与 inputArtifacts，忽略其他会话内容**，持 Lease 通过 MCP 工具干活，**不得再派生子 agent**。
 6. **产物**：`orchestration artifact report`（引擎校验内容哈希与范围；范围外产物直接 REJECTED）。
