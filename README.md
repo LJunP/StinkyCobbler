@@ -215,6 +215,18 @@ stinky-cobbler --version
 帮我安装这个 zip 里的 stinky-cobbler（离线完整包），解压并配置好，然后接入当前工具
 ```
 
+### 方式 D：国内源码镜像（Gitee，无需翻墙）
+
+源码镜像（与 GitHub 同步，最新提交一致）：`https://gitee.com/LJunP/StinkyCobbler`
+
+**正常用户（终端操作）：**
+```bash
+git clone https://gitee.com/LJunP/StinkyCobbler.git
+cd StinkyCobbler && npm install && npm run build && npm install -g .   # 源码安装
+```
+
+> 发布附件（离线完整包 / tgz / sha256 / SBOM）仍从 [GitHub Releases](https://github.com/LJunP/StinkyCobbler/releases) 下载；需要时也可在 Gitee Releases 手动补传。
+
 ---
 
 ## 接入你的 AI 工具（一次性，三选一）
