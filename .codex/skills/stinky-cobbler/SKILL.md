@@ -47,6 +47,7 @@ For every Stinky Cobbler response, output:
 
 - Never expose raw internal error codes as the final user-visible conclusion; summarize them ("被拒绝 / 失败（原因）").
 - A denied admission or blocked tool call is reported as 被拒绝; do not retry by changing scope, role, Lease, or policy.
+- **配置类错误（TIERED_CONFIG_*）转述必须完整**：失败（原因：配置无效：<文件与字段>）+ 修复指引（错误响应的 `fix` 字段：怎么改 + 正确示例），让用户能直接照着改，不得只报"配置无效"四个字。
 
 ## Lease 授权规则（透明 + 不中断）
 

@@ -35,10 +35,12 @@ export async function loadTieredYaml<T extends { version: number }>(workspace: L
   try {
     builtin = await loadYamlFile<T>(path.join(PACKAGE_POLICIES_DIR, fileName), `policies/${fileName} (builtin)`);
   } catch (error: unknown) {
-    if (isCode(error, "ENOENT")) throw tieredError("TIERED_CONFIG_MISSING", `policies/${fileName} (builtin) does not exist; the package install is incomplete.`);
+    if (isCode(error, "ENOENT")) throw tieredError("TIERED_CONFIG_MISSING", `policies/${fileName} (builtin) 不存在；工具安装不完整。`,
+      `修复：重新安装 stinky-cobbler（npm install -g stinky-cobbler）。`);
     throw error;
   }
-  if (builtin.version !== expectedVersion) throw tieredError("TIERED_CONFIG_VERSION", `Builtin policies/${fileName} must be version ${expectedVersion}.`);
+  if (builtin.version !== expectedVersion) throw tieredError("TIERED_CONFIG_VERSION", `内置 policies/${fileName} 版本异常（应为 ${expectedVersion}）。`,
+    `修复：重新安装 stinky-cobbler（npm install -g stinky-cobbler）。`);
   let user: T | null = null;
   let userPath: string | null = null;
   if (workspace !== null) {
@@ -50,7 +52,8 @@ export async function loadTieredYaml<T extends { version: number }>(workspace: L
     }
   }
   if (user !== null && user.version !== expectedVersion) {
-    throw tieredError("TIERED_CONFIG_VERSION", `${userPath} must be version ${expectedVersion} (found ${user.version}).`);
+    throw tieredError("TIERED_CONFIG_VERSION", `${userPath} 的 version 必须为 ${expectedVersion}（当前 ${user.version}）。`,
+      `修复：打开 ${userPath}，把第一行改为 version: ${expectedVersion}。正确示例：\nversion: ${expectedVersion}\ndefaults:\n  maxRounds: 10`);
   }
   return { effective: mergeShallow(builtin, user), builtin, user, userPath };
 }
@@ -89,16 +92,18 @@ async function loadYamlFile<T>(file: string, label: string): Promise<T> {
   try {
     value = parseYaml(text);
   } catch (error: unknown) {
-    throw tieredError("TIERED_CONFIG_INVALID", `${label} is not valid YAML: ${error instanceof Error ? error.message : String(error)}`);
+    throw tieredError("TIERED_CONFIG_INVALID", `${label} 不是有效的 YAML: ${error instanceof Error ? error.message : String(error)}`,
+      `修复：检查 ${label} 的缩进与冒号——每个键一行「键: 值」，# 开头的是注释。正确示例：\nversion: 1\ndefaults:\n  maxRounds: 10`);
   }
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    throw tieredError("TIERED_CONFIG_INVALID", `${label} must be a YAML object.`);
+    throw tieredError("TIERED_CONFIG_INVALID", `${label} 必须是一个 YAML 对象（顶层不能是数组或纯文本）。`,
+      `修复：文件顶部保留 version: 1，其余键按模板格式写在下方。`);
   }
   return value as T;
 }
 
-function tieredError(code: string, message: string): StinkyCobblerError {
-  return new StinkyCobblerError(code, ExitCode.VALIDATION, message);
+function tieredError(code: string, message: string, fix?: string): StinkyCobblerError {
+  return new StinkyCobblerError(code, ExitCode.VALIDATION, message, fix === undefined ? {} : { fix });
 }
 
 function isCode(error: unknown, code: string): boolean {
@@ -150,30 +155,39 @@ const HARD_MAX_ROUNDS = 1000;
 
 /** Loads orchestration.yaml and validates it fail-closed (tighten-only guards, numeric bounds). */
 export async function loadOrchestrationConfig(workspace: LocalWorkspace | null): Promise<OrchestrationConfig> {
-  const { effective } = await loadTieredYaml<OrchestrationConfig>(workspace, "orchestration.yaml", 1);
+  const loaded = await loadTieredYaml<OrchestrationConfig>(workspace, "orchestration.yaml", 1);
+  const { effective, userPath } = loaded;
+  const source = userPath ?? "policies/orchestration.yaml (内置)";
   const d = effective.defaults ?? {};
   if (d.oscillationThreshold !== undefined) {
     if (!Number.isInteger(d.oscillationThreshold) || d.oscillationThreshold < 1) {
-      throw tieredError("TIERED_CONFIG_INVALID", "defaults.oscillationThreshold must be a positive integer.");
+      throw tieredError("TIERED_CONFIG_INVALID", `${source} 中 defaults.oscillationThreshold 必须是正整数。`,
+        `修复：改为 1 或 2。正确示例：\ndefaults:\n  oscillationThreshold: 2`);
     }
     if (d.oscillationThreshold > OSCILLATION_TIGHTEN_MAX) {
-      throw tieredError("TIERED_CONFIG_INVALID", `defaults.oscillationThreshold is tighten-only: maximum ${OSCILLATION_TIGHTEN_MAX} (relaxing the anti-polish guard is not allowed).`);
+      throw tieredError("TIERED_CONFIG_INVALID", `${source} 中 defaults.oscillationThreshold 只能收紧：最大 ${OSCILLATION_TIGHTEN_MAX}（放宽防打磨护栏不被允许）。`,
+        `修复：改为 1 或 2。正确示例：\ndefaults:\n  oscillationThreshold: 2`);
     }
   }
   if (d.autoRejectScoreThreshold !== undefined && (d.autoRejectScoreThreshold < 0 || d.autoRejectScoreThreshold > 100)) {
-    throw tieredError("TIERED_CONFIG_INVALID", "defaults.autoRejectScoreThreshold must be 0-100 (0 disables).");
+    throw tieredError("TIERED_CONFIG_INVALID", `${source} 中 defaults.autoRejectScoreThreshold 必须是 0-100（0 关闭）。`,
+      `修复：改为 0-100 的整数，如 60。正确示例：\ndefaults:\n  autoRejectScoreThreshold: 60`);
   }
   if (d.maxRounds !== undefined && (d.maxRounds < 1 || d.maxRounds > HARD_MAX_ROUNDS)) {
-    throw tieredError("TIERED_CONFIG_INVALID", `defaults.maxRounds must be 1-${HARD_MAX_ROUNDS}.`);
+    throw tieredError("TIERED_CONFIG_INVALID", `${source} 中 defaults.maxRounds 必须是 1-${HARD_MAX_ROUNDS}。`,
+      `修复：改为 1-${HARD_MAX_ROUNDS} 的整数，如 10。正确示例：\ndefaults:\n  maxRounds: 10`);
   }
   if (d.maxRetriesPerSubtask !== undefined && (d.maxRetriesPerSubtask < 0 || d.maxRetriesPerSubtask > 50)) {
-    throw tieredError("TIERED_CONFIG_INVALID", "defaults.maxRetriesPerSubtask must be 0-50.");
+    throw tieredError("TIERED_CONFIG_INVALID", `${source} 中 defaults.maxRetriesPerSubtask 必须是 0-50。`,
+      `修复：改为 0-50 的整数。正确示例：\ndefaults:\n  maxRetriesPerSubtask: 3`);
   }
   if (d.maxSubtaskTokens !== undefined && (d.maxSubtaskTokens < 1000 || d.maxSubtaskTokens > 10_000_000)) {
-    throw tieredError("TIERED_CONFIG_INVALID", "defaults.maxSubtaskTokens must be 1000-10000000.");
+    throw tieredError("TIERED_CONFIG_INVALID", `${source} 中 defaults.maxSubtaskTokens 必须是 1000-10000000。`,
+      `修复：改为 1000-10000000 的整数。正确示例：\ndefaults:\n  maxSubtaskTokens: 400000`);
   }
   if (d.leaseGraceMinutes !== undefined && (d.leaseGraceMinutes < 0 || d.leaseGraceMinutes > 1440)) {
-    throw tieredError("TIERED_CONFIG_INVALID", "defaults.leaseGraceMinutes must be 0-1440.");
+    throw tieredError("TIERED_CONFIG_INVALID", `${source} 中 defaults.leaseGraceMinutes 必须是 0-1440。`,
+      `修复：改为 0-1440 的整数。正确示例：\ndefaults:\n  leaseGraceMinutes: 15`);
   }
   return effective;
 }

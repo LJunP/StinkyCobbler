@@ -57,6 +57,25 @@ describe("tiered config", () => {
     await expect(loadOrchestrationConfig(workspace)).rejects.toMatchObject({ code: "TIERED_CONFIG_VERSION" });
   });
 
+  it("config errors carry a fix guide (where, how, correct example)", async () => {
+    const { workspace, root } = await setup();
+    await writeUserPolicy(root, "orchestration.yaml", "version: 2\ndefaults: {}\n");
+    const error = await loadOrchestrationConfig(workspace).catch((e: unknown) => e);
+    expect(error).toMatchObject({ code: "TIERED_CONFIG_VERSION" });
+    const fix = (error as StinkyCobblerError).details?.fix as string;
+    expect(fix).toContain("version: 1");          // correct example
+    expect(fix).toContain("orchestration.yaml");  // which file
+  });
+
+  it("rejects relaxing the oscillation threshold (tighten-only)", async () => {
+    const { workspace, root } = await setup();
+    await writeUserPolicy(root, "orchestration.yaml", "version: 1\ndefaults:\n  oscillationThreshold: 3\n");
+    const error = await loadOrchestrationConfig(workspace).catch((e: unknown) => e);
+    expect(error).toMatchObject({ code: "TIERED_CONFIG_INVALID" });
+    const fix = (error as StinkyCobblerError).details?.fix as string;
+    expect(fix).toContain("oscillationThreshold: 2"); // correct example
+  });
+
   it("fails closed on malformed overlay YAML", async () => {
     const { workspace, root } = await setup();
     await writeUserPolicy(root, "orchestration.yaml", "version: 1\ndefaults: [broken");

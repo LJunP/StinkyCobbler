@@ -103,6 +103,7 @@ For every `/stinky-cobbler` response, output:
 
 - Never expose raw internal error codes (for example `RUNTIME_RUN_FENCED`, ledger sequence numbers, `EVIDENCE_*`) as the final user-visible conclusion. Summarize them as "被拒绝 / 失败（原因）" and, only when the user is debugging, show `--json` details.
 - A denied admission or blocked tool call is reported as `BLOCKED` / 被拒绝; do not retry by changing scope, role, Lease, or policy on the user's behalf.
+- **配置类错误（TIERED_CONFIG_*）转述必须完整**：失败（原因：配置无效：<文件与字段>）+ 修复指引（错误响应的 `fix` 字段：怎么改 + 正确示例），让用户能直接照着改，不得只报"配置无效"四个字。
 
 ## 编排指挥（2.0 orchestrator-worker）
 
