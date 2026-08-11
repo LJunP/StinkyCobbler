@@ -1,6 +1,6 @@
 {
   "name": "stinky-cobbler",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Evidence-gated local control plane for AI agent collaboration.",
   "type": "module",
   "repository": {
