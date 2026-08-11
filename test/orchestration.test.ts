@@ -8,7 +8,7 @@ import { initWorkspace } from "../src/storage/workspace.js";
 import {
   createContract, getContract, recommendExecutionMode, createRun, getRun,
   addSubtask, getSubtask, dispatchSubtask, beginSubtask, reportArtifact, getArtifact,
-  recordReview, getReview, completeRound, cancelRun, estimateRunCost
+  recordReview, getReview, completeRound, escalateRun, resumeRun, cancelRun, estimateRunCost
 } from "../src/storage/orchestration.js";
 import { listLedgerEntries } from "../src/storage/ledger.js";
 
@@ -286,6 +286,63 @@ describe("domain routing (specialist)", () => {
     });
     expect(subtask.domain).toBe("quantum-physics");
     expect(subtask.domainInstructions[0]).toContain("通用工程执行者");
+  });
+});
+
+describe("token budget (P0-1: host-reported tokens)", () => {
+  it("accumulates tokens into the run budget and fails the run on TOKEN_BUDGET", async () => {
+    const { workspace, schemas } = await setup();
+    const contract = await createContract(workspace, schemas, { taskId: "orch-task", domain: "compliance", goal: "g", globalAcceptanceCriteria: ["a", "b", "c", "d"], scope: ["docs"] });
+    const run = await createRun(workspace, schemas, { contractRef: contract.contractId, maxSubtaskTokens: 5000 });
+    const subtask = await addSubtask(workspace, schemas, run.runId, { goal: "write", inputArtifactIds: [], acceptanceCriteria: ["x"], scope: ["docs"], capabilities: ["repository-read"] });
+    await dispatchSubtask(workspace, schemas, run.runId, subtask.subtaskId, "agent");
+    await beginSubtask(workspace, run.runId, subtask.subtaskId);
+    await writeFile(path.join(workspace.root, "docs", "guide.md"), "v1\n", "utf8");
+    await reportArtifact(workspace, schemas, run.runId, subtask.subtaskId, { path: "docs/guide.md", kind: "file" });
+    const first = await recordReview(workspace, schemas, run.runId, subtask.subtaskId, { ...reviewInput("REJECTED", 40, [{ location: "a", problem: "p1", suggestion: "s1" }]), tokensUsed: 3000 });
+    expect(first.run.budget.usedTokens).toBe(3000);
+    expect(first.run.status).toBe("RUNNING");
+    // second round: cumulative 6000 > 5000 → TOKEN_BUDGET fails the run
+    await dispatchSubtask(workspace, schemas, run.runId, subtask.subtaskId, "agent");
+    await beginSubtask(workspace, run.runId, subtask.subtaskId);
+    await writeFile(path.join(workspace.root, "docs", "guide.md"), "v2\n", "utf8");
+    await reportArtifact(workspace, schemas, run.runId, subtask.subtaskId, { path: "docs/guide.md", kind: "file" });
+    const second = await recordReview(workspace, schemas, run.runId, subtask.subtaskId, { ...reviewInput("REJECTED", 40, [{ location: "b", problem: "p2", suggestion: "s2" }]), tokensUsed: 3000 });
+    expect(second.run.budget.usedTokens).toBe(6000);
+    expect(second.run.status).toBe("FAILED");
+    expect(second.run.escalationReason ?? "").toContain("TOKEN_BUDGET");
+  });
+});
+
+describe("resume after escalation (P0-2: human decision path)", () => {
+  it("resumes an ESCALATED run to RUNNING with optional budget adjustment", async () => {
+    const { workspace, schemas } = await setup();
+    const contract = await createContract(workspace, schemas, { taskId: "orch-task", domain: "compliance", goal: "g", globalAcceptanceCriteria: ["a", "b", "c", "d"], scope: ["docs"] });
+    const run = await createRun(workspace, schemas, { contractRef: contract.contractId });
+    // add the subtask while RUNNING (subtasks require a RUNNING run)
+    const subtask = await addSubtask(workspace, schemas, run.runId, { goal: "write", inputArtifactIds: [], acceptanceCriteria: ["x"], scope: ["docs"], capabilities: ["repository-read"] });
+    const escalated = await escalateRun(workspace, run.runId, "oscillation detected; human decision needed");
+    expect(escalated.status).toBe("ESCALATED");
+    // work is blocked while ESCALATED
+    await expect(dispatchSubtask(workspace, schemas, run.runId, subtask.subtaskId, "agent")).rejects.toMatchObject({ code: "RUN_STATE_CONFLICT" });
+    // human resumes with adjusted budget
+    const resumed = await resumeRun(workspace, run.runId, { maxRounds: 8 });
+    expect(resumed.status).toBe("RUNNING");
+    expect(resumed.budget.maxRounds).toBe(8);
+    expect(resumed.resumedAt).toBeDefined();
+    // work continues after resume
+    const dispatched = await dispatchSubtask(workspace, schemas, run.runId, subtask.subtaskId, "agent");
+    expect(dispatched.subtask.status).toBe("DISPATCHED");
+    // ledger records the resume
+    const entries = await listLedgerEntries(workspace);
+    expect(entries.some((e) => e.event === "orchestration-resumed")).toBe(true);
+  });
+
+  it("rejects resuming a non-ESCALATED run", async () => {
+    const { workspace, schemas } = await setup();
+    const contract = await createContract(workspace, schemas, { taskId: "orch-task", domain: "compliance", goal: "g", globalAcceptanceCriteria: ["a", "b", "c", "d"], scope: ["docs"] });
+    const run = await createRun(workspace, schemas, { contractRef: contract.contractId });
+    await expect(resumeRun(workspace, run.runId)).rejects.toMatchObject({ code: "RUN_STATE_CONFLICT" });
   });
 });
 

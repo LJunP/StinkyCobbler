@@ -120,6 +120,9 @@
     "escalatedAt": {
       "type": "string"
     },
+    "resumedAt": {
+      "type": "string"
+    },
     "escalationReason": {
       "type": "string"
     }

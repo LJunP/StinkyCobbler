@@ -118,6 +118,8 @@ export interface ReviewRecord {
   validatorEvidence: ValidatorEvidence[];
   createdAt: string;
   reviewedBy: string;
+  /** Tokens consumed by this subtask round (host-reported; engine accumulates into the run budget). */
+  tokensUsed?: number;
 }
 
 export type OrchestrationRunStatus = "DRAFT" | "RUNNING" | "COMPLETED" | "FAILED" | "CANCELLED" | "ESCALATED";
@@ -150,6 +152,8 @@ export interface OrchestrationRun {
   createdAt: string;
   completedAt?: string;
   escalatedAt?: string;
+  /** Human decision after escalation resumed the run (resume sets it). */
+  resumedAt?: string;
   escalationReason?: string;
 }
 
@@ -164,3 +168,5 @@ export const MAX_DOMAIN_INSTRUCTIONS = 30;
 export const DEFAULT_MAX_ROUNDS = 5;
 export const DEFAULT_MAX_RETRIES_PER_SUBTASK = 2;
 export const DEFAULT_MAX_SUBTASK_TOKENS = 200_000;
+/** Upper bound for a single host-reported token figure in a review (per-subtask round). */
+export const MAX_REVIEW_TOKENS = 10_000_000;

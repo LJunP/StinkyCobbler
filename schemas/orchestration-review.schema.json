@@ -129,6 +129,10 @@
     },
     "reviewedBy": {
       "type": "string"
+    },
+    "tokensUsed": {
+      "type": "integer",
+      "minimum": 0
     }
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",

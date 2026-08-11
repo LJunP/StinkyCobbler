@@ -8,7 +8,7 @@ import type {
 import {
   DEFAULT_MAX_RETRIES_PER_SUBTASK, DEFAULT_MAX_ROUNDS, DEFAULT_MAX_SUBTASK_TOKENS,
   MAX_CONTRACT_CRITERIA, MAX_CONTRACT_SCOPE, MAX_DEFECTS, MAX_DOMAIN_INSTRUCTIONS, MAX_DOMAIN_LENGTH,
-  MAX_INPUT_ARTIFACTS, MAX_SUBTASK_CRITERIA, MAX_SUBTASK_SCOPE
+  MAX_INPUT_ARTIFACTS, MAX_REVIEW_TOKENS, MAX_SUBTASK_CRITERIA, MAX_SUBTASK_SCOPE
 } from "../contracts/orchestration.js";
 import { domainInstructionsFor } from "./specialists.js";
 import { ExitCode, StinkyCobblerError } from "../errors.js";
@@ -382,6 +382,8 @@ export interface RecordReviewInput {
   reason: string;
   validatorEvidence: ValidatorEvidence[];
   reviewedBy: string;
+  /** Host-reported tokens consumed by this subtask round; engine accumulates into run.budget.usedTokens. */
+  tokensUsed?: number;
 }
 
 /**
@@ -399,6 +401,9 @@ export async function recordReview(workspace: LocalWorkspace, schemas: SchemaReg
     if (input.reason.length < 1 || input.reason.length > 1024) throw orchError("REVIEW_REASON_REQUIRED", "Review reason is required (1-1024 characters).");
     if (input.score < 0 || input.score > 100) throw orchError("REVIEW_SCORE_INVALID", "Review score must be 0-100.");
     if (input.defects.length > MAX_DEFECTS) throw orchError("REVIEW_DEFECTS_TOO_MANY", `At most ${MAX_DEFECTS} defects per review.`);
+    if (input.tokensUsed !== undefined && (!Number.isSafeInteger(input.tokensUsed) || input.tokensUsed < 0 || input.tokensUsed > MAX_REVIEW_TOKENS)) {
+      throw orchError("REVIEW_TOKENS_INVALID", `tokensUsed must be a non-negative integer at most ${MAX_REVIEW_TOKENS}.`);
+    }
     // Engine auto-reject: ACCEPTED reviews scoring below the configured threshold are forced REJECTED
     // (guards against an LLM passing low-quality output with a high score).
     const cfg = await loadOrchestrationConfig(workspace);
@@ -426,13 +431,16 @@ export async function recordReview(workspace: LocalWorkspace, schemas: SchemaReg
       reason,
       validatorEvidence: input.validatorEvidence,
       createdAt: new Date().toISOString(),
-      reviewedBy: input.reviewedBy
+      reviewedBy: input.reviewedBy,
+      ...(input.tokensUsed === undefined ? {} : { tokensUsed: input.tokensUsed })
     };
     schemas.validate("orchestration-review", review);
     await createWorkspaceJson(workspace, reviewFile(review.reviewId), review);
 
     const reviews = [...(await loadReviews(workspace, run, subtaskId)), review];
-    let nextRun = { ...run, reviews: [...run.reviews, review.reviewId] };
+    // Accumulate host-reported token consumption BEFORE constraint evaluation so TOKEN_BUDGET is live.
+    const nextBudget = { ...run.budget, usedTokens: run.budget.usedTokens + (input.tokensUsed ?? 0) };
+    let nextRun = { ...run, budget: nextBudget, reviews: [...run.reviews, review.reviewId] };
     let nextSubtask: SubtaskPackage;
 
     if (decision === "ACCEPTED") {
@@ -457,7 +465,7 @@ export async function recordReview(workspace: LocalWorkspace, schemas: SchemaReg
       await writeWorkspaceJson(workspace, runFile(runId), nextRun);
       await appendLedgerEntry(workspace, { event: "orchestration-escalated", taskId: contract.taskId, contractRef: contract.contractId, runRef: runId, subtaskRef: subtaskId, summary: `Run ${runId} escalated: ${constraint.detail}` });
     } else if (constraint.action === "fail") {
-      nextRun = { ...nextRun, status: "FAILED", completedAt: new Date().toISOString() };
+      nextRun = { ...nextRun, status: "FAILED", completedAt: new Date().toISOString(), escalationReason: `${constraint.code}: ${constraint.detail}` };
       await writeWorkspaceJson(workspace, runFile(runId), nextRun);
       await appendLedgerEntry(workspace, { event: "orchestration-failed", taskId: contract.taskId, contractRef: contract.contractId, runRef: runId, subtaskRef: subtaskId, summary: `Run ${runId} failed: ${constraint.detail}` });
     }
@@ -508,6 +516,36 @@ export async function escalateRun(workspace: LocalWorkspace, runId: string, reas
     await writeWorkspaceJson(workspace, runFile(runId), next);
     const contract = await getContract(workspace, run.contractRef);
     await appendLedgerEntry(workspace, { event: "orchestration-escalated", taskId: contract.taskId, contractRef: contract.contractId, runRef: runId, summary: `Run ${runId} escalated: ${reason}` });
+    return next;
+  });
+}
+
+/**
+ * Human decision path after escalation: resumes an ESCALATED run back to RUNNING,
+ * optionally adjusting the budget (rounds/tokens) per the user's choice.
+ * Ledger: orchestration-resumed.
+ */
+export async function resumeRun(workspace: LocalWorkspace, runId: string, input: { maxRounds?: number; maxSubtaskTokens?: number } = {}): Promise<OrchestrationRun> {
+  return withWorkspaceLock(workspace, async () => {
+    const run = await getRun(workspace, runId);
+    if (run.status !== "ESCALATED") throw orchError("RUN_STATE_CONFLICT", "Only ESCALATED runs can be resumed.", { runId, status: run.status });
+    const budget = { ...run.budget };
+    if (input.maxRounds !== undefined) {
+      if (!Number.isSafeInteger(input.maxRounds) || input.maxRounds < 1 || input.maxRounds > 1000) {
+        throw orchError("RUN_RESUME_BUDGET_INVALID", "maxRounds must be 1-1000.", { maxRounds: input.maxRounds });
+      }
+      budget.maxRounds = input.maxRounds;
+    }
+    if (input.maxSubtaskTokens !== undefined) {
+      if (!Number.isSafeInteger(input.maxSubtaskTokens) || input.maxSubtaskTokens < 1000 || input.maxSubtaskTokens > 10_000_000) {
+        throw orchError("RUN_RESUME_BUDGET_INVALID", "maxSubtaskTokens must be 1000-10000000.", { maxSubtaskTokens: input.maxSubtaskTokens });
+      }
+      budget.maxSubtaskTokens = input.maxSubtaskTokens;
+    }
+    const next: OrchestrationRun = { ...run, status: "RUNNING", budget, resumedAt: new Date().toISOString() };
+    await writeWorkspaceJson(workspace, runFile(runId), next);
+    const contract = await getContract(workspace, run.contractRef);
+    await appendLedgerEntry(workspace, { event: "orchestration-resumed", taskId: contract.taskId, contractRef: contract.contractId, runRef: runId, summary: `Run ${runId} resumed after escalation${budget.maxRounds !== run.budget.maxRounds || budget.maxSubtaskTokens !== run.budget.maxSubtaskTokens ? " (budget adjusted)" : ""}.` });
     return next;
   });
 }
