@@ -328,7 +328,6 @@ npm audit         # 发布前依赖审计（对官方 registry）
 - [零终端用户指南](./docs/quickstart/零终端用户指南.md)
 - [高级用户配置指南](./docs/quickstart/高级用户配置指南.md)
 - [发布前宿主验证清单](./docs/quickstart/发布前宿主验证清单.md)
-- [Codex 实测指南](./docs/quickstart/Codex实测指南.md)（Codex 宿主完整编排实测提示词，逐条复制执行）
 - [威胁模型与权限设计](./docs/architecture/威胁模型与权限设计.md)
 
 ## License
