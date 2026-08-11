@@ -36,7 +36,7 @@ import {
   createRun, getRun as getOrchestrationRun, listRuns,
   addSubtask, getSubtask, dispatchSubtask, beginSubtask,
   reportArtifact, getArtifact,
-  recordReview, getReview, completeRound, escalateRun, cancelRun
+  recordReview, getReview, completeRound, escalateRun, cancelRun, estimateRunCost
 } from "./storage/orchestration.js";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -128,7 +128,7 @@ orchContract.command("show <id>").requiredOption("--root <path>").option("--json
 orchContract.command("list").requiredOption("--root <path>").option("--json").action(async (o) => emit(await listContracts(await openWorkspace(o.root)), o.json));
 orchContract.command("complete <id>").requiredOption("--root <path>").option("--json").action(async (id, o) => { const schemas = await SchemaRegistry.create(projectRoot); emit(await updateContractStatus(await openWorkspace(o.root), schemas, id, "COMPLETED"), o.json); });
 const orchRun = orchestration.command("run");
-orchRun.command("create").requiredOption("--contract <id>").option("--max-rounds <n>").option("--max-retries <n>").option("--max-tokens <n>").requiredOption("--root <path>").option("--json").action(async (o) => { const schemas = await SchemaRegistry.create(projectRoot); const ws = await openWorkspace(o.root); emit(await createRun(ws, schemas, { contractRef: o.contract, ...(o.maxRounds === undefined ? {} : { maxRounds: Number(o.maxRounds) }), ...(o.maxRetries === undefined ? {} : { maxRetriesPerSubtask: Number(o.maxRetries) }), ...(o.maxTokens === undefined ? {} : { maxSubtaskTokens: Number(o.maxTokens) }) }), o.json); });
+orchRun.command("create").requiredOption("--contract <id>").option("--max-rounds <n>").option("--max-retries <n>").option("--max-tokens <n>").requiredOption("--root <path>").option("--json").action(async (o) => { const schemas = await SchemaRegistry.create(projectRoot); const ws = await openWorkspace(o.root); emit(await createRun(ws, schemas, { contractRef: o.contract, ...(o.maxRounds === undefined ? {} : { maxRounds: Number(o.maxRounds) }), ...(o.maxRetries === undefined ? {} : { maxRetriesPerSubtask: Number(o.maxRetries) }), ...(o.maxTokens === undefined ? {} : { maxSubtaskTokens: Number(o.maxTokens) }) }).then(async (run) => ({ run, estimate: estimateRunCost(await getContract(ws, run.contractRef), { maxRounds: run.budget.maxRounds }) })), o.json); });
 orchRun.command("status <id>").requiredOption("--root <path>").option("--json").action(async (id, o) => emit(await getOrchestrationRun(await openWorkspace(o.root), id), o.json));
 orchRun.command("list").requiredOption("--root <path>").option("--contract <id>").option("--json").action(async (o) => emit(await listRuns(await openWorkspace(o.root), o.contract), o.json));
 orchRun.command("escalate <id>").requiredOption("--reason <text>").requiredOption("--root <path>").option("--json").action(async (id, o) => emit(await escalateRun(await openWorkspace(o.root), id, o.reason), o.json));

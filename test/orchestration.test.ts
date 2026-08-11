@@ -8,7 +8,7 @@ import { initWorkspace } from "../src/storage/workspace.js";
 import {
   createContract, getContract, recommendExecutionMode, createRun, getRun,
   addSubtask, getSubtask, dispatchSubtask, beginSubtask, reportArtifact, getArtifact,
-  recordReview, getReview, completeRound, cancelRun
+  recordReview, getReview, completeRound, cancelRun, estimateRunCost
 } from "../src/storage/orchestration.js";
 import { listLedgerEntries } from "../src/storage/ledger.js";
 
@@ -234,5 +234,21 @@ describe("2.0 gap coverage", () => {
     const result = await recordReview(workspace, schemas, run.runId, subtask.subtaskId, reviewInput("REJECTED", 40, [{ location: "x", problem: "p2", suggestion: "s2" }]));
     expect(result.run.status).toBe("FAILED");
     expect(result.run.escalationReason ?? result.run.completedAt).toBeDefined();
+  });
+});
+
+describe("cost estimation", () => {
+  it("estimates tokens and mode from the contract", async () => {
+    const { workspace, schemas } = await setup();
+    const simple = await createContract(workspace, schemas, { taskId: "orch-task", goal: "g", globalAcceptanceCriteria: ["a"], scope: ["docs/guide.md"] });
+    const simpleEstimate = estimateRunCost(simple);
+    expect(simpleEstimate.mode).toBe("direct");
+    expect(simpleEstimate.estimatedSubtasks).toBe(1);
+    expect(simpleEstimate.estimatedTokens).toBeLessThan(50000);
+    const complex = await createContract(workspace, schemas, { taskId: "orch-task", goal: "g", globalAcceptanceCriteria: ["a", "b", "c", "d", "e", "f", "g", "h"], scope: ["docs", "src"] });
+    const complexEstimate = estimateRunCost(complex);
+    expect(complexEstimate.estimatedSubtasks).toBe(4);
+    expect(complexEstimate.estimatedTokens).toBeGreaterThanOrEqual(50000);
+    expect(complexEstimate.mode).toBe("orchestrate");
   });
 });

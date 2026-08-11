@@ -535,3 +535,34 @@ function orchError(code: string, message: string, details: Record<string, unknow
 }
 
 function isCode(error: unknown, code: string): boolean { return typeof error === "object" && error !== null && "code" in error && error.code === code; }
+
+/* ------------------------------------------------------------------ */
+/* Cost estimation (budget confirmation upfront)                       */
+/* ------------------------------------------------------------------ */
+
+export const ESTIMATED_TOKENS_PER_SUBTASK_ROUND = 8000;
+export const ORCHESTRATE_TOKEN_THRESHOLD = 50_000;
+
+export interface RunCostEstimate {
+  mode: "direct" | "orchestrate";
+  estimatedSubtasks: number;
+  estimatedRounds: number;
+  estimatedTokens: number;
+  reason: string;
+}
+
+/** Simple cost model: subtasks × rounds × per-round tokens; shown to the user before run create (budget confirmation). */
+export function estimateRunCost(contract: TaskContract, options: { plannedSubtasks?: number; maxRounds?: number } = {}): RunCostEstimate {
+  const planned = options.plannedSubtasks ?? Math.min(Math.max(Math.ceil(contract.globalAcceptanceCriteria.length / 2), 1), 10);
+  const maxRounds = options.maxRounds ?? DEFAULT_MAX_ROUNDS;
+  const rounds = Math.min(Math.max(Math.ceil(planned / 3), 1), maxRounds);
+  const tokens = planned * rounds * ESTIMATED_TOKENS_PER_SUBTASK_ROUND;
+  const mode = tokens >= ORCHESTRATE_TOKEN_THRESHOLD ? "orchestrate" : "direct";
+  return {
+    mode,
+    estimatedSubtasks: planned,
+    estimatedRounds: rounds,
+    estimatedTokens: tokens,
+    reason: `~${planned} subtasks × ~${rounds} rounds × ${ESTIMATED_TOKENS_PER_SUBTASK_ROUND} tokens per subtask-round.`
+  };
+}
