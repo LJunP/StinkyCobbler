@@ -123,7 +123,7 @@ For every `/stinky-cobbler` response, output:
 ## Available CLI
 
 - `doctor`; `recommend`; `validate` — local health, recommendation, and contract/policy checks.
-- `init` — only after an explicit user choice and confirmation; creates only `.stinky-cobbler/workspace.json` and `ledger.jsonl`.
+- `init` — only after an explicit user choice and confirmation; creates `.stinky-cobbler/workspace.json`, `ledger.jsonl`, and commented customization templates under `.stinky-cobbler/policies/` (users customize by uncommenting lines; never overwrites edited files).
 - `config show/validate/doctor` — inspect and validate the sole supported workspace config, `workspace.json`. Do not use or suggest `config.yaml`.
 - `entry preflight` — read-only entry facts (via validity, workspace initialization, MCP configuration); never creates or writes anything.
 - `entry install-host [--scope user|workspace] [--mcp] [--dry-run]` — explicit host installation; never automatic; dry-run writes nothing.
