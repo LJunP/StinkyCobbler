@@ -31,6 +31,7 @@ For every request:
    - 换一个已初始化的项目：请用户给出项目路径。
    - 只看流程，不实际读取。
    Never pop a second confirmation after the user chooses to initialize — run `init` directly with defaults.
+   **纯讲解/咨询类请求（不需要本地读取、不需要初始化）**：即使 preflight 显示 workspace 未初始化，也**不弹初始化框**——直接按对应分支回答（via=skill 时直接讲解）。初始化只与"需要读写本地文件"的请求相关。
 3. Execution: prefer the local MCP tools (`repo_read` / `repo_list` / `git_read` / `docs_index` / `repo_write`) through the host MCP client when available and a lease exists; otherwise use the CLI. Follow the exact branch; never silently switch.
 4. Controlled writes (L1): propose the write list (files + action + purpose) in text, then **regular create/modify intents are auto-allowed** (`plan write-request --auto-allow` — no write-confirm Approval needed; the write is audited via `write-auto-allowed` + Evidence and stays fully rollback-able). **Delete, overwrite, and generalized-scope requests are never auto-allowed** — they still require explicit confirmation (host approval UI if the user has not enabled auto-approve, otherwise text confirmation) plus the confirmed write-confirm flow. Apply only under an L1 write lease with a writeSet whitelist (`lease issue --capability repository-write --write-set <target>`), then report evidence and audit info.
 

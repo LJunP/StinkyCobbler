@@ -90,6 +90,8 @@ Use only Skill capabilities: explain, plan, recommend, validate, or produce a CL
 
 用户选 1 后直接执行 init（用默认参数，或用户已在选择时说明的调整），不再弹第二次框。
 
+**纯讲解/咨询类请求（不需要本地读取）**：即使 preflight 显示 workspace 未初始化，也**不弹初始化框**——直接按对应分支回答（via=skill 时直接讲解）。初始化只与"需要读写本地文件"的请求相关。
+
 ## 统一输出格式
 
 For every `/stinky-cobbler` response, output:
