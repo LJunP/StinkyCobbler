@@ -26,7 +26,7 @@ For every request:
 
 0. **介入门槛**：用户未显式启用 Stinky Cobbler（无 `$stinky-cobbler`、未提及工具名、未要求治理能力）→ **不使用本 skill，不询问、不介入**，按宿主正常方式回答。仅当用户显式启用或明确要求治理时才进入以下流程。
 1. Run the read-only fact check: `stinky-cobbler entry preflight [--via <via>] [--workspace <path>]`. Use only its `decision`/`workspaceInitialized`/`mcpConfigured` fields. Never guess.
-   **执行模式（via）决策**：① 用户显式说模式（"用 MCP 模式"/"纯讲解"）→ 使用之并记住为本会话默认；② 本会话已有默认模式 → 沿用，不重复询问；③ 本会话第一次且用户未指定 → 文字列三选项询问（纯 Skill 模式 / Skill + MCP 模式 / 自动模式），用户选择后成为会话默认；④ 当前模式无法满足请求（如纯讲解却要读本地）→ 提示并询问是否切换，不静默切换、不静默拒绝。
+   **执行模式（via）决策——每次请求独立，不跨请求记忆**（问题有简单有复杂，模式跟随每次请求）：① 用户显式说模式（"用 MCP 模式"/"纯讲解"）→ 只作用于本次请求；② 用户未指定 → 文字列三选项询问（纯 Skill 模式 / Skill + MCP 模式 / 自动模式），按本次请求性质标注推荐（纯讲解/咨询 → 纯 Skill；需要本地读取/执行 → MCP；不确定 → 自动）；③ 所选模式无法满足请求（如纯讲解却要读本地）→ 如实报告并建议切换，不静默降级、不静默拒绝。
 2. If the workspace is uninitialized and the request needs local reads/writes: present the choice in text and wait for the user's reply —
    - 在当前项目初始化并继续（推荐）：将创建工具管理目录 `.stinky-cobbler/`（名称取当前目录名），然后继续。
    - 换一个已初始化的项目：请用户给出项目路径。
