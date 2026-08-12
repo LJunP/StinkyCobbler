@@ -41,6 +41,7 @@ For every Stinky Cobbler response, output:
 
 ```text
 结果：<FACT / DECISION / PROPOSAL / UNKNOWN 一句话结论>
+模式：<skill | mcp | auto>（本次实际执行模式；未显式指定时按请求性质判定并在 preflight 确认）
 证据：<CLI/MCP 返回的事实；无则为 "无">
 边界：<这一步未做 / 未授权的动作>
 下一步：<一个明确可执行的动作，等待用户选择；不自动执行>

@@ -16,7 +16,7 @@ Use this skill for `/stinky-cobbler <request>`.
 - **无关请求让位**：用户请求与工具/项目无关（闲聊、日常问题、其他任务）→ 正常回答，**不弹 via、不套流程、不输出统一格式**；工具保持待命（不解除激活），用户下次发出工具/项目相关请求时流程自动恢复。
 - **新会话** → 激活自然失效。
 
-`via`（可选）：`skill` | `mcp` | `auto`，大小写不敏感。**请求未带 `via` 时，必须弹出点选选项让用户选择，绝不静默默认**——`via` 是用户唯一的开始决策。弹框用通俗文案展示，用户点击后映射到 via 值：「纯 Skill」→ `via=skill`；「Skill + MCP」→ `via=mcp`；「自动」→ `via=auto`。
+`via`（可选）：`skill` | `mcp` | `auto`，大小写不敏感。**请求未带 `via` 时，必须弹出执行模式点选选项让用户选择，绝不静默默认**——`via` 是用户唯一的开始决策。弹框以"选择执行模式"开头，选项标注"模式"字样（通俗文案，用户点击后映射到 via 值）：「**纯 Skill 模式**（纯讲解，不读本地）→ `via=skill`；「**Skill + MCP 模式**」→ `via=mcp`；「**自动模式**」→ `via=auto`。
 
 ## Non-negotiable boundaries
 
@@ -67,7 +67,7 @@ Use only Skill capabilities: explain, plan, recommend, validate, or produce a CL
 
 - **弹框数量硬上限：一次请求最多 2 个**——① via 选择（用户唯一决策）；② 必要的一次确认（删除/覆盖、初始化；常规写入自动放行不计弹框）。其余一律自动，不弹框、不追加确认。
 - 每个弹框**必须且只能标注一个（推荐）**选项：推荐 = 对当前请求**最合理的方案（最优）**，附一句用户能懂的"为什么"；推荐同时作为默认点击项（点它即可继续干活）。推荐依据是最优，不是"最短/最省事"——省事只是点推荐的自然结果。无法确定最优时如实说明不确定性，仍给一个推荐并允许用户改选。
-- 选项文案只用**用户语言**：只描述"做什么 / 结果是什么"，**禁止出现内部术语**（workspace-id、profile、pack、mode、init --dry-run、Lease、Approval、控制面路径、preflight、ledger、schema 等）。
+- 选项文案只用**用户语言**：只描述"做什么 / 结果是什么"，**禁止出现纯内部术语**（workspace-id、preflight、ledger、schema 等）；但"**执行模式**"必须出现——它是告知用户"本次以什么方式执行"的通俗概念，弹框必须让用户看出这是模式选择。
 - 需要参数时全部代填**合理默认值**（名称=当前目录名；profile=team；pack=software-engineering；mode=reviewed-workflow），弹框里只显示"将创建工具管理目录 `.stinky-cobbler/`"；用户想改参数用自然语言说（如"名字改成 XX"），不说就用默认。
 - 用户点选后立即继续；不要要求用户打字解释。
 
@@ -98,6 +98,7 @@ For every `/stinky-cobbler` response, output:
 
 ```text
 结果：<FACT / DECISION / PROPOSAL / UNKNOWN 一句话结论>
+模式：<skill | mcp | auto>（本次实际执行模式，来自你选择的 via 或 preflight 判定）
 证据：<CLI/MCP 返回的事实；无则为 "无">
 边界：<这一步未做 / 未授权的动作，如 "未读取本地文件"、"未修改业务文件"、"未启动 MCP">
 下一步：<一个明确可执行的动作，等待用户选择；不自动执行>
