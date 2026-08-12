@@ -16,7 +16,7 @@ Use this skill for `/stinky-cobbler <request>`.
 - **无关请求让位**：用户请求与工具/项目无关（闲聊、日常问题、其他任务）→ 正常回答，**不弹 via、不套流程、不输出统一格式**；工具保持待命（不解除激活），用户下次发出工具/项目相关请求时流程自动恢复。
 - **新会话** → 激活自然失效。
 
-`via`（可选）：`skill` | `mcp` | `auto`，大小写不敏感。**请求未带 `via` 时，必须弹出执行模式点选选项让用户选择，绝不静默默认**——`via` 是用户唯一的开始决策。弹框以"选择执行模式"开头，选项标注"模式"字样（通俗文案，用户点击后映射到 via 值）：「**纯 Skill 模式**（纯讲解，不读本地）→ `via=skill`；「**Skill + MCP 模式**」→ `via=mcp`；「**自动模式**」→ `via=auto`。
+`via`（可选）：`skill` | `mcp` | `auto`，大小写不敏感。**via 是会话级决策**：本会话第一次请求未带 `via` 时，弹出执行模式点选让用户选择（弹框以"选择执行模式"开头，选项标注模式字样：「纯 Skill 模式」→ `via=skill`；「Skill + MCP 模式」→ `via=mcp`；「自动模式」→ `via=auto`）；**同会话后续请求沿用第一次的模式，不再弹框**（除非用户明确切换）。绝不静默默认。
 
 ## Non-negotiable boundaries
 
@@ -35,12 +35,13 @@ Use this skill for `/stinky-cobbler <request>`.
 For every request:
 
 1. Resolve `via`:
-   - If the request explicitly includes `via=skill` / `via=mcp` / `via=auto`, use it directly.
-   - Otherwise, **pause and present the choice with user-friendly labels as clickable options**, then map the user's click to its `via` value:
-     - 「纯 Skill」→ `via=skill`（推荐：纯解释/规划/推荐，不读本地、不调 MCP）
-     - 「Skill + MCP」→ `via=mcp`（推荐：明确需要本地 MCP 工具读取/执行）
-     - 「自动」→ `via=auto`（推荐：需要读本地文件/仓库/控制面，或不确定时）
-     Wait for the user's click selection before doing anything else. Pick exactly one recommended option by request type; never silently default, never select for the user. Invalid explicit values fail closed — see 统一输出格式.
+   - If the request explicitly includes `via=skill` / `via=mcp` / `via=auto`, use it directly **and remember it as this session's default mode**.
+   - **会话级沿用（默认）**：本会话第一次请求已选择过模式（点选或显式 via）→ 后续请求**沿用该模式，不再弹 via 框**；用户明确切换（如"这次用自动模式"/"换 MCP 模式"）→ 切换并成为新默认。
+   - 本会话第一次且未带 via → **pause and present the execution-mode choice**（弹框以"选择执行模式"开头）:
+     - 「纯 Skill 模式」→ `via=skill`（纯讲解/规划/推荐，不读本地、不调 MCP）
+     - 「Skill + MCP 模式」→ `via=mcp`（需要本地 MCP 工具读取/执行）
+     - 「自动模式」→ `via=auto`（需要读本地文件/仓库/控制面，或不确定时）
+   - **模式能力不足**：当前模式无法满足请求（如 skill 模式却需要读本地文件）→ 提示"该请求需要读取本地文件，是否切换 MCP 模式？"并等待用户选择，**不静默切换、不静默拒绝**。
 2. Run the read-only fact check:
    ```text
    stinky-cobbler entry preflight [--via <via>] [--workspace <path>]
