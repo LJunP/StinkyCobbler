@@ -2,7 +2,7 @@
 
 > **多角色 AI 开发协作调度与治理工具** —— 你提出需求，它自动编排多角色协作计划（规划 → 架构 → 构建 → 测试 → 评审 → 验证），由 ZCode / Codex 等 AI 逐步执行；每一步都有授权、审计和回滚。
 
-![version](https://img.shields.io/badge/version-1.0.0-blue) ![license](https://img.shields.io/badge/license-Apache--2.0-green)
+![version](https://img.shields.io/badge/version-2.0.0-blue) ![license](https://img.shields.io/badge/license-Apache--2.0-green)
 
 ## 它是干什么的？
 
@@ -166,7 +166,7 @@ AI 执行命令失败后按统一输出格式转述，**必须包含**：失败�
 **正常用户（终端操作）：**
 ```bash
 npm install -g stinky-cobbler
-stinky-cobbler --version      # 预期 1.0.0
+stinky-cobbler --version      # 预期 2.0.0
 stinky-cobbler doctor --json  # 预期 healthy: true
 ```
 
@@ -195,17 +195,17 @@ npm install -g stinky-cobbler --registry=https://registry.npmmirror.com
 
 | 附件 | 用途 |
 |---|---|
-| `stinky-cobbler-1.0.0-offline-full.zip` | **离线完整包（下载即用）**：含全部依赖，无需网络 |
-| `stinky-cobbler-1.0.0.tgz` | npm 标准包（有网时 `npm install -g ./xxx.tgz`） |
-| `stinky-cobbler-1.0.0.tgz.sha256` | 包完整性校验值（防下载被篡改） |
+| `stinky-cobbler-2.0.0-offline-full.zip` | **离线完整包（下载即用）**：含全部依赖，无需网络 |
+| `stinky-cobbler-2.0.0.tgz` | npm 标准包（有网时 `npm install -g ./xxx.tgz`） |
+| `stinky-cobbler-2.0.0.tgz.sha256` | 包完整性校验值（防下载被篡改） |
 | `sbom.cyclonedx.json` | 依赖物料清单（供应链审计用） |
 | `STINKY-COBBLER-MANUAL.md` | 完整使用教程（使用说明书） |
 
 **正常用户（离线完整包）：**
 ```bash
 # 需本机已装 Node ≥ 20；下载 zip 后：
-unzip stinky-cobbler-1.0.0-offline-full.zip -d ~/apps
-export PATH="$HOME/apps/stinky-cobbler-1.0.0-offline-full/bin:$PATH"   # macOS/Linux
+unzip stinky-cobbler-2.0.0-offline-full.zip -d ~/apps
+export PATH="$HOME/apps/stinky-cobbler-2.0.0-offline-full/bin:$PATH"   # macOS/Linux
 stinky-cobbler --version
 ```
 > 国内访问 GitHub 不便时可用加速代理下载，**下载后务必用 sha256 校验**（附件提供校验文件）。
