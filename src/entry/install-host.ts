@@ -676,7 +676,8 @@ function defaultTemplatePath(host: HostSpec, kind: string): string {
 
 function relativeHostPath(file: string): string {
   const home = homedir();
-  return file.startsWith(`${home}${path.sep}`) ? path.join("~", path.relative(home, file)) : file;
+  const displayed = file.startsWith(`${home}${path.sep}`) ? path.join("~", path.relative(home, file)) : file;
+  return displayed.split(path.sep).join("/");
 }
 
 function installError(code: string, message: string, details: Record<string, unknown> = {}): StinkyCobblerError {

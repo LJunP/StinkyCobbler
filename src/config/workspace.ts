@@ -13,6 +13,7 @@ import {
 } from "../storage/workspace.js";
 import type { Registries } from "./registry.js";
 import { withWorkspaceLock } from "../storage/workspace-lock.js";
+import { syncDirectory } from "../storage/durability.js";
 
 export const WORKSPACE_CONFIG_FILE = "workspace.json";
 
@@ -221,13 +222,6 @@ async function durableWrite(file: string, contents: string | Buffer): Promise<vo
     await handle.close();
   }
 }
-
-async function syncDirectory(directory: string): Promise<void> {
-  const handle = await open(directory, "r");
-  try { await handle.sync(); }
-  finally { await handle.close(); }
-}
-
 
 export async function createWorkspaceConfig(workspace: LocalWorkspace, config: WorkspaceConfig): Promise<void> {
   try {

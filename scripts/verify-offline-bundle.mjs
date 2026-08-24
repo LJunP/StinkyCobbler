@@ -158,10 +158,11 @@ export async function verifyOfflineBundle(file, sourceRoot = root) {
       await copyFile(path.join(sourceRoot, "package.json"), path.join(rebuilt, "package.json"));
       await copyFile(path.join(sourceRoot, "package-lock.json"), path.join(rebuilt, "package-lock.json"));
       execPortableSync(npmExecutable(), [
-        "ci", "--prefix", rebuilt, "--omit=dev", "--ignore-scripts", "--offline",
+        "ci", "--omit=dev", "--ignore-scripts", "--offline", "--no-audit", "--no-fund",
         "--registry=https://registry.npmjs.org", "--cache", npmCache
       ], {
         stdio: "ignore",
+        cwd: rebuilt,
         env: { ...process.env, npm_config_offline: "true" }
       });
       await mkdir(path.join(rebuilt, "node_modules"), { recursive: true });
@@ -217,4 +218,9 @@ async function main() {
   if (!verification.valid) process.exitCode = 1;
 }
 
-if (isDirectInvocation(import.meta.url)) await main();
+if (isDirectInvocation(import.meta.url)) {
+  void main().catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  });
+}

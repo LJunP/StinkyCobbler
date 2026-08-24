@@ -152,8 +152,10 @@ async function createFixture() {
   await mkdir(npmCache, { recursive: true });
   await writeFile(path.join(dependencyStage, "package.json"), packageJsonText, "utf8");
   await writeFile(path.join(dependencyStage, "package-lock.json"), lockfileText, "utf8");
-  execPortableSync(npmExecutable(), ["ci", "--prefix", dependencyStage, "--omit=dev", "--ignore-scripts", "--cache", npmCache], {
-    stdio: "ignore"
+  execPortableSync(npmExecutable(), ["ci", "--omit=dev", "--ignore-scripts", "--no-audit", "--no-fund", "--cache", npmCache], {
+    cwd: dependencyStage,
+    encoding: "utf8",
+    env: { ...process.env, npm_config_audit: "false", npm_config_fund: "false" }
   });
   await mkdir(path.join(dependencyStage, "node_modules"), { recursive: true });
   await removeNonRuntimeBin(path.join(dependencyStage, "node_modules"));

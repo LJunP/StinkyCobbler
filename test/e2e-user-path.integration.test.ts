@@ -22,7 +22,7 @@ async function cli(home: string, ...args: string[]): Promise<Record<string, any>
   const result = await execFileAsync(process.execPath, [path.join(projectRoot, "dist/cli.js"), ...args], {
     cwd: projectRoot,
     maxBuffer: 1024 * 1024,
-    env: { ...process.env, HOME: home }
+    env: { ...process.env, HOME: home, USERPROFILE: home }
   });
   return JSON.parse(result.stdout) as Record<string, any>;
 }

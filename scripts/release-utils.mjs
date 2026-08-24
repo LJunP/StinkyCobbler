@@ -1,14 +1,21 @@
 import { execFileSync } from "node:child_process";
 import { chmod, lstat, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 import { gunzipSync, unzipSync, zipSync } from "fflate";
 
 const ZIP_EPOCH = new Date("1980-06-01T00:00:00.000Z");
 
 /** True only when an ES module is the file Node was asked to execute. */
 export function isDirectInvocation(metaUrl, argv1 = process.argv[1]) {
-  return argv1 !== undefined && metaUrl === pathToFileURL(path.resolve(argv1)).href;
+  if (argv1 === undefined) return false;
+  try {
+    const current = path.resolve(fileURLToPath(metaUrl));
+    const invoked = path.resolve(argv1);
+    return process.platform === "win32" ? current.toLowerCase() === invoked.toLowerCase() : current === invoked;
+  } catch {
+    return false;
+  }
 }
 
 /** Execute npm and npm-generated command shims on every supported Node platform. */

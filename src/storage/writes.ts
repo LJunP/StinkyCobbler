@@ -102,6 +102,7 @@ export async function applyDelete(
 
     // Backup first; the delete target must exist (unlike create, ENOENT is an error).
     let backupPath: string;
+    const backupRelativePath = backupFileName(current.writeIntentId, target);
     try {
       backupPath = await prepareBackupPath(workspace, writeIntent.writeIntentId, target);
       await copyBackup(absoluteTarget, backupPath, target);
@@ -120,7 +121,7 @@ export async function applyDelete(
         expectedPreimageHash: current.expectedPreimageHash,
         preImageMissing: false,
         postImageHash: null,
-        backupPath: path.relative(workspace.directory, backupPath),
+        backupPath: backupRelativePath,
         startedAt: new Date().toISOString()
       }
     };
@@ -131,7 +132,7 @@ export async function applyDelete(
     businessFileChanged = true;
 
     const completed = await completeApplyRecovery(workspace, schemas, recoveryCurrent);
-    return { evidenceId: completed.evidenceId!, target, backupPath: path.relative(workspace.directory, backupPath) };
+    return { evidenceId: completed.evidenceId!, target, backupPath: backupRelativePath };
     } catch (error: unknown) {
       if (!businessFileChanged && directReservation !== undefined) await releasePersistedLeaseCall(workspace, lease.id, directReservation).catch(() => false);
       throw error;
@@ -202,6 +203,7 @@ export async function applyWrite(
 
     const postImageHash = `sha256:${createHash("sha256").update(content, "utf8").digest("hex")}`;
     let backupPath: string | undefined;
+    const backupRelativePath = resolvedTarget.exists ? backupFileName(current.writeIntentId, target) : undefined;
     if (resolvedTarget.exists) {
       backupPath = await prepareBackupPath(workspace, writeIntent.writeIntentId, target);
       await copyBackup(absoluteTarget, backupPath, target);
@@ -217,7 +219,7 @@ export async function applyWrite(
         expectedPreimageHash: current.expectedPreimageHash,
         preImageMissing: !resolvedTarget.exists,
         postImageHash,
-        backupPath: backupPath === undefined ? null : path.relative(workspace.directory, backupPath),
+        backupPath: backupRelativePath ?? null,
         startedAt: new Date().toISOString()
       }
     };
@@ -234,7 +236,7 @@ export async function applyWrite(
     }
 
     const completed = await completeApplyRecovery(workspace, schemas, recoveryCurrent);
-    return { evidenceId: completed.evidenceId!, target, ...(backupPath === undefined ? {} : { backupPath: path.relative(workspace.directory, backupPath) }) };
+    return { evidenceId: completed.evidenceId!, target, ...(backupRelativePath === undefined ? {} : { backupPath: backupRelativePath }) };
     } catch (error: unknown) {
       if (!businessFileChanged && directReservation !== undefined) await releasePersistedLeaseCall(workspace, lease.id, directReservation).catch(() => false);
       throw error;

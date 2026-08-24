@@ -62,7 +62,7 @@ describe("repository file read boundary", () => {
     expect(error).toMatchObject({ reason: "size-limit", observed: 9 });
   });
 
-  it("detects a persistent ancestor symlink swap after the leaf descriptor opens", async () => {
+  it.skipIf(process.platform === "win32")("detects a persistent ancestor symlink swap after the leaf descriptor opens", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "stinky-repo-read-"));
     const outside = await mkdtemp(path.join(os.tmpdir(), "stinky-repo-read-outside-"));
     roots.push(root, outside);

@@ -60,11 +60,11 @@ export async function buildOfflineBundle(options = {}) {
     await copyFile(packageJsonPath, path.join(dependenciesDir, "package.json"));
     await copyFile(packageLockPath, path.join(dependenciesDir, "package-lock.json"));
     execPortableSync(npmExecutable(), [
-      "ci", "--prefix", dependenciesDir, "--omit=dev", "--ignore-scripts",
+      "ci", "--omit=dev", "--ignore-scripts", "--no-audit", "--no-fund",
       "--registry=https://registry.npmjs.org", "--cache", npmCacheDir
     ], {
       stdio: "inherit",
-      cwd: work
+      cwd: dependenciesDir
     });
     await Promise.all([
       rm(path.join(npmCacheDir, "_logs"), { recursive: true, force: true }),
@@ -111,9 +111,9 @@ export async function buildOfflineBundle(options = {}) {
     // npm ci already guarantees lockfile installation; this catches a move or
     // packaging regression before the zip becomes a release artifact.
     try {
-      execPortableSync(npmExecutable(), ["ls", "--prefix", outDir, "--omit=dev", "--all", "--json"], {
+      execPortableSync(npmExecutable(), ["ls", "--omit=dev", "--all", "--json"], {
         stdio: "pipe",
-        cwd: work,
+        cwd: outDir,
         encoding: "utf8",
         env: { ...process.env, npm_config_offline: "true" }
       });
@@ -202,6 +202,13 @@ function parseArgs(argv) {
   return result;
 }
 
-if (isDirectInvocation(import.meta.url)) {
+async function main() {
   console.log(JSON.stringify(await buildOfflineBundle(parseArgs(process.argv.slice(2))), null, 2));
+}
+
+if (isDirectInvocation(import.meta.url)) {
+  void main().catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  });
 }

@@ -137,16 +137,40 @@ async function assertGitRepoWithinWorkspaceImpl(workspace: string): Promise<void
     throw new Error("missing repository paths");
   }
 
-  const topLevelReal = await assertCanonicalDirectory(workspaceReal, topLevel);
-  const gitDirReal = await assertCanonicalDirectory(workspaceReal, gitDir);
-  const commonDirReal = await assertCanonicalDirectory(workspaceReal, commonDir);
-  const objectDirReal = await assertCanonicalDirectory(workspaceReal, objectDir);
-  await assertCanonicalFileCandidate(workspaceReal, indexPath);
-  if (topLevelReal !== workspaceReal || gitDirReal !== expectedGitDir || commonDirReal !== expectedGitDir) {
+  // Git for Windows may report an equivalent 8.3 short path even though
+  // Node's realpath returns the long canonical spelling. Canonicalize Git's
+  // outputs before applying the same fail-closed workspace checks.
+  const [canonicalTopLevel, canonicalGitDir, canonicalCommonDir, canonicalObjectDir, canonicalIndexPath] = await Promise.all([
+    canonicalizeGitReportedPath(topLevel),
+    canonicalizeGitReportedPath(gitDir),
+    canonicalizeGitReportedPath(commonDir),
+    canonicalizeGitReportedPath(objectDir),
+    canonicalizeGitReportedPath(indexPath, true)
+  ]);
+  const topLevelReal = await assertCanonicalDirectory(workspaceReal, canonicalTopLevel);
+  const gitDirReal = await assertCanonicalDirectory(workspaceReal, canonicalGitDir);
+  const commonDirReal = await assertCanonicalDirectory(workspaceReal, canonicalCommonDir);
+  const objectDirReal = await assertCanonicalDirectory(workspaceReal, canonicalObjectDir);
+  await assertCanonicalFileCandidate(workspaceReal, canonicalIndexPath);
+  if (!sameCanonicalPath(topLevelReal, workspaceReal) || !sameCanonicalPath(gitDirReal, expectedGitDir) || !sameCanonicalPath(commonDirReal, expectedGitDir)) {
     throw new Error("repository paths do not match workspace");
   }
 
   await assertObjectDatabaseChain(workspaceReal, objectDirReal, new Set<string>(), traversal);
+}
+
+async function canonicalizeGitReportedPath(candidate: string, allowMissingLeaf = false): Promise<string> {
+  if (process.platform !== "win32") return candidate;
+  try {
+    return await realpath(candidate);
+  } catch (error: unknown) {
+    if (!allowMissingLeaf || !isCode(error, "ENOENT")) throw error;
+    return path.join(await realpath(path.dirname(candidate)), path.basename(candidate));
+  }
+}
+
+function sameCanonicalPath(left: string, right: string): boolean {
+  return process.platform === "win32" ? left.toLowerCase() === right.toLowerCase() : left === right;
 }
 
 interface MetadataTraversal {

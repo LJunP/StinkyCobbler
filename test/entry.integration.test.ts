@@ -9,6 +9,10 @@ const execFileAsync = promisify(execFile);
 const projectRoot = path.resolve(import.meta.dirname, "..");
 const roots: string[] = [];
 
+function fakeHomeEnv(home: string): NodeJS.ProcessEnv {
+  return { ...process.env, HOME: home, USERPROFILE: home };
+}
+
 afterEach(async () => {
   await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
 });
@@ -42,7 +46,7 @@ describe("entry CLI black-box", () => {
   it("dry-run install-host previews without writing into a fake home", async () => {
     const home = await realpath(await mkdtemp(path.join(tmpdir(), "stinky-entry-home-")));
     roots.push(home);
-    const env = { ...process.env, HOME: home };
+    const env = fakeHomeEnv(home);
     const preview = JSON.parse((await cli(env, "entry", "install-host", "--scope", "user", "--dry-run", "--json")).stdout) as { command: { action: string }; skill: { action: string } };
     expect(preview.command.action).toBe("preview");
     expect(preview.skill.action).toBe("preview");
@@ -53,7 +57,7 @@ describe("entry CLI black-box", () => {
   it("installs the command and skill into a fake home and reports ready on the second run", async () => {
     const home = await realpath(await mkdtemp(path.join(tmpdir(), "stinky-entry-install-")));
     roots.push(home);
-    const env = { ...process.env, HOME: home };
+    const env = fakeHomeEnv(home);
     const first = JSON.parse((await cli(env, "entry", "install-host", "--scope", "user", "--json")).stdout) as { command: { action: string }; skill: { action: string } };
     expect(first.command.action).toBe("installed");
     expect(first.skill.action).toBe("installed");
@@ -91,7 +95,7 @@ describe("entry CLI black-box", () => {
   it("installs the codex host into a fake home with a TOML MCP registration", async () => {
     const home = await realpath(await mkdtemp(path.join(tmpdir(), "stinky-entry-codex-")));
     roots.push(home);
-    const env = { ...process.env, HOME: home };
+    const env = fakeHomeEnv(home);
     const first = JSON.parse((await cli(env, "entry", "install-host", "--host", "codex", "--scope", "user", "--mcp", "--json")).stdout) as { host: string; command: { action: string }; skill: { action: string }; mcp: { action: string } };
     expect(first.host).toBe("codex");
     expect(first.command.action).toBe("skipped");

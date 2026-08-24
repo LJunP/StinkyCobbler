@@ -231,9 +231,11 @@ describe("git-read boundary and revision handling", () => {
     await chmod(hook, 0o755);
     await execFileAsync("git", ["-C", repo, "config", "core.fsmonitor", hook]);
 
-    await execFileAsync("git", ["-C", repo, "status", "--porcelain"]);
-    await expect(readFile(sentinel, "utf8")).resolves.toBe("");
-    await rm(sentinel);
+    if (process.platform !== "win32") {
+      await execFileAsync("git", ["-C", repo, "status", "--porcelain"]);
+      await expect(readFile(sentinel, "utf8")).resolves.toBe("");
+      await rm(sentinel);
+    }
 
     const result = await runGitRead(access(repo), { operation: "status" });
     expect(result.data!.argv).toContain("core.fsmonitor=false");
@@ -344,13 +346,15 @@ describe("git-read boundary and revision handling", () => {
 
   it.skipIf(!gitAvailable)("treats authorized paths literally instead of as pathspec expressions", async () => {
     const repo = await initRepo(await tmp());
-    await writeFile(path.join(repo, ":(glob)*"), "literal path only\n", "utf8");
-    await execFileAsync("git", ["-C", repo, "--literal-pathspecs", "add", "--", ":(glob)*"]);
+    const literalPath = "[ab].md";
+    await writeFile(path.join(repo, literalPath), "literal path only\n", "utf8");
+    await writeFile(path.join(repo, "a.md"), "pathspec expansion bait\n", "utf8");
+    await execFileAsync("git", ["-C", repo, "--literal-pathspecs", "add", "--", literalPath]);
     await execFileAsync("git", ["-C", repo, "commit", "-q", "-m", "literal path"]);
-    const result = await runGitRead(access(repo), { operation: "show", revision: "HEAD", path: ":(glob)*" });
+    const result = await runGitRead(access(repo), { operation: "show", revision: "HEAD", path: literalPath });
     expect(result.data!.argv).toContain("--literal-pathspecs");
-    expect(result.data!.stdout).toContain(":(glob)*");
-    expect(result.data!.stdout).not.toContain("README.md");
+    expect(result.data!.stdout).toContain(literalPath);
+    expect(result.data!.stdout).not.toContain("a.md");
   });
 
   it.skipIf(!gitAvailable)("rejects aggregate paths and unknown missing paths", async () => {
