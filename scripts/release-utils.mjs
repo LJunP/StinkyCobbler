@@ -41,7 +41,11 @@ export function windowsCmdInvocation(script, args = []) {
   const suffix = args.length === 0 ? "" : ` ${args.join(" ")}`;
   return {
     command: process.env.ComSpec ?? "cmd.exe",
-    args: ["/d", "/s", "/c", `""${script}"${suffix}"`]
+    args: ["/d", "/s", "/c", `""${script}"${suffix}"`],
+    // The /S /C command string above already contains cmd.exe's required
+    // outer quoting. Prevent Node from escaping that one trusted argument a
+    // second time when it builds the Windows process command line.
+    windowsVerbatimArguments: true
   };
 }
 

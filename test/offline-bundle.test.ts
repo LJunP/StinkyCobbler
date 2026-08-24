@@ -33,6 +33,7 @@ describe("offline bundle exclusive publication", () => {
     expect(launch.args).toEqual([
       "/d", "/s", "/c", '""C:\\Program Files\\Stinky Cobbler\\bin\\stinky-cobbler.cmd" --version"'
     ]);
+    expect(launch.windowsVerbatimArguments).toBe(true);
   });
 
   it("requires preview, explicit confirmation, and side-effect review before host installation", () => {

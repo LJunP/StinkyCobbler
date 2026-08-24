@@ -132,6 +132,7 @@ export async function verifyOfflineBundle(file, sourceRoot = root) {
       const version = execFileSync(launcher.command, launcher.args, {
         cwd: bundleRoot,
         encoding: "utf8",
+        ...(process.platform === "win32" ? { windowsVerbatimArguments: launcher.windowsVerbatimArguments } : {}),
         env: { ...process.env, npm_config_offline: "true" }
       }).trim();
       if (version !== packageJson.version) problems.push("Offline bundle CLI reports the wrong version.");
@@ -147,6 +148,7 @@ export async function verifyOfflineBundle(file, sourceRoot = root) {
         input: "",
         timeout: 5_000,
         stdio: ["pipe", "pipe", "pipe"],
+        ...(process.platform === "win32" ? { windowsVerbatimArguments: launcher.windowsVerbatimArguments } : {}),
         env: { ...process.env, npm_config_offline: "true" }
       });
     } catch {
