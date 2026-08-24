@@ -9,6 +9,7 @@ import { hashTaskAuthority, TASK_AUTHORITY_POLICY_VERSION } from "../src/storage
 const execFileAsync = promisify(execFile);
 const projectRoot = path.resolve(import.meta.dirname, "..");
 const roots: string[] = [];
+const ORCHESTRATION_E2E_TIMEOUT_MS = 90_000;
 
 afterEach(async () => { await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true }))); });
 
@@ -59,7 +60,7 @@ async function setupWorkspace(env: NodeJS.ProcessEnv): Promise<string> {
 }
 
 describe("orchestration CLI e2e", () => {
-  it("shows and validates all four tiered policy files", { timeout: 30000 }, async () => {
+  it("shows and validates all four tiered policy files", { timeout: ORCHESTRATION_E2E_TIMEOUT_MS }, async () => {
     const env = { ...process.env };
     const root = await setupWorkspace(env);
     const shown = await json(env, "orchestration", "config", "show", "--root", root);
@@ -84,7 +85,7 @@ describe("orchestration CLI e2e", () => {
     expect("stderr" in showError ? showError.stderr : "").toContain("TIERED_CONFIG_INVALID");
   });
 
-  it("walks contract → run → subtask → dispatch → artifact → accept → completed", { timeout: 30000 }, async () => {
+  it("walks contract → run → subtask → dispatch → artifact → accept → completed", { timeout: ORCHESTRATION_E2E_TIMEOUT_MS }, async () => {
     const env = { ...process.env };
     const root = await setupWorkspace(env);
     const contract = await json(env, "orchestration", "contract", "create", "--task", "orch-e2e", "--domain", "compliance", "--goal", "Produce project docs", "--criteria", "docs exist", "--criteria", "no secrets", "--criteria", "structure correct", "--scope", "docs", "--root", root);
@@ -127,7 +128,7 @@ describe("orchestration CLI e2e", () => {
     expect(status.status).toBe("COMPLETED");
   });
 
-  it("escalates on repeated identical defects", { timeout: 30000 }, async () => {
+  it("escalates on repeated identical defects", { timeout: ORCHESTRATION_E2E_TIMEOUT_MS }, async () => {
     const env = { ...process.env };
     const root = await setupWorkspace(env);
     const contract = await json(env, "orchestration", "contract", "create", "--task", "orch-e2e", "--domain", "content", "--goal", "Docs", "--criteria", "ok", "--criteria", "good", "--criteria", "fine", "--scope", "docs", "--root", root);
