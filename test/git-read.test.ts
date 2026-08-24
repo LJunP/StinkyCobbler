@@ -250,7 +250,8 @@ describe("git-read boundary and revision handling", () => {
     const includedConfig = path.join(root, "outside.config");
     await writeFile(filter, `#!/bin/sh\n: > "${sentinel}"\ncat\n`, "utf8");
     await chmod(filter, 0o755);
-    await writeFile(includedConfig, `[filter "unsafe"]\n\tclean = ${filter}\n`, "utf8");
+    const portableFilterPath = filter.split(path.sep).join("/");
+    await writeFile(includedConfig, `[filter "unsafe"]\n\tclean = "${portableFilterPath}"\n`, "utf8");
     await execFileAsync("git", ["-C", repo, "config", "include.path", includedConfig]);
 
     await expect(runGitRead(access(repo), { operation: "status" }))

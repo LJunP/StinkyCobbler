@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 /**
  * Builds the offline full bundle from the exact local release-candidate tgz
  * plus the production dependency tree pinned by package-lock.json.
