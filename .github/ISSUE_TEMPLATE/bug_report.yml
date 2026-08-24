@@ -1,0 +1,76 @@
+name: Bug report
+description: Report a reproducible defect in the governed CLI/MCP path.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Stinky Cobbler operates in Cooperative Mode. Report only behavior routed through its CLI/MCP boundary. For security vulnerabilities, use the private advisory link instead of this form. Never paste secrets or production data.
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Preflight
+      options:
+        - label: I searched existing issues and the changelog.
+          required: true
+        - label: I removed credentials, tokens, private data, and sensitive workspace content.
+          required: true
+        - label: This is not a security vulnerability requiring private disclosure.
+          required: true
+  - type: input
+    id: version
+    attributes:
+      label: Exact Stinky Cobbler version
+      description: Include `stinky-cobbler --version` and whether it came from npm, a release asset, or a source checkout.
+      placeholder: "version; installation source; commit/hash if built from source"
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Operating system, Node.js version, host and host version.
+      placeholder: "macOS; Node 22.x; Codex/ZCode version ..."
+    validations:
+      required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Affected surface
+      options:
+        - CLI
+        - MCP
+        - Codex install-host integration
+        - ZCode install-host integration
+        - Workspace/config migration
+        - Orchestration state gates
+        - Packaging or documentation
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Minimal reproduction
+      description: List exact, sanitized commands/inputs and the smallest disposable workspace layout needed.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior and evidence
+      description: Include sanitized output, error code, Receipt/Evidence references or hashes when relevant.
+    validations:
+      required: true
+  - type: textarea
+    id: boundary
+    attributes:
+      label: Boundary check
+      description: State whether host-native tools, Shell, Git writes, third-party MCP, symlinks, concurrent edits, or a legacy 2.0.0 record were involved.

@@ -1,0 +1,52 @@
+name: Feature request
+description: Propose a scoped product, compatibility, or governance improvement.
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Start with the user problem. Stinky Cobbler is a Cooperative Mode local controlled-execution and audit layer, not a host sandbox or general-purpose multi-Agent platform.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem to solve
+      description: Who is blocked, by what concrete behavior, and why existing behavior is insufficient?
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome and acceptance criteria
+      description: Describe observable success, not only a proposed implementation.
+    validations:
+      required: true
+  - type: dropdown
+    id: layer
+    attributes:
+      label: Intended layer
+      options:
+        - Engine-enforced CLI/MCP gate
+        - Host-procedural integration
+        - Compatibility or migration
+        - Documentation or community workflow
+        - Unsure
+    validations:
+      required: true
+  - type: textarea
+    id: boundaries
+    attributes:
+      label: Security and product boundaries
+      description: Explain authority, scope, failure mode, rollback, audit, user data, and how bypass channels remain represented.
+    validations:
+      required: true
+  - type: textarea
+    id: compatibility
+    attributes:
+      label: Compatibility impact
+      description: Note CLI/schema/config/persisted-record/install-host effects and the migration path for existing users.
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered

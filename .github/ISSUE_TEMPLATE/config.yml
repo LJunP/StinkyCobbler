@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/LJunP/StinkyCobbler/security/advisories/new
+    about: Report suspected vulnerabilities privately; do not include secrets in a public issue.
+  - name: Support and compatibility matrix
+    url: https://github.com/LJunP/StinkyCobbler/blob/main/docs/%E6%94%AF%E6%8C%81%E7%9F%A9%E9%98%B5.md
+    about: Check supported runtimes, hosts, profiles, and product boundaries before filing.
