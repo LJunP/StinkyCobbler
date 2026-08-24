@@ -198,5 +198,5 @@ describe("end-to-end user path (temporary HOME)", () => {
     await expect(cli(home, "ledger", "verify", "--root", root, "--json")).resolves.toMatchObject({ valid: true });
     await expect(cli(home, "plan", "list", "--root", root, "--json")).resolves.toHaveLength(2);
     await expect(cli(home, "write", "list", "--root", root, "--json")).resolves.toHaveLength(1);
-  }, 60_000);
+  }, process.platform === "win32" ? 120_000 : 60_000);
 });
