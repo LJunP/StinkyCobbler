@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { homedir } from "node:os";
 import path from "node:path";
 import { ExitCode, StinkyCobblerError } from "../errors.js";
+import { syncDirectory } from "./durability.js";
 
 export const WORKSPACE_DIRECTORY = ".stinky-cobbler";
 export const WORKSPACE_CONFIG_FILE = "workspace.json";
@@ -111,12 +112,6 @@ async function durableWrite(file: string, contents: string, flag: "wx" | "w"): P
   } finally {
     await handle.close();
   }
-}
-
-async function syncDirectory(directory: string): Promise<void> {
-  const handle = await open(directory, "r");
-  try { await handle.sync(); }
-  finally { await handle.close(); }
 }
 
 /** Creates a control-plane subdirectory after containment and symlink checks. */

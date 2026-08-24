@@ -6,6 +6,7 @@ import { defaultSchemaRegistry } from "../contracts/default-schema-registry.js";
 import type { LocalWorkspace } from "./workspace.js";
 import { createWorkspaceDirectory, createWorkspaceJson, workspaceFile } from "./workspace.js";
 import { withWorkspaceLock } from "./workspace-lock.js";
+import { syncDirectory } from "./durability.js";
 
 export const LEDGER_FILE = "ledger.jsonl";
 export const GENESIS_HASH = "sha256:genesis";
@@ -588,12 +589,6 @@ async function durableAppend(file: string, contents: string): Promise<void> {
     await handle.close();
   }
   await syncDirectory(path.dirname(file));
-}
-
-async function syncDirectory(directory: string): Promise<void> {
-  const handle = await open(directory, "r");
-  try { await handle.sync(); }
-  finally { await handle.close(); }
 }
 
 async function serializeWorkspaceAppend<T>(workspaceDirectory: string, operation: () => Promise<T>): Promise<T> {
