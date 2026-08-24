@@ -21,6 +21,16 @@ describe("sensitive path names", () => {
       expect(isSensitivePath(value), value).toBe(true);
     }
   });
+  it("matches custom sensitive paths case-insensitively for common cross-platform filesystems", () => {
+    expect(isSensitivePath("INTERNAL/roadmap.md", ["internal/"])).toBe(true);
+    expect(isSensitivePath("internal/roadmap.md", ["INTERNAL"])).toBe(true);
+  });
+  it("matches canonically equivalent Unicode custom sensitive paths in both directions", () => {
+    const nfc = "docs/caf\u00e9";
+    const nfd = "docs/cafe\u0301";
+    expect(isSensitivePath(`${nfd}/private.md`, [nfc])).toBe(true);
+    expect(isSensitivePath(`${nfc}/private.md`, [nfd])).toBe(true);
+  });
   it("does not false-positive on ordinary names", () => {
     for (const value of ["author.md", "keyboard.ts", "authentication.md", "notes.txt", "authored/readme.md"]) {
       expect(isSensitivePath(value), value).toBe(false);

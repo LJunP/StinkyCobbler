@@ -34,14 +34,20 @@ export async function loadRegistries(projectRoot: string, schemas: SchemaRegistr
   const packs = await loadPackDirectory(projectRoot, schemas);
   const coreRoles = await loadYaml<RoleRegistry>(path.join(projectRoot, "policies", "roles.yaml"));
   const extensions = await loadYaml<RoleRegistry>(path.join(projectRoot, "policies", "role-extensions.yaml"));
+  schemas.validate("role", coreRoles);
+  schemas.validate("role", extensions);
   const roles: RoleRegistry = { version: 1, roles: { ...coreRoles.roles, ...extensions.roles } };
   schemas.validate("role", roles);
-  const roleToolsFile = await loadYaml<{ version: 1; tools: Record<string, string[]> }>(path.join(projectRoot, "policies", "role-tools.yaml"));
+  const roleToolsValue = await loadYaml<unknown>(path.join(projectRoot, "policies", "role-tools.yaml"));
+  schemas.validate("role-tools-policy", roleToolsValue);
+  const roleToolsFile = roleToolsValue as { version: 1; tools: Record<string, string[]> };
   if (roleToolsFile.version !== 1 || typeof roleToolsFile.tools !== "object" || roleToolsFile.tools === null || Array.isArray(roleToolsFile.tools)) {
     throw missing("ROLE_TOOLS_INVALID", "role-tools.yaml must be version 1 with a tools map.");
   }
   validateRoleTools(roleToolsFile.tools, roles, KNOWN_TOOLS);
-  const pluginFile = await loadYaml<{ version: 2; plugins: PluginManifest[] }>(path.join(projectRoot, "plugins", "builtin.yaml"));
+  const pluginValue = await loadYaml<unknown>(path.join(projectRoot, "plugins", "builtin.yaml"));
+  schemas.validate("plugin-registry-policy", pluginValue);
+  const pluginFile = pluginValue as { version: 2; plugins: PluginManifest[] };
   for (const plugin of pluginFile.plugins) schemas.validate("plugin", plugin);
   const discovered = discoverBuiltinPlugins(pluginFile.plugins);
   validateReferences(profiles, packs, roles, discovered.plugins);
@@ -54,7 +60,13 @@ async function loadDirectory<T>(directory: string, schemas: SchemaRegistry, kind
     if (!filename.endsWith(".yaml")) continue;
     const item = await loadYaml<T>(path.join(directory, filename));
     schemas.validate(kind, item);
-    result.set(key(item), item);
+    const id = key(item);
+    const expectedId = filename.slice(0, -".yaml".length);
+    if (id !== expectedId) {
+      throw missing("PROFILE_IDENTITY_MISMATCH", `Profile ${id} does not match its filename ${filename}.`);
+    }
+    if (result.has(id)) throw missing("PROFILE_ID_DUPLICATE", `Duplicate Profile ID ${id}.`);
+    result.set(id, item);
   }
   return result;
 }
@@ -64,6 +76,10 @@ async function loadPackDirectory(projectRoot: string, schemas: SchemaRegistry): 
   for (const directory of await readdir(path.join(projectRoot, "packs"))) {
     const item = await loadYaml<Pack>(path.join(projectRoot, "packs", directory, "pack.yaml"));
     schemas.validate("pack", item);
+    if (item.id !== directory) {
+      throw missing("PACK_IDENTITY_MISMATCH", `Pack ${item.id} does not match its directory ${directory}.`);
+    }
+    if (result.has(item.id)) throw missing("PACK_ID_DUPLICATE", `Duplicate Pack ID ${item.id}.`);
     result.set(item.id, item);
   }
   return result;

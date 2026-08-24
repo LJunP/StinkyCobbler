@@ -51,16 +51,21 @@ export async function openWorkspace(root: string): Promise<LocalWorkspace> {
 
 /** Resolve a named metadata file while guaranteeing it remains in .stinky-cobbler. */
 export async function workspaceFile(workspace: LocalWorkspace, name: string): Promise<string> {
-  if (!name || path.isAbsolute(name) || name.includes("\0") || name.split(path.sep).some((part) => part === "" || part === "." || part === "..")) {
+  const parts = name.split(/[\\/]/);
+  if (!name || path.isAbsolute(name) || name.includes("\0") || parts.some((part) => part === "" || part === "." || part === "..")) {
     throw pathDenied("Workspace metadata filename is invalid.", { name });
   }
-  const target = path.resolve(workspace.directory, name);
-  if (!target.startsWith(`${workspace.directory}${path.sep}`)) {
+  // Internal metadata names use a platform-independent logical separator.
+  // Rebuild them from validated components so both '/' and '\\' receive the
+  // same ancestor-by-ancestor symlink checks on every host OS.
+  const target = path.resolve(workspace.directory, ...parts);
+  const boundary = path.relative(workspace.directory, target);
+  if (boundary === "" || boundary === ".." || boundary.startsWith(`..${path.sep}`) || path.isAbsolute(boundary)) {
     throw pathDenied("Workspace metadata path escapes .stinky-cobbler.", { name });
   }
   await assertDirectoryInsideRoot(workspace);
   let current = workspace.directory;
-  for (const part of name.split(path.sep)) {
+  for (const part of parts) {
     current = path.join(current, part);
     await assertNoSymlinkIfPresent(current);
   }

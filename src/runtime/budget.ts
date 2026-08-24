@@ -20,6 +20,7 @@ export interface BudgetHandle {
   snapshot(): RuntimeBudgetUsage;
   check(): void;
   cancel(): void;
+  dispose(): void;
 }
 
 export interface BudgetSupervisorOptions {
@@ -35,12 +36,20 @@ export class BudgetSupervisor implements BudgetHandle {
   private readonly files = new Set<string>();
   private reservedToolCalls = 0;
   private reservedTurns = 0;
+  private deadlineTimer: ReturnType<typeof setTimeout> | undefined;
+  private terminalError: StinkyCobblerError | undefined;
 
   public constructor(private readonly budget: RuntimeBudget, options: BudgetSupervisorOptions = {}) {
     this.clock = options.now ?? (() => performance.now());
     this.startedAt = this.clock();
     this.usage = { turns: options.usage?.turns ?? 0, toolCalls: options.usage?.toolCalls ?? 0, files: options.usage?.files ?? 0, bytes: options.usage?.bytes ?? 0, outputBytes: options.usage?.outputBytes ?? 0 };
     this.check();
+    if (this.budget.maxMinutes !== undefined) {
+      this.deadlineTimer = setTimeout(() => {
+        this.abortWith(budgetError("RUNTIME_DEADLINE_EXCEEDED", "Runtime budget deadline has expired."));
+      }, this.budget.maxMinutes * 60_000);
+      this.deadlineTimer.unref?.();
+    }
   }
 
   public get signal(): AbortSignal { return this.controller.signal; }
@@ -65,14 +74,19 @@ export class BudgetSupervisor implements BudgetHandle {
   }
 
   public check(): void {
-    if (this.controller.signal.aborted) throw budgetError("RUNTIME_CANCELLED", "Runtime has been cancelled.");
+    if (this.controller.signal.aborted) throw this.terminalError ?? budgetError("RUNTIME_CANCELLED", "Runtime has been cancelled.");
     if (this.budget.maxMinutes !== undefined && this.clock() - this.startedAt >= this.budget.maxMinutes * 60_000) {
-      this.controller.abort();
-      throw budgetError("RUNTIME_DEADLINE_EXCEEDED", "Runtime budget deadline has expired.");
+      const error = budgetError("RUNTIME_DEADLINE_EXCEEDED", "Runtime budget deadline has expired.");
+      this.abortWith(error);
+      throw error;
     }
   }
 
-  public cancel(): void { this.controller.abort(); }
+  public cancel(): void {
+    this.abortWith(budgetError("RUNTIME_CANCELLED", "Runtime has been cancelled."));
+  }
+
+  public dispose(): void { this.clearDeadlineTimer(); }
 
   private reservation(kind: "turn" | "tool"): BudgetReservation {
     let settled = false;
@@ -123,6 +137,19 @@ export class BudgetSupervisor implements BudgetHandle {
   private assertLimit(name: keyof RuntimeBudget, value: number): void {
     const limit = this.budget[name];
     if (limit !== undefined && value > limit) throw budgetError("RUNTIME_BUDGET_EXCEEDED", `${name} runtime budget exceeded.`);
+  }
+
+  private abortWith(error: StinkyCobblerError): void {
+    if (this.controller.signal.aborted) return;
+    this.terminalError = error;
+    this.clearDeadlineTimer();
+    this.controller.abort(error);
+  }
+
+  private clearDeadlineTimer(): void {
+    if (this.deadlineTimer === undefined) return;
+    clearTimeout(this.deadlineTimer);
+    this.deadlineTimer = undefined;
   }
 }
 

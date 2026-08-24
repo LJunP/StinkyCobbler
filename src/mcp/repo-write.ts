@@ -2,7 +2,7 @@ import type { SchemaRegistry } from "../contracts/schema-registry.js";
 import { authorize, denied, type ToolAccess, type ToolOutcome } from "./shared.js";
 import { targetInWriteSet } from "../policy/path-policy.js";
 import { getWriteIntent } from "../storage/write-intents.js";
-import { applyWrite, applyDelete } from "../storage/writes.js";
+import { applyReservedMcpWrite, applyReservedMcpDelete } from "../storage/writes.js";
 import { openWorkspace } from "../storage/workspace.js";
 
 export interface WriteRepositoryFileRequest {
@@ -37,7 +37,7 @@ export async function writeRepositoryFile(access: ToolAccess, schemas: SchemaReg
   }
   const workspace = await openWorkspace(access.workspace);
   const intent = await getWriteIntent(workspace, request.writeIntentId);
-  const result = await applyWrite(workspace, schemas, access.lease, intent, request.target, request.content);
+  const result = await applyReservedMcpWrite(workspace, schemas, access.lease, intent, request.target, request.content);
   return { decision, data: result };
 }
 
@@ -50,6 +50,6 @@ export async function deleteRepositoryFile(access: ToolAccess, schemas: SchemaRe
   }
   const workspace = await openWorkspace(access.workspace);
   const intent = await getWriteIntent(workspace, request.writeIntentId);
-  const result = await applyDelete(workspace, schemas, access.lease, intent, request.target);
+  const result = await applyReservedMcpDelete(workspace, schemas, access.lease, intent, request.target);
   return { decision, data: result };
 }

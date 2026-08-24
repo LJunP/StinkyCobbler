@@ -1,5 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { BudgetSupervisor } from "../src/runtime/budget.js";
+
+afterEach(() => { vi.useRealTimers(); });
 
 function codeOf(error: unknown): string | undefined {
   return error && typeof error === "object" && "code" in error && typeof error.code === "string" ? error.code : undefined;
@@ -50,5 +52,38 @@ describe("Runtime BudgetSupervisor", () => {
     cancelled.cancel();
     expect(() => cancelled.check()).toThrowError(/cancelled/);
     expect(codeOf((() => { try { cancelled.check(); } catch (error) { return error; } })())).toBe("RUNTIME_CANCELLED");
+  });
+
+  it("actively aborts an in-flight operation when maxMinutes expires", async () => {
+    vi.useFakeTimers();
+    const supervisor = new BudgetSupervisor({ maxMinutes: 1 });
+    let observedReason: unknown;
+    supervisor.signal.addEventListener("abort", () => {
+      observedReason = supervisor.signal.reason;
+    }, { once: true });
+
+    await vi.advanceTimersByTimeAsync(59_999);
+    expect(supervisor.signal.aborted).toBe(false);
+    await vi.advanceTimersByTimeAsync(1);
+
+    expect(supervisor.signal.aborted).toBe(true);
+    expect(codeOf(observedReason)).toBe("RUNTIME_DEADLINE_EXCEEDED");
+    expect(codeOf((() => { try { supervisor.check(); } catch (error) { return error; } })())).toBe("RUNTIME_DEADLINE_EXCEEDED");
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("clears the active deadline timer on cancellation and disposal", () => {
+    vi.useFakeTimers();
+    const cancelled = new BudgetSupervisor({ maxMinutes: 1 });
+    expect(vi.getTimerCount()).toBe(1);
+    cancelled.cancel();
+    expect(vi.getTimerCount()).toBe(0);
+
+    const disposed = new BudgetSupervisor({ maxMinutes: 1 });
+    expect(vi.getTimerCount()).toBe(1);
+    disposed.dispose();
+    expect(vi.getTimerCount()).toBe(0);
+    vi.advanceTimersByTime(60_000);
+    expect(disposed.signal.aborted).toBe(false);
   });
 });

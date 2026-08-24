@@ -17,6 +17,10 @@ export interface PlanStep {
   dependsOn?: string[];
   status: "PENDING" | "RUNNING" | "COMPLETED" | "FAILED";
   evidenceRefs?: string[];
+  /** Leases durably committed to this exact step execution. */
+  leaseRefs?: string[];
+  /** Hash of the reason that terminalized this step; plaintext is never persisted. */
+  failureReasonHash?: string;
 }
 
 export type PlanStatus = "DRAFT" | "AWAITING_CONFIRMATION" | "APPROVED" | "EXECUTING" | "COMPLETED" | "FAILED" | "CANCELLED";
@@ -26,12 +30,30 @@ export interface OrchestrationPlan {
   version: 1;
   planId: string;
   taskId: string;
+  /** Monotonic execution generation; absent only on readable/cancellable 2.0.0 records. */
+  generation?: number;
+  /** Exact Task authority snapshot from which this Plan was derived. */
+  taskAuthorityHash?: string;
+  /** Authority policy active when this Plan was created. */
+  policyVersion?: string;
+  /** Host principal/session allowed to confirm this Plan. */
+  hostSessionId?: string;
+  /** Immutable Plan subject contract; absent only on legacy records. */
+  planSubjectVersion?: number;
+  planSubjectHash?: string;
+  /** Exact create request fingerprint used to recover a lost create response. */
+  creationRequestHash?: string;
+  /** Precise one-shot plan-confirm Approval consumed by this Plan. */
+  approvalRef?: string;
   status: PlanStatus;
   goal: string;
   steps: PlanStep[];
   createdAt: string;
   confirmedAt?: string;
   cancelledAt?: string;
+  /** Hashes bind terminal audit recovery without persisting caller prose. */
+  cancellationReasonHash?: string;
+  failureReasonHash?: string;
 }
 
 export type TaskState =
@@ -56,6 +78,11 @@ export interface TaskCharter {
   requestedOutputs: string[];
   riskLevel: ImpactLevel;
   state: TaskState;
+  /**
+   * Monotonic local authority epoch. Legacy Tasks may omit it so they remain
+   * inspectable, but no execution/finalization gate accepts a missing epoch.
+   */
+  authorityGeneration?: number;
   nonGoals?: string[];
   scope?: string[];
   inputs?: string[];
@@ -69,6 +96,9 @@ export interface TaskCharter {
   writeSet?: string[];
   approvalRequired?: boolean;
   approvalRefs?: string[];
+  /** Runtime-bound terminal proof recorded by VERIFYING -> DONE. */
+  completionReceiptRef?: string;
+  completionEvidenceRefs?: string[];
 }
 
 export interface RoleDefinition {
@@ -160,6 +190,10 @@ export interface CapabilityLease {
   expiresAt: string;
   maxToolCalls: number;
   status: "active" | "revoked" | "expired";
+  /** Immutable revocation timestamp, retained so a crash after state persistence can recover its audit entry. */
+  revokedAt?: string;
+  /** Privacy-safe fingerprint of the immutable revocation reason. */
+  revocationReasonHash?: string;
   allowedCommands?: string[];
   allowedDestinations?: string[];
   approvalRefs?: string[];
@@ -167,6 +201,18 @@ export interface CapabilityLease {
   issuedBy?: string;
   /** 2.0: binds the lease to an orchestration subtask (worker). */
   subtaskRef?: string;
+  /** Exact orchestration retry generation that issued this subtask Lease. */
+  subtaskAttempt?: number;
+  /** Plan-step authority is valid only for this exact persisted execution. */
+  planRef?: string;
+  stepRef?: string;
+  planGeneration?: number;
+  /** Persisted parent authority: a Task snapshot, Approval grant, or parent Lease. */
+  parentGrantRef: string;
+  /** Hash of the exact persisted Task authority snapshot used at issuance. */
+  taskAuthorityHash: string;
+  /** Host session/principal boundary for this derived authority. */
+  hostSessionId: string;
 }
 
 export interface PolicyDecision {
@@ -188,6 +234,41 @@ export interface Approval {
   decidedBy?: string;
   scope?: string[];
   reason?: string;
+  /** Optional on legacy records; required by high-assurance capability/write gates. */
+  subjectKind?: string;
+  subjectId?: string;
+  subjectVersion?: string | number;
+  subjectHash?: string;
+  capability?: string;
+  expectedPreimageHash?: string | null;
+  proposedContentHash?: string;
+  budget?: {
+    maxToolCalls?: number;
+    expiresAt?: string;
+  };
+  policyVersion?: string;
+  requestedBy?: string;
+  /** Host principal/session that requested and may consume this precise Approval. */
+  hostSessionId?: string;
+  nonce?: string;
+  /**
+   * Inert crash-recovery journal for a requested -> terminal decision. It is
+   * persisted before the decision audit and removed when the decision becomes
+   * active, so only the exact prepared decision can cross that split write.
+   */
+  pendingDecision?: {
+    status: "approved" | "rejected" | "expired";
+    decidedBy: string;
+    reason: string;
+    decidedAt: string;
+    expiresAt?: string;
+    decisionHash: string;
+  };
+  consumedAt?: string;
+  consumedBy?: string;
+  revokedAt?: string;
+  revokedBy?: string;
+  revocationReason?: string;
 }
 
 /** Version values remain open so older numeric contracts and string runtime versions can coexist. */
@@ -310,6 +391,8 @@ export interface AgentRun {
   workspaceId: string;
   leaseId: string;
   policyVersion: string;
+  /** Canonical hash of the admitted Capsule, executor, and ordered requests. */
+  executionRequestHash?: string;
   status: AgentRunStatus;
   executor: string;
   ownerToken?: string;
@@ -386,7 +469,16 @@ export interface AgentReceipt {
   artifactRefs?: string[];
   approvalRefs?: string[];
   policyVersion?: string;
+  /** Runtime-only immutable execution identity copied from the authoritative Run. */
+  executionRequestHash?: string;
   toolSummary?: string;
+  /** Structured provenance for a controlled MCP call. */
+  authorityLeaseId?: string;
+  authorityHash?: string;
+  capability?: string;
+  operation?: string;
+  reservationId?: string;
+  reservationOrdinal?: number;
   createdAt: string;
   runId?: string;
   capsuleId?: string;

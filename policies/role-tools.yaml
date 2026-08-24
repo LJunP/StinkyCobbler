@@ -1,6 +1,6 @@
 version: 1
 tools:
-  scout: [repository-read, repository-list]
+  scout: [repository-read, repository-list, docs-index]
   planner: [repository-read]
   architect: [repository-read, git-read]
   builder: [repository-read, repository-list, repository-write]

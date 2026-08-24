@@ -7,7 +7,7 @@ import { SchemaRegistry } from "../src/contracts/schema-registry.js";
 import { initWorkspace } from "../src/storage/workspace.js";
 import { createRun, transitionRun } from "../src/storage/runs.js";
 import { createTask } from "../src/storage/tasks.js";
-import { recordReceipt } from "../src/storage/receipts.js";
+import { recordRuntimeReceipt, runtimeReceiptId } from "../src/storage/runtime-finalization.js";
 import { appendLedgerEntry } from "../src/storage/ledger.js";
 import { diagnoseRuntime } from "../src/storage/runtime-diagnostics.js";
 
@@ -31,6 +31,7 @@ async function setup() {
     workspaceId: "ws",
     leaseId: "lease",
     policyVersion: "1",
+    executionRequestHash: `sha256:${"a".repeat(64)}`,
     status: "RUNNING",
     executor: "scripted-readonly",
     ownerToken: "x".repeat(64),
@@ -42,9 +43,9 @@ async function setup() {
     evidenceRefs: []
   };
   await createRun(workspace, run);
-  await transitionRun(workspace, run.runId, "COMPLETED", { finishedAt: "2026-01-01T00:01:00.000Z" });
-  await recordReceipt(workspace, schemas, {
-    id: "receipt",
+  const completed = await transitionRun(workspace, run.runId, "COMPLETED", { finishedAt: "2026-01-01T00:01:00.000Z" });
+  await recordRuntimeReceipt(workspace, schemas, {
+    id: runtimeReceiptId("run"),
     taskId: "task",
     role: "scout",
     status: "COMPLETED",
@@ -54,14 +55,17 @@ async function setup() {
     evidenceRefs: [],
     changedPaths: [],
     policyVersion: "1",
+    executionRequestHash: completed.executionRequestHash,
     toolSummary: "diagnostic test",
-    createdAt: "2026-01-01T00:01:00.000Z",
     runId: "run",
     capsuleId: "capsule",
     leaseId: "lease",
     agentId: "agent",
     executor: "scripted-readonly",
-    finishedAt: "2026-01-01T00:01:00.000Z"
+    startedAt: completed.startedAt,
+    finishedAt: completed.finishedAt,
+    toolCalls: completed.toolCalls,
+    createdAt: completed.finishedAt
   });
   return { root, workspace, schemas };
 }

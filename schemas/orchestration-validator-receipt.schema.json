@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stinkycobbler.dev/schemas/orchestration-validator-receipt.schema.json",
+  "title": "Orchestration Validator Receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "receiptId",
+    "source",
+    "validatorId",
+    "validatorVersion",
+    "status",
+    "detail",
+    "runRef",
+    "subtaskRef",
+    "reviewRef",
+    "round",
+    "attempt",
+    "artifactObservations",
+    "createdAt",
+    "storageBoundary"
+  ],
+  "properties": {
+    "version": { "const": 1 },
+    "receiptId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$" },
+    "source": { "const": "ENGINE_EXECUTED" },
+    "validatorId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$" },
+    "validatorVersion": { "type": "string", "minLength": 1, "maxLength": 64 },
+    "status": { "enum": ["PASSED", "FAILED", "ERROR"] },
+    "detail": { "type": "string", "minLength": 1, "maxLength": 1024 },
+    "runRef": { "type": "string", "minLength": 1 },
+    "subtaskRef": { "type": "string", "minLength": 1 },
+    "reviewRef": { "type": "string", "minLength": 1 },
+    "round": { "type": "integer", "minimum": 0 },
+    "attempt": { "type": "integer", "minimum": 0 },
+    "artifactObservations": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["artifactId", "path", "expectedHash", "observedHash"],
+        "properties": {
+          "artifactId": { "type": "string", "minLength": 1 },
+          "path": { "type": "string", "minLength": 1, "maxLength": 512 },
+          "expectedHash": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+          "observedHash": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
+        }
+      }
+    },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "storageBoundary": { "enum": ["MULTI_FILE_NON_TRANSACTIONAL", "JOURNALED_TRANSACTION"] }
+  }
+}

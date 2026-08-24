@@ -1,7 +1,10 @@
-import { createHash } from "node:crypto";
 import type { SchemaRegistry } from "../contracts/schema-registry.js";
 import type { AgentRun, AgentRunStatus } from "../contracts/types.js";
-import { recordReceipt, listReceipts, type AgentReceipt as StoredReceipt } from "./receipts.js";
+import { assertRuntimeReceiptMatchesRun, listReceipts, type AgentReceipt as StoredReceipt } from "./receipts.js";
+import {
+  assertRuntimeFinalizationSnapshot, findRuntimeFinalization, reconcileRuntimeFinalization,
+  recordRuntimeReceipt, runtimeReceiptId, type RuntimeFinalizationStatus
+} from "./runtime-finalization.js";
 import { getTask } from "./tasks.js";
 import { classifyRunStaleness, getRun, TERMINAL_RUN_STATUSES } from "./runs.js";
 import type { LocalWorkspace } from "./workspace.js";
@@ -14,7 +17,11 @@ export type RuntimeReconciliationIssueCode =
   | "RECEIPT_EVIDENCE_MISMATCH"
   | "RECEIPT_OUTPUT_HASH_MISMATCH"
   | "NONTERMINAL_RUN_WITH_RECEIPT"
-  | "RECEIPT_INVALID";
+  | "RECEIPT_INVALID"
+  | "RUNTIME_FINALIZATION_MISSING"
+  | "RUNTIME_FINALIZATION_PREPARED"
+  | "RUNTIME_FINALIZATION_INVALID"
+  | "RUNTIME_FINALIZATION_MISMATCH";
 
 export interface RuntimeReconciliationIssue {
   code: RuntimeReconciliationIssueCode;
@@ -29,6 +36,7 @@ export interface RuntimeReconciliationReport {
   staleness: ReturnType<typeof classifyRunStaleness>;
   receipts: StoredReceipt[];
   issues: RuntimeReconciliationIssue[];
+  finalizationStatus?: RuntimeFinalizationStatus;
   repairable: boolean;
   repaired: boolean;
 }
@@ -42,7 +50,62 @@ export async function inspectRuntimeRun(
 ): Promise<RuntimeReconciliationReport> {
   const run = await getRun(workspace, runId);
   const receipts = (await listReceipts(workspace)).filter((receipt) => receipt.runId === run.runId);
-  return buildReport(run, receipts, schemas, false);
+  const report = buildReport(run, receipts, schemas, false);
+  let finalization: Awaited<ReturnType<typeof findRuntimeFinalization>>;
+  try {
+    finalization = await findRuntimeFinalization(workspace, runId);
+  } catch (error: unknown) {
+    report.issues.push({
+      code: "RUNTIME_FINALIZATION_INVALID",
+      message: "Runtime finalization journal could not be validated.",
+      details: { runId, error: error instanceof Error ? error.message : String(error) }
+    });
+    report.repairable = false;
+    return report;
+  }
+  if (report.terminal) {
+    if (finalization === undefined) {
+      report.issues.push({
+        code: "RUNTIME_FINALIZATION_MISSING",
+        message: "Terminal Agent run has no Runtime finalization journal.",
+        details: { runId }
+      });
+    } else {
+      report.finalizationStatus = finalization.status;
+      if (finalization.status === "PREPARED") {
+        report.issues.push({
+          code: "RUNTIME_FINALIZATION_PREPARED",
+          message: "Runtime finalization is prepared but has not committed its exact Receipt and audit effect.",
+          details: { runId, finalizationId: finalization.finalizationId }
+        });
+      } else if (receipts.length === 1) {
+        try {
+          await assertRuntimeFinalizationSnapshot(workspace, schemas, run, receipts[0]!);
+        } catch (error: unknown) {
+          report.issues.push({
+            code: "RUNTIME_FINALIZATION_MISMATCH",
+            message: "Committed Runtime finalization does not exactly match its Run, Receipt, or audit target.",
+            receiptId: receipts[0]!.id,
+            details: { runId, error: error instanceof Error ? error.message : String(error) }
+          });
+        }
+      } else {
+        report.issues.push({
+          code: "RUNTIME_FINALIZATION_MISMATCH",
+          message: "Committed Runtime finalization does not have exactly one associated Receipt target.",
+          details: { runId, receiptIds: receipts.map((receipt) => receipt.id) }
+        });
+      }
+    }
+  }
+  const allowedRepairIssues = new Set<RuntimeReconciliationIssueCode>([
+    "TERMINAL_RUN_MISSING_RECEIPT",
+    "RUNTIME_FINALIZATION_MISSING",
+    "RUNTIME_FINALIZATION_PREPARED"
+  ]);
+  report.repairable = report.terminal && report.issues.every((issue) => allowedRepairIssues.has(issue.code)) &&
+    (finalization?.status === "PREPARED" || receipts.length === 0);
+  return report;
 }
 
 export async function reconcileRuntimeRun(
@@ -52,12 +115,21 @@ export async function reconcileRuntimeRun(
   options: RuntimeReconciliationOptions = {}
 ): Promise<RuntimeReconciliationReport> {
   const initial = await inspectRuntimeRun(workspace, schemas, runId);
-  if (!options.repair || !initial.repairable) return initial;
+  if (!options.repair) return initial;
 
-  // Repair is deliberately limited to a non-success terminal Run with no Receipt.
-  // It records only a control-plane recovery fact and never changes the Run itself.
+  const prepared = await findRuntimeFinalization(workspace, runId);
+  if (prepared !== undefined) {
+    await reconcileRuntimeFinalization(workspace, schemas, runId);
+    const reconciled = await inspectRuntimeRun(workspace, schemas, runId);
+    return { ...reconciled, repaired: prepared.status !== "COMMITTED" };
+  }
+  if (!initial.repairable) return initial;
+
+  // Repair is limited to an authoritative terminal Run with no Receipt. A
+  // COMPLETED recovery records only Run-owned metadata and a generic recovery
+  // fact; it never reconstructs lost narrative or claims additional work.
   await getTask(workspace, initial.run.taskId);
-  await recordReceipt(workspace, schemas, recoveryReceipt(initial.run));
+  await recordRuntimeReceipt(workspace, schemas, recoveryReceipt(initial.run));
   const repaired = await inspectRuntimeRun(workspace, schemas, runId);
   return { ...repaired, repaired: true };
 }
@@ -96,11 +168,28 @@ function buildReport(run: AgentRun, receipts: StoredReceipt[], schemas: SchemaRe
       issues.push({ code: "RECEIPT_INVALID", message: "Associated Receipt does not satisfy the Receipt schema.", receiptId: receipt.id, details: { error: error instanceof Error ? error.message : String(error) } });
       continue;
     }
-    const bindingFields = ["runId", "taskId", "capsuleId", "leaseId", "agentId", "role", "executor"] as const;
-    const mismatches = bindingFields.filter((field) => {
-      const value = receipt[field];
-      return value !== undefined && value !== run[field as keyof AgentRun];
-    });
+    const expectedBindings: Record<string, unknown> = {
+      runId: run.runId,
+      taskId: run.taskId,
+      capsuleId: run.capsuleId,
+      leaseId: run.leaseId,
+      agentId: run.agentId,
+      role: run.role,
+      executor: run.executor,
+      policyVersion: run.policyVersion,
+      executionRequestHash: run.executionRequestHash,
+      startedAt: run.startedAt,
+      finishedAt: run.finishedAt,
+      budgetUsage: run.budgetUsage,
+      toolCalls: run.toolCalls,
+      errorCode: run.errorCode,
+      blockedReason: run.blockedReason,
+      createdAt: run.finishedAt ?? run.createdAt
+    };
+    const mismatches = Object.entries(expectedBindings)
+      .filter(([field, expected]) => !sameValue(receipt[field], expected))
+      .map(([field]) => field);
+    if (run.status !== "COMPLETED" && !sameValue(receipt.facts, [])) mismatches.push("facts");
     if (mismatches.length > 0) {
       issues.push({ code: "RECEIPT_RUN_BINDING_MISMATCH", message: "Receipt runtime bindings do not match the Agent run.", receiptId: receipt.id, details: { fields: mismatches } });
     }
@@ -112,29 +201,41 @@ function buildReport(run: AgentRun, receipts: StoredReceipt[], schemas: SchemaRe
     if (!sameStringArray(asStringArray(receipt.evidenceRefs), run.evidenceRefs ?? [])) {
       issues.push({ code: "RECEIPT_EVIDENCE_MISMATCH", message: "Receipt evidenceRefs do not match the Agent run.", receiptId: receipt.id, details: { expected: run.evidenceRefs ?? [], actual: receipt.evidenceRefs } });
     }
-    if (run.outputHash !== undefined && receipt.outputHash !== run.outputHash) {
+    if (!sameValue(receipt.outputHash, run.outputHash)) {
       issues.push({ code: "RECEIPT_OUTPUT_HASH_MISMATCH", message: "Receipt outputHash does not match the Agent run.", receiptId: receipt.id, details: { expected: run.outputHash, actual: receipt.outputHash } });
+    }
+    try {
+      assertRuntimeReceiptMatchesRun(receipt, run);
+    } catch {
+      if (!issues.some((issue) => issue.receiptId === receipt.id && issue.code === "RECEIPT_RUN_BINDING_MISMATCH")) {
+        issues.push({ code: "RECEIPT_RUN_BINDING_MISMATCH", message: "Receipt does not exactly match the authoritative terminal Agent run.", receiptId: receipt.id });
+      }
     }
   }
 
-  const repairable = terminal && run.status !== "COMPLETED" && receipts.length === 0 && !issues.some((issue) => issue.code !== "TERMINAL_RUN_MISSING_RECEIPT");
+  const repairable = false;
   return { run, terminal, staleness, receipts, issues, repairable, repaired };
 }
 
 function recoveryReceipt(run: AgentRun): Record<string, unknown> {
-  const status = run.status === "FAILED" ? "FAILED" : "BLOCKED";
+  const status = run.status === "COMPLETED" ? "COMPLETED" : run.status === "FAILED" ? "FAILED" : "BLOCKED";
   const reason = run.blockedReason ?? run.errorCode ?? `Run ended in ${run.status} without a Receipt.`;
   return {
-    id: recoveryReceiptId(run.runId),
+    id: runtimeReceiptId(run.runId),
     taskId: run.taskId,
     role: run.role,
     status,
-    facts: [],
+    facts: run.status === "COMPLETED"
+      ? [{ statement: "Receipt reconstructed from the authoritative terminal Run after interrupted finalization.", evidenceRefs: run.evidenceRefs ?? [] }]
+      : [],
     proposals: [],
-    unknowns: [`Recovery recorded from terminal Run ${run.runId}: ${reason}`],
+    unknowns: run.status === "COMPLETED"
+      ? ["The original in-memory Receipt narrative was unavailable; only persisted Run metadata was recovered."]
+      : [`Recovery recorded from terminal Run ${run.runId}: ${reason}`],
     evidenceRefs: run.evidenceRefs ?? [],
     changedPaths: [],
     policyVersion: run.policyVersion,
+    executionRequestHash: run.executionRequestHash,
     toolSummary: "Runtime reconciliation recovery; no execution was performed.",
     createdAt: run.finishedAt ?? run.createdAt,
     runId: run.runId,
@@ -152,10 +253,6 @@ function recoveryReceipt(run: AgentRun): Record<string, unknown> {
   };
 }
 
-function recoveryReceiptId(runId: string): string {
-  return `runtime-recovery-${createHash("sha256").update(runId, "utf8").digest("hex").slice(0, 12)}`;
-}
-
 function receiptStatusForRun(status: AgentRunStatus): StoredReceipt["status"] | undefined {
   if (status === "COMPLETED") return "COMPLETED";
   if (status === "FAILED") return "FAILED";
@@ -171,3 +268,4 @@ function sameStringArray(left: string[] | undefined, right: string[]): boolean {
   return JSON.stringify(left ?? []) === JSON.stringify(right);
 }
 
+function sameValue(left: unknown, right: unknown): boolean { return JSON.stringify(left) === JSON.stringify(right); }

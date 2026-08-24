@@ -9,9 +9,9 @@ const SHELL_METACHARACTER = /[;&|`$<>\n\r\\]/;
 /** Name- and type-level sensitive-path policy shared by read and write boundaries. */
 export function isSensitivePath(path: string, extraPaths?: string[]): boolean {
   if (extraPaths !== undefined && extraPaths.length > 0) {
-    const normalized = path.replace(/^\.\//, "").replace(/[\\/]+$/, "");
+    const normalized = path.replace(/^\.\//, "").replace(/[\\/]+$/, "").normalize("NFC").toLocaleLowerCase("en-US");
     for (const extra of extraPaths) {
-      const e = extra.replace(/^\.\//, "").replace(/[\\/]+$/, "");
+      const e = extra.replace(/^\.\//, "").replace(/[\\/]+$/, "").normalize("NFC").toLocaleLowerCase("en-US");
       if (normalized === e || normalized.startsWith(`${e}/`)) return true;
     }
   }
@@ -32,6 +32,6 @@ export function targetInWriteSet(writeSet: string[], target: string): boolean {
   const normalized = target.replace(/^\.\//, "").replace(/[\\/]+$/, "");
   return writeSet.some((prefix) => {
     const p = prefix.replace(/^\.\//, "").replace(/[\\/]+$/, "");
-    return normalized === p || normalized.startsWith(`${p}/`);
+    return p === "." || normalized === p || normalized.startsWith(`${p}/`);
   });
 }

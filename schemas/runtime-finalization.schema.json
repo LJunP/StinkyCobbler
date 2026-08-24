@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stinkycobbler.dev/schemas/runtime-finalization.schema.json",
+  "title": "Runtime Finalization Journal",
+  "type": "object",
+  "required": [
+    "version", "finalizationId", "status", "runId", "runHash", "executionRequestHash",
+    "receiptId", "receiptHash", "receipt", "ledgerEffect", "preparedAt", "updatedAt"
+  ],
+  "properties": {
+    "version": {"const": 1},
+    "finalizationId": {"type": "string", "pattern": "^runtime-finalization-[a-f0-9]{64}$"},
+    "status": {"enum": ["PREPARED", "COMMITTED"]},
+    "runId": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"},
+    "runHash": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+    "executionRequestHash": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+    "receiptId": {"type": "string", "pattern": "^runtime-receipt-[a-f0-9]{64}$"},
+    "receiptHash": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+    "receipt": {"$ref": "https://stinkycobbler.dev/schemas/agent-receipt.schema.json"},
+    "ledgerEffect": {
+      "type": "object",
+      "required": ["event", "taskId", "receiptRef", "runId", "summary"],
+      "properties": {
+        "event": {"const": "receipt-recorded"},
+        "taskId": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$"},
+        "receiptRef": {"type": "string", "pattern": "^runtime-receipt-[a-f0-9]{64}$"},
+        "runId": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"},
+        "summary": {"type": "string", "minLength": 1, "maxLength": 512}
+      },
+      "additionalProperties": false
+    },
+    "preparedAt": {"type": "string", "format": "date-time"},
+    "updatedAt": {"type": "string", "format": "date-time"},
+    "committedAt": {"type": "string", "format": "date-time"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"status": {"const": "COMMITTED"}}, "required": ["status"]},
+      "then": {"required": ["committedAt"]},
+      "else": {"not": {"required": ["committedAt"]}}
+    }
+  ],
+  "additionalProperties": false
+}

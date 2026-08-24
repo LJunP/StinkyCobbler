@@ -5,45 +5,86 @@
   "type": "object",
   "required": ["id", "taskId", "role", "status", "facts", "proposals", "unknowns", "evidenceRefs", "createdAt"],
   "properties": {
-    "id": {"type": "string", "pattern": "^[A-Za-z0-9._-]+$"},
-    "taskId": {"type": "string", "pattern": "^[A-Za-z0-9._-]+$"},
-    "role": {"type": "string"},
+    "id": {"$ref": "#/$defs/id"},
+    "taskId": {"$ref": "#/$defs/id"},
+    "role": {"type": "string", "minLength": 1, "maxLength": 256, "pattern": "^[^\\u0000\\r\\n]+$"},
     "status": {"enum": ["COMPLETED", "BLOCKED", "NEEDS_CONTEXT", "FAILED"]},
-    "facts": {"type": "array", "items": {"type": "object", "required": ["statement"], "properties": {"statement": {"type": "string"}, "evidenceRef": {"type": "string"}, "evidenceRefs": {"type": "array", "items": {"type": "string"}}}, "additionalProperties": false}},
-    "findings": {"type": "array", "items": {"type": "object", "required": ["severity", "statement"], "properties": {"severity": {"enum": ["LOW", "MEDIUM", "HIGH", "CRITICAL"]}, "statement": {"type": "string"}, "evidenceRef": {"type": "string"}}, "additionalProperties": false}},
-    "proposals": {"type": "array", "items": {"type": "string"}},
-    "unknowns": {"type": "array", "items": {"type": "string"}},
-    "testResults": {"type": "array", "items": {"type": "object", "required": ["command", "exitCode"], "properties": {"command": {"type": "string"}, "exitCode": {"type": "integer"}, "reportRef": {"type": "string"}}, "additionalProperties": false}},
-    "changedPaths": {"type": "array", "items": {"type": "string"}},
-    "evidenceRefs": {"type": "array", "items": {"type": "string"}},
-    "artifactRefs": {"type": "array", "items": {"type": "string"}},
-    "approvalRefs": {"type": "array", "items": {"type": "string"}},
-    "policyVersion": {"type": "string"},
+    "facts": {"type": "array", "maxItems": 100, "items": {"$ref": "#/$defs/fact"}},
+    "findings": {"type": "array", "maxItems": 100, "items": {"$ref": "#/$defs/finding"}},
+    "proposals": {"type": "array", "maxItems": 100, "items": {"$ref": "#/$defs/statement"}},
+    "unknowns": {"type": "array", "maxItems": 100, "items": {"$ref": "#/$defs/statement"}},
+    "testResults": {"type": "array", "maxItems": 100, "items": {"$ref": "#/$defs/testResult"}},
+    "changedPaths": {"type": "array", "maxItems": 20, "uniqueItems": true, "items": {"$ref": "#/$defs/path"}},
+    "evidenceRefs": {"type": "array", "maxItems": 256, "uniqueItems": true, "items": {"$ref": "#/$defs/ref"}},
+    "artifactRefs": {"type": "array", "maxItems": 100, "uniqueItems": true, "items": {"$ref": "#/$defs/ref"}},
+    "approvalRefs": {"type": "array", "maxItems": 50, "uniqueItems": true, "items": {"$ref": "#/$defs/ref"}},
+    "policyVersion": {"type": "string", "minLength": 1, "maxLength": 128},
+    "executionRequestHash": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
     "toolSummary": {"type": "string", "maxLength": 512},
+    "authorityLeaseId": {"$ref": "#/$defs/id"},
+    "authorityHash": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+    "capability": {"type": "string", "minLength": 1, "maxLength": 256, "pattern": "^[^\\u0000\\r\\n]+$"},
+    "operation": {"type": "string", "minLength": 1, "maxLength": 256, "pattern": "^[^\\u0000\\r\\n]+$"},
+    "reservationId": {"$ref": "#/$defs/id"},
+    "reservationOrdinal": {"type": "integer", "minimum": 1, "maximum": 9007199254740991},
     "createdAt": {"type": "string", "format": "date-time"},
-    "runId": {"type": "string", "minLength": 1},
-    "capsuleId": {"type": "string", "minLength": 1},
-    "leaseId": {"type": "string", "minLength": 1},
-    "agentId": {"type": "string", "minLength": 1},
+    "runId": {"$ref": "#/$defs/id"},
+    "capsuleId": {"$ref": "#/$defs/id"},
+    "leaseId": {"$ref": "#/$defs/id"},
+    "agentId": {"type": "string", "minLength": 1, "maxLength": 256, "pattern": "^[^\\u0000\\r\\n]+$"},
     "startedAt": {"type": "string", "format": "date-time"},
     "finishedAt": {"type": "string", "format": "date-time"},
-    "executor": {"type": "string", "minLength": 1},
+    "executor": {"type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[^\\u0000\\r\\n]+$"},
     "budgetUsage": {"$ref": "#/$defs/runtimeBudgetUsage"},
-    "toolCalls": {"type": "array", "items": {"oneOf": [{"type": "string"}, {"type": "object"}]}},
-    "outputHash": {"type": "string", "minLength": 1},
-    "errorCode": {"type": "string", "minLength": 1},
-    "blockedReason": {"type": "string", "minLength": 1}
+    "toolCalls": {"type": "array", "maxItems": 256, "items": {"oneOf": [{"$ref": "#/$defs/ref"}, {"$ref": "https://stinkycobbler.dev/schemas/tool-call-record.schema.json"}]}},
+    "outputHash": {"type": "string", "minLength": 1, "maxLength": 128},
+    "errorCode": {"type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[A-Z][A-Z0-9_]*$"},
+    "blockedReason": {"type": "string", "minLength": 1, "maxLength": 2048}
   },
   "$defs": {
+    "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"},
+    "ref": {"type": "string", "minLength": 1, "maxLength": 256, "pattern": "^[^\\u0000\\r\\n]+$"},
+    "path": {"type": "string", "minLength": 1, "maxLength": 512, "pattern": "^[^\\u0000\\r\\n]+$"},
+    "statement": {"type": "string", "minLength": 1, "maxLength": 2048},
+    "fact": {
+      "type": "object",
+      "required": ["statement"],
+      "properties": {
+        "statement": {"$ref": "#/$defs/statement"},
+        "evidenceRef": {"$ref": "#/$defs/ref"},
+        "evidenceRefs": {"type": "array", "maxItems": 20, "uniqueItems": true, "items": {"$ref": "#/$defs/ref"}}
+      },
+      "additionalProperties": false
+    },
+    "finding": {
+      "type": "object",
+      "required": ["severity", "statement"],
+      "properties": {
+        "severity": {"enum": ["LOW", "MEDIUM", "HIGH", "CRITICAL"]},
+        "statement": {"$ref": "#/$defs/statement"},
+        "evidenceRef": {"$ref": "#/$defs/ref"}
+      },
+      "additionalProperties": false
+    },
+    "testResult": {
+      "type": "object",
+      "required": ["command", "exitCode"],
+      "properties": {
+        "command": {"type": "string", "minLength": 1, "maxLength": 2048},
+        "exitCode": {"type": "integer", "minimum": -2147483648, "maximum": 2147483647},
+        "reportRef": {"$ref": "#/$defs/ref"}
+      },
+      "additionalProperties": false
+    },
     "runtimeBudgetUsage": {
       "type": "object",
       "properties": {
-        "turns": {"type": "integer", "minimum": 0},
-        "minutes": {"type": "integer", "minimum": 0},
-        "toolCalls": {"type": "integer", "minimum": 0},
-        "files": {"type": "integer", "minimum": 0},
-        "bytes": {"type": "integer", "minimum": 0},
-        "outputBytes": {"type": "integer", "minimum": 0}
+        "turns": {"type": "integer", "minimum": 0, "maximum": 9007199254740991},
+        "minutes": {"type": "integer", "minimum": 0, "maximum": 9007199254740991},
+        "toolCalls": {"type": "integer", "minimum": 0, "maximum": 9007199254740991},
+        "files": {"type": "integer", "minimum": 0, "maximum": 9007199254740991},
+        "bytes": {"type": "integer", "minimum": 0, "maximum": 9007199254740991},
+        "outputBytes": {"type": "integer", "minimum": 0, "maximum": 9007199254740991}
       },
       "additionalProperties": false
     }

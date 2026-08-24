@@ -39,24 +39,9 @@ describe("Runtime CLI black-box", () => {
     const taskFile = path.join(root, "task.json");
     await writeFile(taskFile, JSON.stringify(task));
     await cli("task", "create", "--file", taskFile, "--root", root, "--json");
-    await cli("task", "transition", "runtime-cli-task", "--to", "SCOPED", "--root", root, "--json");
+    const scopedTask = await cli("task", "transition", "runtime-cli-task", "--to", "SCOPED", "--root", root, "--json");
 
-    const canonicalRoot = root;
-    const lease = {
-      id: "runtime-cli-lease",
-      taskId: "runtime-cli-task",
-      agentId: "runtime-cli-agent",
-      role: "scout",
-      capability: "repository-read",
-      level: "L0",
-      workspace: canonicalRoot,
-      readScope: ["."],
-      writeSet: [],
-      issuedAt: "2026-01-01T00:00:00.000Z",
-      expiresAt: "2099-01-01T00:00:00.000Z",
-      maxToolCalls: 2,
-      status: "active"
-    };
+    const lease = await cli("lease", "issue", "--task", "runtime-cli-task", "--agent", "runtime-cli-agent", "--role", "scout", "--capability", "repository-read", "--max-tool-calls", "2", "--expires-in", "1440", "--root", root, "--json");
     const capsule = {
       version: 1,
       capsuleId: "runtime-cli-capsule",
@@ -65,8 +50,8 @@ describe("Runtime CLI black-box", () => {
       agentId: "runtime-cli-agent",
       role: "scout",
       workspaceId: "runtime-cli",
-      leaseId: "runtime-cli-lease",
-      policyVersion: "1",
+      leaseId: lease.id,
+      policyVersion: lease.policyVersion,
       goal: "Read the README",
       scope: ["README.md"],
       readScope: ["."],
@@ -78,8 +63,8 @@ describe("Runtime CLI black-box", () => {
       writeSet: [],
       outputSchema: ["receipt"],
       budget: { maxToolCalls: 1, maxBytes: 4096 },
-      issuedAt: "2026-01-01T00:00:00.000Z",
-      expiresAt: "2099-01-01T00:00:00.000Z"
+      issuedAt: lease.issuedAt,
+      expiresAt: lease.expiresAt
     };
     const leaseFile = path.join(root, "lease.json");
     const capsuleFile = path.join(root, "capsule.json");
@@ -87,7 +72,7 @@ describe("Runtime CLI black-box", () => {
     await writeFile(leaseFile, JSON.stringify(lease));
     await writeFile(capsuleFile, JSON.stringify(capsule));
     await writeFile(requestsFile, JSON.stringify([{ tool: "repository-read", input: { path: "README.md" } }]));
-    await writeFile(taskFile, JSON.stringify({ ...task, state: "SCOPED" }));
+    await writeFile(taskFile, JSON.stringify(scopedTask));
 
     await expect(cli("runtime", "validate", "--task", taskFile, "--capsule", capsuleFile, "--lease", leaseFile, "--root", root, "--json")).resolves.toMatchObject({
       valid: true,

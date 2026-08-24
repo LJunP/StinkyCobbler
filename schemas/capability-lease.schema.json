@@ -21,23 +21,29 @@
   "properties": {
     "id": {
       "type": "string",
-      "pattern": "^[A-Za-z0-9._-]+$"
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
     },
     "taskId": {
       "type": "string",
-      "pattern": "^[A-Za-z0-9._-]+$"
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
     },
     "agentId": {
       "type": "string",
-      "minLength": 1
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^[^\\u0000\\r\\n]+$"
     },
     "role": {
       "type": "string",
-      "minLength": 1
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^[^\\u0000\\r\\n]+$"
     },
     "capability": {
       "type": "string",
-      "minLength": 1
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^[^\\u0000\\r\\n]+$"
     },
     "level": {
       "enum": [
@@ -49,18 +55,23 @@
     },
     "workspace": {
       "type": "string",
-      "minLength": 1
+      "minLength": 1,
+      "maxLength": 4096
     },
     "readScope": {
       "type": "array",
+      "maxItems": 50,
       "items": {
-        "type": "string"
+        "type": "string",
+        "maxLength": 512
       }
     },
     "writeSet": {
       "type": "array",
+      "maxItems": 20,
       "items": {
-        "type": "string"
+        "type": "string",
+        "maxLength": 512
       }
     },
     "allowedCommands": {
@@ -77,8 +88,10 @@
     },
     "approvalRefs": {
       "type": "array",
+      "maxItems": 50,
       "items": {
-        "type": "string"
+        "type": "string",
+        "maxLength": 128
       }
     },
     "policyVersion": {
@@ -106,10 +119,79 @@
         "expired"
       ]
     },
+    "revokedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "revocationReasonHash": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{12}(?:-[a-f0-9]{12}){4}-[a-f0-9]{4}$"
+    },
     "subtaskRef": {
       "type": "string",
       "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+    },
+    "subtaskAttempt": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "planRef": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+    },
+    "stepRef": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+    },
+    "planGeneration": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "parentGrantRef": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "taskAuthorityHash": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "hostSessionId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
     }
   },
+  "allOf": [
+    {
+      "if": {
+        "anyOf": [
+          {"required": ["planRef"]},
+          {"required": ["stepRef"]},
+          {"required": ["planGeneration"]}
+        ]
+      },
+      "then": {
+        "required": ["planRef", "stepRef", "planGeneration"],
+        "not": {"required": ["subtaskRef"]}
+      }
+    }
+    ,
+    {
+      "if": { "required": ["subtaskAttempt"] },
+      "then": {
+        "required": ["subtaskRef"],
+        "not": {
+          "anyOf": [
+            { "required": ["planRef"] },
+            { "required": ["stepRef"] },
+            { "required": ["planGeneration"] }
+          ]
+        }
+      }
+    }
+  ],
   "additionalProperties": false
 }

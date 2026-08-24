@@ -8,7 +8,7 @@ import type { Artifact, Defect, OrchestrationRun, ReviewRecord, SubtaskPackage }
 
 /** Budget: the run exceeded its global round cap (budget accumulates across rounds, never resets). */
 export function exceedsRoundBudget(run: OrchestrationRun): boolean {
-  return run.round > run.budget.maxRounds;
+  return run.round >= run.budget.maxRounds;
 }
 
 /** Budget: the run exceeded its global token cap. */
@@ -18,7 +18,10 @@ export function exceedsTokenBudget(run: OrchestrationRun): boolean {
 
 /** Budget: a subtask used up its retries. */
 export function retriesExhausted(subtask: SubtaskPackage): boolean {
-  return subtask.retriesUsed >= subtask.maxRetries;
+  // retriesUsed counts rejected executions, including the initial attempt.
+  // maxRetries is the number of rework executions allowed after that initial
+  // rejection, so exhaustion starts only when rejections exceed the cap.
+  return subtask.retriesUsed > subtask.maxRetries;
 }
 
 /** Defect fingerprint: content hash of (location + problem + suggestion) — engine-computed, stable across rounds. */
@@ -75,12 +78,12 @@ export function scopeViolation(subtask: SubtaskPackage, artifact: Artifact): boo
 }
 
 export interface ConstraintDecision {
-  action: "continue" | "escalate" | "fail";
+  action: "continue" | "escalate" | "degrade" | "fail";
   code: "OSCILLATION" | "REGRESSION" | "ROUND_BUDGET" | "TOKEN_BUDGET" | "RETRIES_EXHAUSTED" | "SCOPE_VIOLATION" | null;
   detail: string;
 }
 
-/** Evaluates all four constraint classes for a review decision. Escalation beats failure beats continue. */
+/** Evaluates all constraint classes for a review decision. Hard scope/budget/retry failures take precedence over convergence escalation. */
 export function evaluateConstraints(input: {
   run: OrchestrationRun;
   subtask: SubtaskPackage;
@@ -94,12 +97,6 @@ export function evaluateConstraints(input: {
   if (artifact !== undefined && scopeViolation(subtask, artifact)) {
     return { action: "fail", code: "SCOPE_VIOLATION", detail: `Artifact ${artifact.artifactId} path ${artifact.path} is outside subtask scope.` };
   }
-  if (oscillationDetected(reviews, subtask.subtaskId, oscillationThreshold)) {
-    return { action: "escalate", code: "OSCILLATION", detail: `Same defect fingerprint repeated across reviews of ${subtask.subtaskId}.` };
-  }
-  if (regressionDetected(reviews, subtask.subtaskId)) {
-    return { action: "escalate", code: "REGRESSION", detail: `Review score declined across rounds for ${subtask.subtaskId}.` };
-  }
   if (exceedsRoundBudget(run)) {
     return { action: "fail", code: "ROUND_BUDGET", detail: `Run exceeded maxRounds ${run.budget.maxRounds}.` };
   }
@@ -107,7 +104,17 @@ export function evaluateConstraints(input: {
     return { action: "fail", code: "TOKEN_BUDGET", detail: `Run exceeded maxSubtaskTokens ${run.budget.maxSubtaskTokens}.` };
   }
   if (retriesExhausted(subtask) && subtask.status === "REJECTED") {
-    return { action: "fail", code: "RETRIES_EXHAUSTED", detail: `Subtask ${subtask.subtaskId} exhausted its retries.` };
+    return {
+      action: subtask.critical === true || run.failFast === true ? "fail" : "degrade",
+      code: "RETRIES_EXHAUSTED",
+      detail: `Subtask ${subtask.subtaskId} exhausted its retries${subtask.critical === true ? " (critical)" : run.failFast === true ? " (fail-fast run)" : ""}.`
+    };
+  }
+  if (oscillationDetected(reviews, subtask.subtaskId, oscillationThreshold)) {
+    return { action: "escalate", code: "OSCILLATION", detail: `Same defect fingerprint repeated across reviews of ${subtask.subtaskId}.` };
+  }
+  if (regressionDetected(reviews, subtask.subtaskId)) {
+    return { action: "escalate", code: "REGRESSION", detail: `Review score declined across rounds for ${subtask.subtaskId}.` };
   }
   return { action: "continue", code: null, detail: "No constraint violated." };
 }

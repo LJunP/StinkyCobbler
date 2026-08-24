@@ -15,7 +15,7 @@ describe("built-in registries", () => {
     expect(registries.plugins.get("web-research")?.level).toBe("L2");
     expect(registries.pluginDiagnostics.get("web-research")?.executable).toBe(false);
     expect(registries.pluginDiagnostics.get("repository-read")?.executable).toBe(true);
-    expect(registries.roleTools.scout).toEqual(["repository-read", "repository-list"]);
+    expect(registries.roleTools.scout).toEqual(["repository-read", "repository-list", "docs-index"]);
     expect(registries.roleTools.reviewer).toEqual(["repository-read", "git-read"]);
     expect(registries.roleTools.conductor).toEqual([]);
     expect(registries.roleTools["ghost-role"]).toBeUndefined();

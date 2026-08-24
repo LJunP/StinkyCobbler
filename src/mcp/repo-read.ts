@@ -1,6 +1,11 @@
-import { readdir, readFile, stat } from "node:fs/promises";
-import { basename, join } from "node:path";
+import nodePath from "node:path";
 import { assertReadScope, authorize, denied, resolveReadablePath, type ToolAccess, type ToolOutcome } from "./shared.js";
+import {
+  assertWorkspacePathPolicy,
+  readBoundedWorkspaceFile,
+  visitWorkspaceDirectory,
+  WorkspaceReadBoundaryError
+} from "../security/workspace-path.js";
 
 export interface RepositoryFile { path: string; content: string; }
 export interface RepositoryEntry { path: string; kind: "file" | "directory"; }
@@ -12,10 +17,8 @@ export async function readRepositoryFile(access: ToolAccess, path: string, maxBy
 
   const resolved = await resolveReadablePath(access.workspace, path);
   assertReadScope(access, resolved.relativePath);
-  const info = await stat(resolved.absolutePath);
-  if (!info.isFile()) throw new Error("Only regular files can be read.");
-  if (info.size > maxBytes) throw new Error("File exceeds the maximum readable size.");
-  return { decision, data: { path: resolved.relativePath, content: await readFile(resolved.absolutePath, "utf8") } };
+  const file = await readBoundedWorkspaceFile(resolved.workspace, resolved.relativePath, maxBytes);
+  return { decision, data: { path: resolved.relativePath, content: file.bytes.toString("utf8") } };
 }
 
 export async function listRepositoryDirectory(access: ToolAccess, path = ".", maxEntries = 200): Promise<ToolOutcome<RepositoryEntry[]>> {
@@ -25,15 +28,32 @@ export async function listRepositoryDirectory(access: ToolAccess, path = ".", ma
 
   const resolved = await resolveReadablePath(access.workspace, path === "." ? "./" : path);
   assertReadScope(access, resolved.relativePath);
-  const info = await stat(resolved.absolutePath);
-  if (!info.isDirectory()) throw new Error("Only directories can be listed.");
-  const entries = await readdir(resolved.absolutePath, { withFileTypes: true });
-  if (entries.length > maxEntries) throw new Error("Directory exceeds the maximum entry count.");
+  const entries: RepositoryEntry[] = [];
+  let observedEntries = 0;
+  await visitWorkspaceDirectory(resolved.workspace, resolved.relativePath, (entry) => {
+    observedEntries += 1;
+    if (observedEntries > maxEntries) {
+      throw new WorkspaceReadBoundaryError(
+        "Directory exceeds the maximum entry count.",
+        "entry-limit",
+        observedEntries
+      );
+    }
+    if (entry.isSymbolicLink()) return;
+    // Workspace-relative paths are a platform-independent logical format.
+    // Never feed native Windows separators back into the path policy.
+    const entryPath = nodePath.posix.join(resolved.relativePath, entry.name);
+    try {
+      assertWorkspacePathPolicy(entryPath, {
+        ...(resolved.sensitiveExtraPaths === undefined ? {} : { sensitiveExtraPaths: resolved.sensitiveExtraPaths })
+      });
+    } catch {
+      return;
+    }
+    entries.push({ path: entryPath, kind: entry.isDirectory() ? "directory" : "file" });
+  });
   return {
     decision,
-    data: entries
-      .filter((entry) => !entry.isSymbolicLink())
-      .map((entry) => ({ path: join(resolved.relativePath, basename(entry.name)), kind: entry.isDirectory() ? "directory" as const : "file" as const }))
-      .sort((left, right) => left.path.localeCompare(right.path))
+    data: entries.sort((left, right) => left.path.localeCompare(right.path))
   };
 }

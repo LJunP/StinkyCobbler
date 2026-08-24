@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { initWorkspace } from "../src/storage/workspace.js";
@@ -25,6 +25,31 @@ describe("out-of-the-box policy templates (scaffold)", () => {
       const content = await readFile(path.join(workspace.root, ".stinky-cobbler", "policies", name), "utf8");
       expect(content).toContain("version: 1");
     }
+  });
+
+  it("refuses to scaffold through a symlinked policies directory", async () => {
+    const { workspace } = await setup();
+    const outside = await mkdtemp(path.join(os.tmpdir(), "stinky-scaffold-outside-"));
+    roots.push(outside);
+    const sentinel = path.join(outside, "sentinel.txt");
+    await writeFile(sentinel, "unchanged\n", "utf8");
+    await symlink(outside, path.join(workspace.directory, "policies"));
+
+    await expect(scaffoldUserPolicies(workspace)).rejects.toMatchObject({ code: "PATH_DENIED" });
+    expect(await readFile(sentinel, "utf8")).toBe("unchanged\n");
+  });
+
+  it("refuses to scaffold over a symlinked policy file", async () => {
+    const { workspace } = await setup();
+    const outside = await mkdtemp(path.join(os.tmpdir(), "stinky-scaffold-file-outside-"));
+    roots.push(outside);
+    const sentinel = path.join(outside, "orchestration.yaml");
+    await writeFile(sentinel, "external sentinel\n", "utf8");
+    await mkdir(path.join(workspace.directory, "policies"));
+    await symlink(sentinel, path.join(workspace.directory, "policies", "orchestration.yaml"));
+
+    await expect(scaffoldUserPolicies(workspace)).rejects.toMatchObject({ code: "PATH_DENIED" });
+    expect(await readFile(sentinel, "utf8")).toBe("external sentinel\n");
   });
 
   it("does not overwrite files the user already edited", async () => {

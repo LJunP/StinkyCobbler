@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -23,7 +23,17 @@ describe("task lifecycle storage", () => {
     await expect(createTask(workspace, task())).rejects.toMatchObject({ code: "TASK_EXISTS" });
     await expect(createTask(workspace, task("../escape"))).rejects.toMatchObject({ code: "TASK_ID_INVALID" });
     await expect(getTask(workspace, "task-1")).resolves.toMatchObject({ state: "DRAFT" });
-    expect(taskPlan("DRAFT").nextStates).toEqual(["SCOPED", "CANCELLED"]);
+    expect(taskPlan("DRAFT").nextStates).toEqual(["SCOPED", "BLOCKED", "CANCELLED"]);
+  });
+
+  it("rejects a stored Task with invalid schema or a mismatched canonical ID", async () => {
+    const workspace = await initWorkspace(await project());
+    await createTask(workspace, task());
+    const file = await workspaceFile(workspace, "task-task-1.json");
+    await writeFile(file, JSON.stringify({ ...task(), state: "NOT_A_STATE" }), "utf8");
+    await expect(getTask(workspace, "task-1")).rejects.toMatchObject({ code: "SCHEMA_INVALID" });
+    await writeFile(file, JSON.stringify({ ...task(), id: "other-task" }), "utf8");
+    await expect(getTask(workspace, "task-1")).rejects.toMatchObject({ code: "TASK_INVALID" });
   });
 });
 
@@ -46,5 +56,28 @@ describe("receipt lifecycle storage", () => {
     await expect(validateReceipt(workspace, schemas, receipt("missing"))).rejects.toMatchObject({ code: "TASK_NOT_FOUND" });
     await createTask(workspace, task());
     await expect(validateReceipt(workspace, schemas, { ...receipt(), changedPaths: ["src/unsafe.ts"] })).rejects.toMatchObject({ code: "RECEIPT_INVALID" });
+    const forgedRuntime = { ...receipt(), id: "forged-runtime", runId: "run-not-owned-by-caller" };
+    await expect(validateReceipt(workspace, schemas, forgedRuntime)).rejects.toMatchObject({
+      code: "RECEIPT_INVALID",
+      details: { reservedFields: ["runId"] }
+    });
+    await expect(recordReceipt(workspace, schemas, forgedRuntime)).rejects.toMatchObject({ code: "RECEIPT_INVALID" });
+    await expect(listReceipts(workspace)).resolves.toEqual([]);
+  });
+
+  it("rejects schema-tampered and filename-mismatched persisted receipts through get and list", async () => {
+    const workspace = await initWorkspace(await project());
+    const schemas = await SchemaRegistry.create(schemaRoot);
+    await createTask(workspace, task());
+    const saved = await recordReceipt(workspace, schemas, receipt());
+    const target = await workspaceFile(workspace, `receipts/${saved.id}.json`);
+
+    await writeFile(target, JSON.stringify({ ...saved, unexpected: true }), "utf8");
+    await expect(getReceipt(workspace, saved.id)).rejects.toMatchObject({ code: "SCHEMA_INVALID" });
+    await expect(listReceipts(workspace)).rejects.toMatchObject({ code: "SCHEMA_INVALID" });
+
+    await writeFile(target, JSON.stringify({ ...saved, id: "receipt-other" }), "utf8");
+    await expect(getReceipt(workspace, saved.id)).rejects.toMatchObject({ code: "RECEIPT_INVALID" });
+    await expect(listReceipts(workspace)).rejects.toMatchObject({ code: "RECEIPT_INVALID" });
   });
 });

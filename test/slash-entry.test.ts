@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { parseVia, isValidVia } from "../src/entry/via.js";
@@ -84,6 +84,10 @@ describe("entry install-host", () => {
     const home = await tmp("stinky-entry-dry-");
     const result = await installHost({ scope: "user", dryRun: true, homeDir: home, commandTemplatePath: commandTemplate });
     expect(result.command.action).toBe("preview");
+    expect(result.command.writes).toEqual(expect.arrayContaining([
+      expect.objectContaining({ operation: "create", target: expect.stringContaining(".zcode/commands/stinky-cobbler.md") }),
+      expect.objectContaining({ operation: "write-managed-state", target: expect.stringContaining("stinky-cobbler.md.stinky-cobbler-managed.json") })
+    ]));
     await expect(readFile(path.join(home, ".zcode", "commands", "stinky-cobbler.md"))).rejects.toMatchObject({ code: "ENOENT" });
   });
 
@@ -106,6 +110,61 @@ describe("entry install-host", () => {
     expect(await readFile(path.join(home, ".zcode", "commands", "stinky-cobbler.md"), "utf8")).toBe("other-content\n");
   });
 
+  it("previews, backs up, upgrades, and rolls back an unchanged managed command", async () => {
+    const home = await tmp("stinky-entry-upgrade-");
+    const templates = await tmp("stinky-entry-upgrade-templates-");
+    const oldTemplate = path.join(templates, "old.md");
+    const newTemplate = path.join(templates, "new.md");
+    await writeFile(oldTemplate, "# Stinky Cobbler 1.9.0\nold managed bytes\n", "utf8");
+    await writeFile(newTemplate, "# Stinky Cobbler 2.0.1\nnew managed bytes\n", "utf8");
+    const target = path.join(home, ".zcode", "commands", "stinky-cobbler.md");
+
+    await expect(installHost({ scope: "user", homeDir: home, commandTemplatePath: oldTemplate }))
+      .resolves.toMatchObject({ command: { action: "installed" } });
+    const preview = await installHost({ scope: "user", dryRun: true, homeDir: home, commandTemplatePath: newTemplate });
+    expect(preview.command).toMatchObject({ action: "preview", before: { version: "1.9.0" }, after: { version: "2.0.1" } });
+    expect(preview.command.writes).toEqual(expect.arrayContaining([
+      expect.objectContaining({ operation: "ensure-backup", target: expect.stringContaining(".stinky-cobbler-backup-") }),
+      expect.objectContaining({ operation: "replace", target: expect.stringContaining("stinky-cobbler.md") }),
+      expect.objectContaining({ operation: "write-managed-state", target: expect.stringContaining("stinky-cobbler-managed.json") })
+    ]));
+    expect(await readFile(target, "utf8")).toContain("old managed bytes");
+
+    const upgraded = await installHost({ scope: "user", homeDir: home, commandTemplatePath: newTemplate });
+    expect(upgraded.command.action).toBe("upgraded");
+    expect(await readFile(target, "utf8")).toContain("new managed bytes");
+    expect((await readdir(path.dirname(target))).some((name) => name.startsWith("stinky-cobbler.md.stinky-cobbler-backup-"))).toBe(true);
+
+    const rollbackPreview = await installHost({ scope: "user", dryRun: true, rollback: true, homeDir: home, commandTemplatePath: newTemplate });
+    expect(rollbackPreview.command.action).toBe("preview");
+    const rolledBack = await installHost({ scope: "user", rollback: true, homeDir: home, commandTemplatePath: newTemplate });
+    expect(rolledBack.command.action).toBe("rolled-back");
+    expect(await readFile(target, "utf8")).toContain("old managed bytes");
+  });
+
+  it("preserves user edits instead of upgrading or rolling back managed files", async () => {
+    const home = await tmp("stinky-entry-user-edit-");
+    const templates = await tmp("stinky-entry-user-edit-templates-");
+    const oldTemplate = path.join(templates, "old.md");
+    const newTemplate = path.join(templates, "new.md");
+    await writeFile(oldTemplate, "# Stinky Cobbler 1.9.0\nold managed bytes\n", "utf8");
+    await writeFile(newTemplate, "# Stinky Cobbler 2.0.1\nnew managed bytes\n", "utf8");
+    const target = path.join(home, ".zcode", "commands", "stinky-cobbler.md");
+
+    await installHost({ scope: "user", homeDir: home, commandTemplatePath: oldTemplate });
+    await writeFile(target, "user-edited bytes\n", "utf8");
+    const upgrade = await installHost({ scope: "user", homeDir: home, commandTemplatePath: newTemplate });
+    expect(upgrade.command.action).toBe("conflict");
+    expect(await readFile(target, "utf8")).toBe("user-edited bytes\n");
+
+    await writeFile(target, await readFile(oldTemplate), "utf8");
+    await installHost({ scope: "user", homeDir: home, commandTemplatePath: newTemplate });
+    await writeFile(target, "edited after upgrade\n", "utf8");
+    const rollback = await installHost({ scope: "user", rollback: true, homeDir: home, commandTemplatePath: newTemplate });
+    expect(rollback.command.action).toBe("conflict");
+    expect(await readFile(target, "utf8")).toBe("edited after upgrade\n");
+  });
+
   it("merges the MCP server into an existing host config and backs it up", async () => {
     const home = await tmp("stinky-entry-mcp-");
     const configPath = path.join(home, ".zcode", "cli", "config.json");
@@ -118,15 +177,20 @@ describe("entry install-host", () => {
     expect(merged.mcp.servers["other"]).toBeDefined();
     expect(merged.mcp.servers[MCP_SERVER_ID]).toMatchObject({ command: expect.stringContaining("stinky-cobbler-mcp") });
     const backups = await import("node:fs/promises").then(({ readdir }) => readdir(path.join(home, ".zcode", "cli")));
-    expect(backups.some((name) => name.startsWith("config.json.bak-"))).toBe(true);
+    expect(backups.some((name) => name.startsWith("config.json.stinky-cobbler-backup-"))).toBe(true);
     const again = await installHost({ scope: "user", installMcp: true, homeDir: home, commandTemplatePath: commandTemplate });
     expect(again.mcp?.action).toBe("ready");
+    const rollbackPreview = await installHost({ scope: "user", installMcp: true, rollback: true, dryRun: true, homeDir: home, commandTemplatePath: commandTemplate });
+    expect(rollbackPreview.mcp?.action).toBe("preview");
+    const rolledBack = await installHost({ scope: "user", installMcp: true, rollback: true, homeDir: home, commandTemplatePath: commandTemplate });
+    expect(rolledBack.mcp?.action).toBe("rolled-back");
+    expect(JSON.parse(await readFile(configPath, "utf8"))).toEqual(existing);
   });
 
   it("refuses to overwrite a conflicting MCP server command", async () => {
     const home = await tmp("stinky-entry-mcp-conflict-");
     await mkdir(path.join(home, ".zcode", "cli"), { recursive: true });
-    await writeFile(path.join(home, ".zcode", "cli", "config.json"), JSON.stringify({ mcp: { servers: { [MCP_SERVER_ID]: { command: "someone-else", args: [] } } } }), "utf8");
+    await writeFile(path.join(home, ".zcode", "cli", "config.json"), JSON.stringify({ mcp: { servers: { [MCP_SERVER_ID]: { command: "malicious-stinky-cobbler-mcp-wrapper", args: [] } } } }), "utf8");
     await expect(installHost({ scope: "user", installMcp: true, homeDir: home, commandTemplatePath: commandTemplate })).rejects.toMatchObject({ code: "ENTRY_HOST_CONFIG_CONFLICT" });
   });
 

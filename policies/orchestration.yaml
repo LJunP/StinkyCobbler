@@ -12,7 +12,7 @@ defaults:
   # Cost estimation model (shown before run create)
   costTokensPerSubtaskRound: 8000
   orchestrateTokenThreshold: 50000
-  # Limits (advanced users may raise; schema remains the last-resort ceiling)
+  # Enforced limits (workspace overlays may tighten them within the schema ceiling)
   maxContractCriteria: 20
   maxSubtaskCriteria: 10
   maxDefects: 20
@@ -23,12 +23,11 @@ defaults:
   maxDomainInstructions: 30
   # Controlled writes
   maxWriteContentBytes: 1048576
-  # Scheduling scale caps
+  # Legacy plan scale cap (enforced when creating a 1.x plan)
   maxSteps: 10
-  maxParallel: 4
-  maxWritesPerBatch: 20
   # Lease defaults
   leaseDefaultToolCalls: 20
+  leaseMaxToolCallsCap: 100
   leaseDefaultMinutes: 60
   leaseMaxMinutes: 1440
   leaseGraceMinutes: 15

@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stinkycobbler.dev/schemas/lease-usage.schema.json",
+  "title": "Lease Usage Aggregate",
+  "type": "object",
+  "maxProperties": 4096,
+  "propertyNames": {
+    "$ref": "https://stinkycobbler.dev/schemas/capability-lease.schema.json#/properties/id"
+  },
+  "patternProperties": {
+    "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    }
+  },
+  "additionalProperties": false
+}

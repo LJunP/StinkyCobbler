@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stinkycobbler.dev/schemas/task-transition.schema.json",
+  "title": "Task Transition Transaction",
+  "type": "object",
+  "required": ["version", "transactionId", "status", "request", "requestHash", "taskId", "sourceTaskHash", "sourceTask", "nextTaskHash", "nextTask", "ledgerEffect", "preparedAt", "updatedAt"],
+  "properties": {
+    "version": {"const": 1},
+    "transactionId": {"type": "string", "pattern": "^task-txn-[a-f0-9]{8}(?:-[a-f0-9]{8}){3}$"},
+    "status": {"enum": ["PREPARED", "COMMITTED", "ABORTED"]},
+    "request": {
+      "type": "object",
+      "required": ["taskId", "to"],
+      "properties": {
+        "taskId": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$"},
+        "to": {"enum": ["DRAFT", "SCOPED", "DESIGNED", "APPROVED_FOR_EXECUTION", "RUNNING", "REVIEWING", "VERIFYING", "AWAITING_APPROVAL", "ARCHIVED", "DONE", "BLOCKED", "REWORK", "CANCELLED"]},
+        "approvalRef": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"},
+        "hostSessionId": {"type": "string", "minLength": 1, "maxLength": 256, "pattern": "^[^\\u0000\\r\\n]+$"},
+        "receiptRef": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$"},
+        "evidenceRefs": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "pattern": "^evidence-[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"}},
+        "reasonHash": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"}
+      },
+      "additionalProperties": false
+    },
+    "requestHash": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+    "taskId": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$"},
+    "sourceTaskHash": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+    "sourceTask": {"$ref": "https://stinkycobbler.dev/schemas/task.schema.json"},
+    "nextTaskHash": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+    "nextTask": {"$ref": "https://stinkycobbler.dev/schemas/task.schema.json"},
+    "approvalConsumptionOwner": {"type": "string", "minLength": 1, "maxLength": 256},
+    "ledgerEffect": {
+      "type": "object",
+      "required": ["event", "taskId", "summary"],
+      "properties": {
+        "event": {"enum": ["task-transitioned", "task-cancelled"]},
+        "taskId": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$"},
+        "approvalRef": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"},
+        "receiptRef": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$"},
+        "summary": {"type": "string", "minLength": 1, "maxLength": 512}
+      },
+      "additionalProperties": false
+    },
+    "preparedAt": {"type": "string", "format": "date-time"},
+    "updatedAt": {"type": "string", "format": "date-time"},
+    "committedAt": {"type": "string", "format": "date-time"},
+    "abortedAt": {"type": "string", "format": "date-time"},
+    "abortCode": {"type": "string", "pattern": "^[A-Z][A-Z0-9_]{0,127}$"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"status": {"const": "COMMITTED"}}, "required": ["status"]},
+      "then": {"required": ["committedAt"]}
+    },
+    {
+      "if": {"properties": {"status": {"const": "ABORTED"}}, "required": ["status"]},
+      "then": {"required": ["abortedAt", "abortCode"]}
+    }
+  ],
+  "additionalProperties": false
+}

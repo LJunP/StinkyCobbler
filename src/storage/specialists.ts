@@ -1,7 +1,6 @@
 /** Specialist worker registry: domain profiles injected into subtask packages (2.0 domain routing). */
 
-import type { SpecialistsFile } from "../config/tiered.js";
-import { loadTieredYaml } from "../config/tiered.js";
+import { loadSpecialistsPolicy } from "../config/tiered.js";
 import { GENERAL_DOMAIN } from "../contracts/orchestration.js";
 import type { WorkerProfile } from "../contracts/orchestration.js";
 import { ExitCode, StinkyCobblerError } from "../errors.js";
@@ -15,9 +14,9 @@ import type { LocalWorkspace } from "./workspace.js";
  * fallback must always exist (builtin provides it; users may rename, never remove).
  */
 export async function loadSpecialistRegistry(workspace: LocalWorkspace | null): Promise<WorkerProfile[]> {
-  const { builtin, user } = await loadTieredYaml<SpecialistsFile>(workspace, "specialists.yaml", 1);
+  const { builtin, user } = await loadSpecialistsPolicy(workspace);
   const byDomain = new Map<string, WorkerProfile>();
-  for (const profile of builtin.specialists) byDomain.set(profile.domain, profile);
+  for (const profile of builtin.specialists ?? []) byDomain.set(profile.domain, profile);
   for (const profile of user?.specialists ?? []) byDomain.set(profile.domain, profile);
   const profiles = [...byDomain.values()];
   if (!profiles.some((profile) => profile.domain === GENERAL_DOMAIN)) {

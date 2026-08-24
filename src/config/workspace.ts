@@ -1,4 +1,4 @@
-import { access, mkdir, open, readFile, writeFile, rename, rm } from "node:fs/promises";
+import { access, open, readFile, writeFile, rename, rm } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import path from "node:path";
 import type { Pack, Profile, RoleDefinition, RoleRegistry } from "../contracts/types.js";
@@ -6,6 +6,7 @@ import type { SchemaRegistry } from "../contracts/schema-registry.js";
 import { ExitCode, StinkyCobblerError } from "../errors.js";
 import {
   createWorkspaceJson,
+  createWorkspaceDirectory,
   openWorkspace,
   workspaceFile,
   type LocalWorkspace
@@ -194,9 +195,9 @@ export async function migrateWorkspaceConfig(workspace: LocalWorkspace, schemas:
     if (current.version === 2) return { migrated: false, fromVersion: 2, toVersion: 2, config: current };
     const migrated = normalizeWorkspaceConfig(current);
     if (dryRun) return { migrated: false, fromVersion: 1, toVersion: 2, config: migrated };
-    const backups = await workspaceFile(workspace, "backups");
-    await mkdir(backups, { recursive: true, mode: 0o700 });
-    const backup = path.join(backups, `workspace-v1-${randomUUID()}.json`);
+    await createWorkspaceDirectory(workspace, "backups");
+    const backupName = `workspace-v1-${randomUUID()}.json`;
+    const backup = await workspaceFile(workspace, `backups/${backupName}`);
     const source = await workspaceFile(workspace, WORKSPACE_CONFIG_FILE);
     await durableWrite(backup, await readFile(source));
     const temporary = await workspaceFile(workspace, `${WORKSPACE_CONFIG_FILE}.${randomUUID()}.tmp`);

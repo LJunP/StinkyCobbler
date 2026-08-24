@@ -13,7 +13,6 @@
     "defects",
     "score",
     "reason",
-    "validatorEvidence",
     "createdAt",
     "reviewedBy"
   ],
@@ -44,7 +43,8 @@
     "criteriaResults": {
       "type": "array",
       "minItems": 1,
-      "maxItems": 20,
+      "maxItems": 10,
+      "uniqueItems": true,
       "items": {
         "type": "object",
         "additionalProperties": false,
@@ -55,13 +55,16 @@
         ],
         "properties": {
           "criterion": {
-            "type": "string"
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
           },
           "passed": {
             "type": "boolean"
           },
           "note": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 512
           }
         }
       }
@@ -79,13 +82,19 @@
         ],
         "properties": {
           "location": {
-            "type": "string"
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
           },
           "problem": {
-            "type": "string"
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
           },
           "suggestion": {
-            "type": "string"
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
           }
         }
       }
@@ -100,42 +109,58 @@
       "minLength": 1,
       "maxLength": 1024
     },
+    "validatorReceiptIds": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 20,
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "createdAt": {
+      "type": "string"
+    },
+    "reviewedBy": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "tokensUsed": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "attempt": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "reviewIndependence": {
+      "enum": ["INDEPENDENT", "SELF_REVIEW_NON_INDEPENDENT"]
+    },
+    "tokenAccounting": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "chargedTokens"],
+      "properties": {
+        "status": { "enum": ["ESTIMATED", "UNKNOWN", "PROVIDER_RECEIPT"] },
+        "chargedTokens": { "type": "integer", "minimum": 0 },
+        "providerReceiptRef": { "type": "string", "minLength": 1 }
+      }
+    },
+    "sameSourceReview": {
+      "type": "boolean"
+    },
     "validatorEvidence": {
       "type": "array",
       "maxItems": 20,
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": [
-          "validator",
-          "passed",
-          "detail"
-        ],
+        "required": ["validator", "passed", "detail"],
         "properties": {
-          "validator": {
-            "type": "string"
-          },
-          "passed": {
-            "type": "boolean"
-          },
-          "detail": {
-            "type": "string"
-          }
+          "validator": { "type": "string" },
+          "passed": { "type": "boolean" },
+          "detail": { "type": "string" }
         }
       }
-    },
-    "createdAt": {
-      "type": "string"
-    },
-    "reviewedBy": {
-      "type": "string"
-    },
-    "tokensUsed": {
-      "type": "integer",
-      "minimum": 0
-    },
-    "sameSourceReview": {
-      "type": "boolean"
     }
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",

@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stinkycobbler.dev/schemas/orchestration-policy.schema.json",
+  "title": "Tiered Orchestration Policy Layer",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version"],
+  "properties": {
+    "version": { "const": 1 },
+    "defaults": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "maxRounds": { "type": "integer", "minimum": 1, "maximum": 100 },
+        "maxRetriesPerSubtask": { "type": "integer", "minimum": 0, "maximum": 10 },
+        "maxSubtaskTokens": { "type": "integer", "minimum": 1000, "maximum": 10000000 },
+        "costTokensPerSubtaskRound": { "type": "integer", "minimum": 1 },
+        "orchestrateTokenThreshold": { "type": "integer", "minimum": 1 },
+        "maxContractCriteria": { "type": "integer", "minimum": 1, "maximum": 20 },
+        "maxSubtaskCriteria": { "type": "integer", "minimum": 1, "maximum": 10 },
+        "maxDefects": { "type": "integer", "minimum": 1, "maximum": 20 },
+        "maxInputArtifacts": { "type": "integer", "minimum": 1, "maximum": 20 },
+        "maxContractScopeItems": { "type": "integer", "minimum": 1, "maximum": 50 },
+        "maxSubtaskScopeItems": { "type": "integer", "minimum": 1, "maximum": 50 },
+        "maxDomainLength": { "type": "integer", "minimum": 1, "maximum": 64 },
+        "maxDomainInstructions": { "type": "integer", "minimum": 1, "maximum": 30 },
+        "maxWriteContentBytes": { "type": "integer", "minimum": 1, "maximum": 16777216 },
+        "maxSteps": { "type": "integer", "minimum": 1, "maximum": 10 },
+        "leaseDefaultToolCalls": { "type": "integer", "minimum": 1 },
+        "leaseMaxToolCallsCap": { "type": "integer", "minimum": 1, "maximum": 100 },
+        "leaseDefaultMinutes": { "type": "integer", "minimum": 1 },
+        "leaseMaxMinutes": { "type": "integer", "minimum": 1, "maximum": 1440 },
+        "leaseGraceMinutes": { "const": 15 },
+        "oscillationThreshold": { "type": "integer", "minimum": 1, "maximum": 2 },
+        "autoRejectScoreThreshold": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "autoEscalateOnConsistencyFail": { "type": "boolean" }
+      }
+    },
+    "sensitiveExtraPaths": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}

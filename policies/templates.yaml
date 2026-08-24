@@ -1,6 +1,7 @@
 # Interaction templates (builtin tier).
-# Guidance dictionaries consumed by the orchestrator skill and shown via
-# `orchestration config show`. Customize by copying into
+# Guidance dictionaries shown via `orchestration config show` for a host or
+# operator to consult. They are not automatically applied by the engine or skill.
+# Customize by copying into
 #   .stinky-cobbler/policies/templates.yaml
 version: 1
 domainConfirmation:

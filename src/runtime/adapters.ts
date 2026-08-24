@@ -1,10 +1,13 @@
 import type { AdapterDescriptor } from "../contracts/types.js";
 import { ExitCode, StinkyCobblerError } from "../errors.js";
 import { runScriptedReadonly, type ReadonlyRunResult, type ScriptedReadonlyInput } from "./scripted-readonly.js";
+import type { BudgetSupervisor } from "./budget.js";
+
+export type TrustedReadonlyInput = ScriptedReadonlyInput & { supervisor: BudgetSupervisor };
 
 export interface TrustedRuntimeAdapter {
   readonly descriptor: AdapterDescriptor;
-  executeReadonly(input: ScriptedReadonlyInput): Promise<ReadonlyRunResult>;
+  executeReadonly(input: TrustedReadonlyInput): Promise<ReadonlyRunResult>;
 }
 
 export interface AdapterRegistry {

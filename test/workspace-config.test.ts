@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, readdir, rm, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { SchemaRegistry } from "../src/contracts/schema-registry.js";
@@ -8,7 +8,6 @@ import {
   migrateWorkspaceConfig,
   resolveWorkspaceConfig,
   validateWorkspaceConfig,
-  workspaceFile,
   type WorkspaceConfig
 } from "../src/config/workspace.js";
 import { initWorkspace, workspaceFile } from "../src/storage/workspace.js";
@@ -80,5 +79,20 @@ describe("Workspace Config v2 and plugin selection", () => {
     const again = await migrateWorkspaceConfig(value.workspace, value.schemas, value.registries, false);
     expect(again).toMatchObject({ migrated: false, fromVersion: 2, toVersion: 2 });
     expect((await readdir(path.join(value.workspace.directory, "backups"))).length).toBe(1);
+  });
+
+  it("refuses to migrate through a symlinked backup directory", async () => {
+    const value = await setup();
+    const source = `${JSON.stringify(config(value.root), null, 2)}\n`;
+    const target = await workspaceFile(value.workspace, "workspace.json");
+    await writeFile(target, source, { encoding: "utf8", mode: 0o600 });
+    const outside = await mkdtemp(path.join(os.tmpdir(), "stinky-config-backup-outside-"));
+    roots.push(outside);
+    await symlink(outside, path.join(value.workspace.directory, "backups"));
+
+    await expect(migrateWorkspaceConfig(value.workspace, value.schemas, value.registries, false))
+      .rejects.toMatchObject({ code: "PATH_DENIED" });
+    expect(await readFile(target, "utf8")).toBe(source);
+    expect(await readdir(outside)).toEqual([]);
   });
 });

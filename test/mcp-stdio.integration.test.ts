@@ -42,6 +42,7 @@ async function createInitializedWorkspace(): Promise<string> {
   }));
   try {
     await runCli("task", "create", "--file", taskFile, "--root", root, "--json");
+    await runCli("task", "transition", "stdio-task", "--to", "SCOPED", "--root", root, "--json");
   } finally {
     await rm(taskFile, { force: true });
   }
@@ -50,6 +51,11 @@ async function createInitializedWorkspace(): Promise<string> {
 
 async function runCli(...args: string[]): Promise<void> {
   await execFileAsync(process.execPath, [path.join(projectRoot, "dist/cli.js"), ...args], { cwd: projectRoot, maxBuffer: 1024 * 1024 });
+}
+
+async function issueLease(workspace: string, capability = "repository-read", options: string[] = []): Promise<Record<string, any>> {
+  const result = await execFileAsync(process.execPath, [path.join(projectRoot, "dist/cli.js"), "lease", "issue", "--task", "stdio-task", "--agent", "stdio-agent", "--role", "scout", "--capability", capability, "--root", workspace, "--json", ...options], { cwd: projectRoot, maxBuffer: 1024 * 1024 });
+  return JSON.parse(result.stdout) as Record<string, any>;
 }
 
 function repositoryLease(workspace: string, overrides: Record<string, unknown> = {}) {
@@ -135,13 +141,24 @@ describe("MCP stdio black-box", () => {
     expect(parsed.adapters).toContainEqual(expect.objectContaining({ id: "scripted-readonly", status: "available" }));
   }, 30_000);
 
+  it("rejects oversized MCP fields at the declared tool boundary", async () => {
+    const client = await connect();
+    const result = await client.callTool({
+      name: "repo_read",
+      arguments: { leaseId: "lease-1", taskId: "task-1", role: "scout", workspace: "/tmp/workspace", path: "x".repeat(513) }
+    });
+    expect(result.isError).toBe(true);
+    expect(result.content).toContainEqual(expect.objectContaining({ type: "text", text: expect.stringContaining("<=512") }));
+  }, 30_000);
+
   it("reads a file from an initialized temporary workspace and records receipt and ledger events", async () => {
     const workspace = await createInitializedWorkspace();
     await writeFile(path.join(workspace, "README.md"), "stdio repository content\n");
+    const lease = await issueLease(workspace, "repository-read", ["--max-tool-calls", "5", "--expires-in", "1440"]);
     const client = await connect();
 
     const result = await callJson(client, "repo_read", {
-      lease: repositoryLease(workspace),
+      lease: { ...lease, readScope: ["private"], maxToolCalls: 500 },
       taskId: "stdio-task",
       role: "scout",
       workspace,
@@ -158,26 +175,26 @@ describe("MCP stdio black-box", () => {
     expect(receipts[0]).toMatchObject({ taskId: "stdio-task", role: "scout", status: "COMPLETED" });
 
     const ledger = await readLedger(workspace);
-    expect(ledger.map((entry) => entry.event)).toEqual(["workspace-initialized", "task-created", "receipt-recorded", "mcp-call"]);
+    expect(ledger.map((entry) => entry.event)).toEqual(["workspace-initialized", "task-created", "task-transitioned", "lease-issued", "receipt-recorded", "mcp-call"]);
     expect(ledger.at(-1)).toMatchObject({ event: "mcp-call", taskId: "stdio-task", role: "scout", tool: "repository-read", receiptRef: receipts[0]?.id });
   }, 30_000);
 
-  it("rejects expired and malformed leases without increasing lease usage", async () => {
+  it("rejects never-issued and malformed lease references without increasing lease usage", async () => {
     const workspace = await createInitializedWorkspace();
     await writeFile(path.join(workspace, "README.md"), "should not be read\n");
     const client = await connect();
 
-    const expired = await callJson(client, "repo_read", {
+    const neverIssued = await callJson(client, "repo_read", {
       lease: repositoryLease(workspace, { id: "expired-lease", expiresAt: "2020-01-01T00:00:00.000Z" }),
       taskId: "stdio-task",
       role: "scout",
       workspace,
       path: "README.md"
     });
-    expect(expired).toMatchObject({ decision: { allowed: false, code: "LEASE_EXPIRED" } });
+    expect(neverIssued).toMatchObject({ decision: { allowed: false, code: "LEASE_NOT_FOUND" } });
 
     const malformed = await callJson(client, "repo_read", {
-      lease: { id: "malformed-lease" },
+      lease: { id: "../malformed-lease" },
       taskId: "stdio-task",
       role: "scout",
       workspace,
@@ -192,14 +209,14 @@ describe("MCP stdio black-box", () => {
     const workspace = await createInitializedWorkspace();
     await writeFile(path.join(workspace, "README.md"), "one allowed read\n");
     const client = await connect();
-    const lease = repositoryLease(workspace, { id: "one-call-lease", maxToolCalls: 1 });
-    const args = { lease, taskId: "stdio-task", role: "scout", workspace, path: "README.md" };
+    const lease = await issueLease(workspace, "repository-read", ["--max-tool-calls", "1", "--expires-in", "1440"]);
+    const args = { leaseId: lease.id, taskId: "stdio-task", role: "scout", workspace, path: "README.md" };
 
     await expect(callJson(client, "repo_read", args)).resolves.toMatchObject({ decision: { allowed: true, code: "ALLOWED" } });
     const second = await callJson(client, "repo_read", args);
 
     expect(second).toMatchObject({ decision: { allowed: false, code: "LEASE_CALL_LIMIT" } });
-    expect(await readUsage(workspace)).toEqual({ "one-call-lease": 1 });
+    expect(await readUsage(workspace)).toEqual({ [lease.id]: 1 });
   }, 30_000);
 
   it("builds and reads docs-index within scope, rejects an out-of-scope read, and preserves the prior index on budget failure", async () => {
@@ -208,7 +225,7 @@ describe("MCP stdio black-box", () => {
     await writeFile(path.join(workspace, "docs", "guide.md"), "# Guide\n");
     await writeFile(path.join(workspace, "docs", "notes.txt"), "Notes\n");
     const client = await connect();
-    const lease = docsLease(workspace);
+    const lease = await issueLease(workspace, "docs-index", ["--read-scope", "docs", "--max-tool-calls", "5", "--expires-in", "1440"]);
     const common = { taskId: "stdio-task", role: "scout", workspace, lease };
 
     const built = await callJson(client, "docs_index", { ...common, action: "build", docsPath: "docs" });
@@ -227,12 +244,12 @@ describe("MCP stdio black-box", () => {
       lease: docsLease(workspace, { id: "docs-out-of-scope", readScope: ["src"] }),
       action: "read"
     });
-    expect(outOfScope).toMatchObject({ decision: { allowed: false, code: "INVOCATION_FAILED" } });
+    expect(outOfScope).toMatchObject({ decision: { allowed: false, code: "LEASE_NOT_FOUND" } });
 
     await writeFile(path.join(workspace, "docs", "too-large.md"), "x".repeat(64 * 1024 + 1));
     const overBudget = await callJson(client, "docs_index", { ...common, action: "build", docsPath: "docs" });
     expect(overBudget).toMatchObject({ decision: { allowed: false, code: "INVOCATION_FAILED" } });
     expect(await readFile(indexPath, "utf8")).toBe(previousIndex);
-    expect(await readUsage(workspace)).toEqual({ "docs-lease": 3, "docs-out-of-scope": 1 });
+    expect(await readUsage(workspace)).toEqual({ [lease.id]: 3 });
   }, 30_000);
 });

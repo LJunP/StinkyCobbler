@@ -5,7 +5,7 @@ import path from "node:path";
 import { SchemaRegistry } from "../src/contracts/schema-registry.js";
 import { initWorkspace } from "../src/storage/workspace.js";
 import type { AgentRun, EvidenceRef } from "../src/contracts/types.js";
-import { getEvidence, listEvidence, recordEvidence, recordEvidenceOwned } from "../src/storage/evidence.js";
+import { getEvidence, inspectEvidence, listEvidence, recordEvidence, recordEvidenceOwned } from "../src/storage/evidence.js";
 import { listLedgerEntries, verifyLedger } from "../src/storage/ledger.js";
 import { createRun, transitionRun } from "../src/storage/runs.js";
 import { withWorkspaceLock } from "../src/storage/workspace-lock.js";
@@ -174,6 +174,60 @@ describe("persistent EvidenceRef metadata", () => {
     const raw = await readFile(path.join(workspace.directory, "evidence", `${saved.id}.json`), "utf8");
     expect(raw).not.toContain("source content");
     await expect(verifyLedger(workspace)).resolves.toMatchObject({ valid: true, entries: 1 });
+  });
+
+  it("rejects schema-tampered and filename-mismatched Evidence through get and list", async () => {
+    const { workspace, schemas } = await setup();
+    const saved = await recordEvidence(workspace, schemas, evidence());
+    const target = path.join(workspace.directory, "evidence", `${saved.id}.json`);
+
+    await writeFile(target, JSON.stringify({ ...saved, unexpected: true }), "utf8");
+    await expect(getEvidence(workspace, saved.id)).rejects.toMatchObject({ code: "SCHEMA_INVALID" });
+    await expect(listEvidence(workspace)).rejects.toMatchObject({ code: "SCHEMA_INVALID" });
+
+    await writeFile(target, JSON.stringify({ ...saved, id: "evidence-other" }), "utf8");
+    await expect(getEvidence(workspace, saved.id)).rejects.toMatchObject({ code: "EVIDENCE_INVALID" });
+    await expect(listEvidence(workspace)).rejects.toMatchObject({ code: "EVIDENCE_INVALID" });
+  });
+
+  it("fails closed when Evidence link classification encounters malformed Run JSON", async () => {
+    const { workspace, schemas } = await setup();
+    const saved = await recordEvidence(workspace, schemas, evidence());
+    await mkdir(path.join(workspace.directory, "runs"));
+    await writeFile(path.join(workspace.directory, "runs", "run-bad.json"), "not-json", "utf8");
+
+    await expect(listEvidence(workspace, { orphan: true })).rejects.toMatchObject({ code: "RUNTIME_RUN_INVALID" });
+    await expect(listEvidence(workspace, { taskId: "task-evidence" })).rejects.toMatchObject({ code: "RUNTIME_RUN_INVALID" });
+    await expect(inspectEvidence(workspace, schemas, saved.id)).rejects.toMatchObject({ code: "RUNTIME_RUN_INVALID" });
+  });
+
+  it("fails closed when a stored Run ID does not match its filename", async () => {
+    const { workspace, schemas } = await setup();
+    await recordEvidence(workspace, schemas, evidence());
+    await mkdir(path.join(workspace.directory, "runs"));
+    await writeFile(
+      path.join(workspace.directory, "runs", "run-filename.json"),
+      JSON.stringify(runtimeRun({ runId: "run-payload", evidenceRefs: ["evidence-test-1"] })),
+      "utf8"
+    );
+
+    await expect(listEvidence(workspace, { orphan: false })).rejects.toMatchObject({ code: "RUNTIME_RUN_INVALID" });
+  });
+
+  it("classifies task and orphan links through canonical stored Runs", async () => {
+    const { workspace, schemas } = await setup();
+    const saved = await recordEvidence(workspace, schemas, evidence());
+    const linkedRun = runtimeRun({ evidenceRefs: [saved.id] });
+    await createRun(workspace, linkedRun);
+
+    await expect(listEvidence(workspace, { taskId: linkedRun.taskId })).resolves.toEqual([saved]);
+    await expect(listEvidence(workspace, { orphan: false })).resolves.toEqual([saved]);
+    await expect(listEvidence(workspace, { orphan: true })).resolves.toEqual([]);
+    await expect(inspectEvidence(workspace, schemas, saved.id)).resolves.toMatchObject({
+      orphan: false,
+      linkedTaskId: linkedRun.taskId,
+      linkedRunId: linkedRun.runId
+    });
   });
 
   it("serializes concurrent identical records and records one ledger event", async () => {

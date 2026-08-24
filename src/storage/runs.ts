@@ -1,10 +1,11 @@
 import { mkdir, readFile, readdir } from "node:fs/promises";
 import path from "node:path";
-import type { AgentRun } from "../contracts/types.js";
+import { defaultSchemaRegistry } from "../contracts/default-schema-registry.js";
+import type { AgentRun, RuntimeBudgetUsage } from "../contracts/types.js";
 import { ExitCode, StinkyCobblerError } from "../errors.js";
 import type { LocalWorkspace } from "./workspace.js";
 import { createWorkspaceJson, workspaceFile, writeWorkspaceJson } from "./workspace.js";
-import { appendLedgerEntry, listLedgerEntries } from "./ledger.js";
+import { appendLedgerEntry, listLedgerEntries, prepareLedgerEntry, type AppendLedgerEntry, type LedgerEntry } from "./ledger.js";
 import { withWorkspaceLock } from "./workspace-lock.js";
 
 const RUN_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
@@ -23,6 +24,8 @@ const ALLOWED_TRANSITIONS: Record<AgentRun["status"], readonly AgentRun["status"
   TIMED_OUT: ["TIMED_OUT"],
   CANCELLED: ["CANCELLED"]
 };
+export type RunLifecycleFaultPoint = "after-run" | "after-ledger";
+const runLifecycleFaults = new Map<string, RunLifecycleFaultPoint>();
 
 export interface RunStaleness {
   stale: boolean;
@@ -42,18 +45,21 @@ export async function createRun(workspace: LocalWorkspace, run: AgentRun): Promi
   assertValidRun(run);
   await withWorkspaceLock(workspace, async () => {
     await ensureDirectory(workspace);
-      try {
-        await createWorkspaceJson(workspace, fileName(run.runId), run);
-      } catch (error: unknown) {
-        if (isCode(error, "EEXIST")) throw runtimeError("RUNTIME_RUN_EXISTS", "Agent run already exists.", { runId: run.runId });
-        throw error;
+    const effect = runCreatedEffect(run);
+    try {
+      await createWorkspaceJson(workspace, fileName(run.runId), run);
+    } catch (error: unknown) {
+      if (!isCode(error, "EEXIST")) throw error;
+      const existing = await readStoredRun(workspace, run.runId);
+      if (JSON.stringify(existing) !== JSON.stringify(run)) {
+        throw runtimeError("RUNTIME_RUN_EXISTS", "Agent run already exists with different content.", { runId: run.runId });
       }
-      await ensureRunLifecycleEvent(workspace, {
-        event: "run-created",
-        summary: `Run ${run.runId} created with status ${run.status}.`,
-        runId: run.runId,
-        toStatus: run.status
-      });
+      await ensureRunLifecycleCommitted(workspace, existing);
+      return;
+    }
+    maybeInjectRunLifecycleFault(workspace, "after-run", run.runId);
+    await ensureRunLifecycleEvent(workspace, effect);
+    maybeInjectRunLifecycleFault(workspace, "after-ledger", run.runId);
   });
 }
 
@@ -70,6 +76,7 @@ export async function saveRun(workspace: LocalWorkspace, run: AgentRun): Promise
     if (current === undefined) {
       throw runtimeError("RUNTIME_RUN_NOT_FOUND", "Agent run does not exist; use createRun for new runs.", { runId: run.runId });
     }
+    await ensureRunLifecycleCommitted(workspace, current);
     assertImmutableBindings(current, run);
     if (current.status !== run.status) {
       throw runtimeError("RUNTIME_RUN_TRANSITION_REQUIRED", "Agent run status changes must use transitionRun.", { runId: run.runId, from: current.status, requested: run.status });
@@ -98,6 +105,7 @@ export async function transitionRun(workspace: LocalWorkspace, runId: string, to
     assertRunId(runId);
     if (!RUN_STATUSES.includes(to)) throw runtimeError("RUNTIME_RUN_STATUS_INVALID", "Agent run status is invalid.", { runId, status: to });
     const current = await getRun(workspace, runId);
+    await ensureRunLifecycleCommitted(workspace, current);
     if (options.expectedStatus !== undefined && current.status !== options.expectedStatus) {
       throw runtimeError("RUNTIME_RUN_CONFLICT", "Agent run status changed before transition.", { runId, expectedStatus: options.expectedStatus, actualStatus: current.status });
     }
@@ -115,8 +123,11 @@ export async function transitionRun(workspace: LocalWorkspace, runId: string, to
     const next = { ...current, ...patch, status: to };
     assertImmutableBindings(current, next);
     assertValidRun(next);
+    const effect = runTransitionEffect(current.status, to, runId);
     await writeWorkspaceJson(workspace, fileName(runId), next);
-    await ensureRunLifecycleEvent(workspace, { event: "run-transitioned", summary: `Run ${runId} transitioned from ${current.status} to ${to}.`, runId, fromStatus: current.status, toStatus: to });
+    maybeInjectRunLifecycleFault(workspace, "after-run", runId);
+    await ensureRunLifecycleEvent(workspace, effect);
+    maybeInjectRunLifecycleFault(workspace, "after-ledger", runId);
     return next;
   });
 }
@@ -146,6 +157,50 @@ export interface HeartbeatRunOptions {
   heartbeatAt?: string;
 }
 
+export interface CheckpointRunProgressOptions {
+  ownerToken: string;
+  expectedEpoch?: number;
+}
+
+/**
+ * Persists append-only progress for an owned RUNNING Runtime execution.
+ * This is not a lifecycle transition and emits no status ledger event.
+ */
+export async function checkpointRunProgress(
+  workspace: LocalWorkspace,
+  runId: string,
+  progress: {
+    toolCalls: NonNullable<AgentRun["toolCalls"]>;
+    evidenceRefs: string[];
+    budgetUsage: RuntimeBudgetUsage;
+  },
+  options: CheckpointRunProgressOptions
+): Promise<AgentRun> {
+  return withWorkspaceLock(workspace, async () => {
+    const current = await getRun(workspace, runId);
+    await ensureRunLifecycleCommitted(workspace, current);
+    assertOwner(current, options.ownerToken, options.expectedEpoch);
+    if (current.status !== "RUNNING") {
+      throw runtimeError("RUNTIME_RUN_CHECKPOINT_INVALID", "Only a RUNNING Agent run may accept a progress checkpoint.", { runId, status: current.status });
+    }
+    const nextToolCalls = progress.toolCalls;
+    const nextEvidenceRefs = progress.evidenceRefs;
+    assertArrayPrefix(current.toolCalls ?? [], nextToolCalls, "toolCalls", runId);
+    assertArrayPrefix(current.evidenceRefs ?? [], nextEvidenceRefs, "evidenceRefs", runId);
+    assertBudgetProgress(current.budgetUsage ?? {}, progress.budgetUsage, runId);
+    const next: AgentRun = {
+      ...current,
+      toolCalls: JSON.parse(JSON.stringify(nextToolCalls)) as NonNullable<AgentRun["toolCalls"]>,
+      evidenceRefs: [...nextEvidenceRefs],
+      budgetUsage: { ...progress.budgetUsage },
+      heartbeatAt: new Date().toISOString()
+    };
+    assertValidRun(next);
+    await writeWorkspaceJson(workspace, fileName(runId), next);
+    return next;
+  });
+}
+
 /**
  * Refreshes the liveness declaration of a RUNNING run inside the workspace
  * lock. Owner fencing still applies so a recovered run cannot be revived by
@@ -155,6 +210,7 @@ export interface HeartbeatRunOptions {
 export async function heartbeatRun(workspace: LocalWorkspace, runId: string, options: HeartbeatRunOptions): Promise<AgentRun> {
   return withWorkspaceLock(workspace, async () => {
     const current = await getRun(workspace, runId);
+    await ensureRunLifecycleCommitted(workspace, current);
     if (TERMINAL_STATUSES.has(current.status)) return current;
     assertOwner(current, options.ownerToken, options.expectedEpoch);
     const next = { ...current, heartbeatAt: options.heartbeatAt ?? new Date().toISOString() };
@@ -167,6 +223,7 @@ export async function heartbeatRun(workspace: LocalWorkspace, runId: string, opt
 export async function recoverStaleRun(workspace: LocalWorkspace, runId: string, options: RecoverStaleRunOptions = {}): Promise<AgentRun> {
   return withWorkspaceLock(workspace, async () => {
     const current = await getRun(workspace, runId);
+    await ensureRunLifecycleCommitted(workspace, current);
     if (TERMINAL_STATUSES.has(current.status)) return current;
     if (current.status !== "RUNNING") {
       throw runtimeError("RUNTIME_RUN_RECOVERY_INVALID_STATUS", "Only RUNNING Agent runs may be recovered.", { runId, status: current.status });
@@ -175,14 +232,11 @@ export async function recoverStaleRun(workspace: LocalWorkspace, runId: string, 
     const stale = classifyRunStaleness(current, { ...options, now });
     if (!stale.stale) throw runtimeError("RUNTIME_RUN_NOT_STALE", "Agent run has not exceeded the stale threshold.", { runId, staleMs: stale.staleMs, ageMs: stale.ageMs ?? 0 });
     const recovered = { ...current, status: "FAILED" as const, fenceEpoch: (current.fenceEpoch ?? 0) + 1, errorCode: "RUNTIME_STALE_RECOVERY", blockedReason: "Run was explicitly recovered after exceeding the stale threshold.", finishedAt: now.toISOString() };
+    const effect = runRecoveredEffect(current.status, recovered.status, runId);
     await writeWorkspaceJson(workspace, fileName(runId), recovered);
-    await ensureRunLifecycleEvent(workspace, {
-      event: "run-recovered",
-      summary: `Run ${runId} recovered from stale state.`,
-      runId,
-      fromStatus: current.status,
-      toStatus: recovered.status
-    });
+    maybeInjectRunLifecycleFault(workspace, "after-run", runId);
+    await ensureRunLifecycleEvent(workspace, effect);
+    maybeInjectRunLifecycleFault(workspace, "after-ledger", runId);
     return recovered;
   });
 }
@@ -206,7 +260,7 @@ export async function listRuns(workspace: LocalWorkspace, options: RunListOption
     throw error;
   }
   const runNames = names.filter((name) => /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}\.json$/.test(name)).sort();
-  const runs = await Promise.all(runNames.map((name) => readStoredRun(workspace, name.slice(0, -5))));
+  const runs = await Promise.all(runNames.map((name) => getRun(workspace, name.slice(0, -5))));
   return runs
     .filter((run) => options.taskId === undefined || run.taskId === options.taskId)
     .filter((run) => options.status === undefined || run.status === options.status)
@@ -217,6 +271,7 @@ export async function listRuns(workspace: LocalWorkspace, options: RunListOption
 async function readStoredRun(workspace: LocalWorkspace, runId: string): Promise<AgentRun> {
   try {
     const value = JSON.parse(await readFile(await workspaceFile(workspace, fileName(runId)), "utf8")) as unknown;
+    (await defaultSchemaRegistry()).validate("agent-run", value);
     assertValidRun(value);
     const run = value as AgentRun;
     if (run.runId !== runId) throw runtimeError("RUNTIME_RUN_INVALID", "Stored Agent run ID does not match its filename.", { runId, storedRunId: run.runId });
@@ -254,8 +309,26 @@ function assertOwner(run: AgentRun, ownerToken: string, expectedEpoch?: number):
   if (expectedEpoch !== undefined && run.fenceEpoch !== expectedEpoch) throw runtimeError("RUNTIME_RUN_FENCED", "Agent run fence epoch is no longer valid.", { runId: run.runId, expectedEpoch, actualEpoch: run.fenceEpoch });
 }
 function assertImmutableBindings(current: AgentRun, next: AgentRun): void {
-  for (const field of ["runId", "capsuleId", "taskId", "agentId", "role", "workspaceId", "leaseId", "policyVersion", "executor"] as const) {
+  for (const field of ["runId", "capsuleId", "taskId", "agentId", "role", "workspaceId", "leaseId", "policyVersion", "executionRequestHash", "executor"] as const) {
     if (current[field] !== next[field]) throw runtimeError("RUNTIME_RUN_BINDING_CONFLICT", "Agent run bindings cannot change after creation.", { runId: current.runId, field });
+  }
+}
+
+function assertArrayPrefix(current: unknown[], next: unknown[], field: string, runId: string): void {
+  if (next.length < current.length || current.some((value, index) => JSON.stringify(value) !== JSON.stringify(next[index]))) {
+    throw runtimeError("RUNTIME_RUN_CHECKPOINT_CONFLICT", "Runtime progress checkpoints must extend the persisted append-only prefix.", {
+      runId, field, currentLength: current.length, nextLength: next.length
+    });
+  }
+}
+
+function assertBudgetProgress(current: RuntimeBudgetUsage, next: RuntimeBudgetUsage, runId: string): void {
+  for (const field of ["turns", "minutes", "toolCalls", "files", "bytes", "outputBytes"] as const) {
+    const before = current[field] ?? 0;
+    const after = next[field] ?? 0;
+    if (!Number.isSafeInteger(after) || after < before) {
+      throw runtimeError("RUNTIME_RUN_CHECKPOINT_CONFLICT", "Runtime budget checkpoints must be monotonic safe integers.", { runId, field, before, after });
+    }
   }
 }
 
@@ -268,15 +341,97 @@ function isCanonicalIsoDate(value: unknown): value is string {
 
 function fileName(runId: string): string { return path.join(DIRECTORY, `${runId}.json`); }
 
-async function ensureRunLifecycleEvent(workspace: LocalWorkspace, entry: Parameters<typeof appendLedgerEntry>[1]): Promise<void> {
+/**
+ * Reconciles only an unambiguous persisted status advance. This closes the
+ * crash window where the Run target was durable but its lifecycle effect was
+ * not. Conflicting or branching histories remain fail-closed.
+ */
+export async function ensureRunLifecycleCommitted(workspace: LocalWorkspace, run: AgentRun): Promise<void> {
+  await withWorkspaceLock(workspace, async () => {
+    assertValidRun(run);
+    const lifecycle = (await listLedgerEntries(workspace)).filter((entry) =>
+      entry.runId === run.runId && (entry.event === "run-created" || entry.event === "run-transitioned" || entry.event === "run-recovered")
+    );
+    if (lifecycle.length === 0) {
+      await ensureRunLifecycleEvent(workspace, runCreatedEffect(run));
+      return;
+    }
+    const creations = lifecycle.filter((entry) => entry.event === "run-created");
+    if (creations.length !== 1 || lifecycle[0]?.event !== "run-created") {
+      throw runtimeError("RUNTIME_RUN_LIFECYCLE_CONFLICT", "Run lifecycle requires exactly one leading run-created event.", {
+        runId: run.runId, creationEvents: creations.length
+      });
+    }
+    let observed = statusFromEntry(creations[0]!, "toStatus");
+    for (const entry of lifecycle.slice(1)) {
+      if (entry.event === "run-created") {
+        throw runtimeError("RUNTIME_RUN_LIFECYCLE_CONFLICT", "Run lifecycle contains a duplicate creation event.", { runId: run.runId });
+      }
+      const from = statusFromEntry(entry, "fromStatus");
+      const to = statusFromEntry(entry, "toStatus");
+      if (from !== observed || !ALLOWED_TRANSITIONS[from].includes(to)) {
+        throw runtimeError("RUNTIME_RUN_LIFECYCLE_CONFLICT", "Run lifecycle ledger events do not form one valid status chain.", {
+          runId: run.runId, observed, from, to, sequence: entry.sequence
+        });
+      }
+      observed = to;
+    }
+    if (observed === run.status) return;
+    if (!ALLOWED_TRANSITIONS[observed].includes(run.status)) {
+      throw runtimeError("RUNTIME_RUN_LIFECYCLE_CONFLICT", "Persisted Run status cannot be reconciled from its last audited status.", {
+        runId: run.runId, observed, persisted: run.status
+      });
+    }
+    const effect = run.errorCode === "RUNTIME_STALE_RECOVERY"
+      ? runRecoveredEffect(observed, run.status, run.runId)
+      : runTransitionEffect(observed, run.status, run.runId);
+    await ensureRunLifecycleEvent(workspace, effect);
+  });
+}
+
+/** Test-only, single-use crash point for Run target/audit ordering. */
+export function injectRunLifecycleFaultForTesting(workspace: LocalWorkspace, point: RunLifecycleFaultPoint): void {
+  if (process.env.NODE_ENV !== "test") throw runtimeError("RUNTIME_RUN_TEST_FAULT_DENIED", "Run lifecycle fault injection is available only under the test runner.", {});
+  runLifecycleFaults.set(workspace.directory, point);
+}
+
+async function ensureRunLifecycleEvent(workspace: LocalWorkspace, entry: AppendLedgerEntry): Promise<void> {
   const entries = await listLedgerEntries(workspace);
-  const duplicate = entries.some((existing) =>
+  const matching = entries.filter((existing) =>
     existing.event === entry.event &&
     existing.runId === entry.runId &&
     existing.fromStatus === entry.fromStatus &&
     existing.toStatus === entry.toStatus
   );
-  if (!duplicate) await appendLedgerEntry(workspace, entry);
+  if (matching.length > 1) {
+    throw runtimeError("RUNTIME_RUN_LIFECYCLE_CONFLICT", "Run lifecycle contains duplicate audit effects.", {
+      runId: entry.runId, event: entry.event, fromStatus: entry.fromStatus, toStatus: entry.toStatus, entries: matching.length
+    });
+  }
+  if (matching.length === 0) await appendLedgerEntry(workspace, entry);
+}
+function runCreatedEffect(run: AgentRun): AppendLedgerEntry {
+  return prepareLedgerEntry({ event: "run-created", summary: `Run created with status ${run.status}.`, runId: run.runId, toStatus: run.status });
+}
+function runTransitionEffect(from: AgentRun["status"], to: AgentRun["status"], runId: string): AppendLedgerEntry {
+  return prepareLedgerEntry({ event: "run-transitioned", summary: `Run status changed from ${from} to ${to}.`, runId, fromStatus: from, toStatus: to });
+}
+function runRecoveredEffect(from: AgentRun["status"], to: AgentRun["status"], runId: string): AppendLedgerEntry {
+  return prepareLedgerEntry({ event: "run-recovered", summary: `Stale Run recovered from ${from} to ${to}.`, runId, fromStatus: from, toStatus: to });
+}
+function statusFromEntry(entry: LedgerEntry, field: "fromStatus" | "toStatus"): AgentRun["status"] {
+  const status = entry[field];
+  if (status === undefined || !RUN_STATUSES.includes(status as AgentRun["status"])) {
+    throw runtimeError("RUNTIME_RUN_LIFECYCLE_CONFLICT", "Run lifecycle event contains an invalid status.", {
+      runId: entry.runId, event: entry.event, field, status, sequence: entry.sequence
+    });
+  }
+  return status as AgentRun["status"];
+}
+function maybeInjectRunLifecycleFault(workspace: LocalWorkspace, point: RunLifecycleFaultPoint, runId: string): void {
+  if (runLifecycleFaults.get(workspace.directory) !== point) return;
+  runLifecycleFaults.delete(workspace.directory);
+  throw runtimeError("RUNTIME_RUN_LIFECYCLE_FAULT_INJECTED", `Injected Run lifecycle fault at ${point}.`, { runId, point });
 }
 async function ensureDirectory(workspace: LocalWorkspace): Promise<void> {
   const directory = await workspaceFile(workspace, DIRECTORY);

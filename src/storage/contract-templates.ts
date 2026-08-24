@@ -1,7 +1,6 @@
 /** Contract templates: prebuilt goal/criteria/scope/domain bundles for one-command contract creation. */
 
-import type { ContractTemplatesFile } from "../config/tiered.js";
-import { loadTieredYaml } from "../config/tiered.js";
+import { loadContractTemplatesPolicy } from "../config/tiered.js";
 import { ExitCode, StinkyCobblerError } from "../errors.js";
 import type { LocalWorkspace } from "./workspace.js";
 
@@ -16,9 +15,9 @@ export interface ContractTemplate {
 
 /** Loads the merged template library: builtin + workspace overlay (same name replaces, new name appends). */
 export async function listContractTemplates(workspace: LocalWorkspace | null): Promise<ContractTemplate[]> {
-  const { builtin, user } = await loadTieredYaml<ContractTemplatesFile>(workspace, "contract-templates.yaml", 1);
+  const { builtin, user } = await loadContractTemplatesPolicy(workspace);
   const byName = new Map<string, ContractTemplate>();
-  for (const template of builtin.templates) byName.set(template.name, template);
+  for (const template of builtin.templates ?? []) byName.set(template.name, template);
   for (const template of user?.templates ?? []) byName.set(template.name, template);
   return [...byName.values()];
 }

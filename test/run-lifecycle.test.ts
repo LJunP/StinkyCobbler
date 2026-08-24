@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import type { AgentRun } from "../src/contracts/types.js";
-import { createRun, getRun, saveRun, transitionRun } from "../src/storage/runs.js";
+import { checkpointRunProgress, createRun, getRun, injectRunLifecycleFaultForTesting, listRuns, saveRun, transitionRun } from "../src/storage/runs.js";
 import { listLedgerEntries } from "../src/storage/ledger.js";
 import { initWorkspace } from "../src/storage/workspace.js";
 
@@ -33,6 +33,21 @@ describe("Agent Run persistence lifecycle", () => {
     await expect(createRun(workspace, { ...run(), status: "RUNNING", startedAt: undefined } as never)).rejects.toMatchObject({ code: "RUNTIME_RUN_INVALID" });
   });
 
+  it("rejects schema-tampered and filename-mismatched persisted runs through get and list", async () => {
+    const workspace = await setup();
+    const stored = run();
+    await createRun(workspace, stored);
+    const target = path.join(workspace.directory, "runs", `${stored.runId}.json`);
+
+    await writeFile(target, JSON.stringify({ ...stored, unexpected: true }), "utf8");
+    await expect(getRun(workspace, stored.runId)).rejects.toMatchObject({ code: "SCHEMA_INVALID" });
+    await expect(listRuns(workspace)).rejects.toMatchObject({ code: "SCHEMA_INVALID" });
+
+    await writeFile(target, JSON.stringify({ ...stored, runId: "run-other" }), "utf8");
+    await expect(getRun(workspace, stored.runId)).rejects.toMatchObject({ code: "RUNTIME_RUN_INVALID" });
+    await expect(listRuns(workspace)).rejects.toMatchObject({ code: "RUNTIME_RUN_INVALID" });
+  });
+
   it("protects immutable bindings and terminal records", async () => {
     const workspace = await setup();
     await createRun(workspace, run());
@@ -48,6 +63,36 @@ describe("Agent Run persistence lifecycle", () => {
     ]);
   });
 
+  for (const point of ["after-run", "after-ledger"] as const) {
+    it(`repairs Run creation exactly once after ${point}`, async () => {
+      const workspace = await setup();
+      const target = run();
+      injectRunLifecycleFaultForTesting(workspace, point);
+      await expect(createRun(workspace, target)).rejects.toMatchObject({
+        code: "RUNTIME_RUN_LIFECYCLE_FAULT_INJECTED",
+        details: { point }
+      });
+      await expect(createRun(workspace, target)).resolves.toBeUndefined();
+      const created = (await listLedgerEntries(workspace)).filter((entry) => entry.event === "run-created" && entry.runId === target.runId);
+      expect(created).toHaveLength(1);
+    });
+  }
+
+  for (const point of ["after-run", "after-ledger"] as const) {
+    it(`repairs a terminal Run transition exactly once after ${point}`, async () => {
+      const workspace = await setup();
+      await createRun(workspace, run());
+      injectRunLifecycleFaultForTesting(workspace, point);
+      await expect(transitionRun(workspace, "run-1", "COMPLETED", { finishedAt: "2026-01-01T00:01:00.000Z" }))
+        .rejects.toMatchObject({ code: "RUNTIME_RUN_LIFECYCLE_FAULT_INJECTED", details: { point } });
+      await expect(transitionRun(workspace, "run-1", "COMPLETED", { finishedAt: "2026-01-01T00:01:00.000Z" }))
+        .resolves.toMatchObject({ status: "COMPLETED" });
+      const transitioned = (await listLedgerEntries(workspace)).filter((entry) => entry.event === "run-transitioned" && entry.runId === "run-1");
+      expect(transitioned).toHaveLength(1);
+      expect(transitioned[0]).toMatchObject({ fromStatus: "RUNNING", toStatus: "COMPLETED" });
+    });
+  }
+
   it("does not let saveRun create or change lifecycle state", async () => {
     const workspace = await setup();
     await expect(saveRun(workspace, run())).rejects.toMatchObject({ code: "RUNTIME_RUN_NOT_FOUND" });
@@ -61,6 +106,26 @@ describe("Agent Run persistence lifecycle", () => {
     const { assertRunOwner } = await import("../src/storage/runs.js");
     await expect(assertRunOwner(workspace, owned.runId, owned.ownerToken, 0)).resolves.toMatchObject({ ownerToken: owned.ownerToken, fenceEpoch: 0 });
     await expect(assertRunOwner(workspace, owned.runId, "b".repeat(64), 0)).rejects.toMatchObject({ code: "RUNTIME_RUN_FENCED" });
+  });
+
+  it("persists only owner-authorized append-only Runtime progress checkpoints", async () => {
+    const workspace = await setup();
+    const owned = { ...run(), ownerToken: "a".repeat(64), fenceEpoch: 0 };
+    await createRun(workspace, owned);
+    await expect(checkpointRunProgress(workspace, owned.runId, {
+      toolCalls: ["tool-1"], evidenceRefs: ["evidence-1"], budgetUsage: { toolCalls: 1, files: 1, bytes: 10 }
+    }, { ownerToken: owned.ownerToken, expectedEpoch: 0 })).resolves.toMatchObject({
+      status: "RUNNING", toolCalls: ["tool-1"], evidenceRefs: ["evidence-1"], budgetUsage: { toolCalls: 1 }
+    });
+    await expect(checkpointRunProgress(workspace, owned.runId, {
+      toolCalls: [], evidenceRefs: ["evidence-1"], budgetUsage: { toolCalls: 1, files: 1, bytes: 10 }
+    }, { ownerToken: owned.ownerToken, expectedEpoch: 0 })).rejects.toMatchObject({ code: "RUNTIME_RUN_CHECKPOINT_CONFLICT" });
+    await expect(checkpointRunProgress(workspace, owned.runId, {
+      toolCalls: ["tool-1"], evidenceRefs: ["evidence-1"], budgetUsage: { toolCalls: 0, files: 1, bytes: 10 }
+    }, { ownerToken: owned.ownerToken, expectedEpoch: 0 })).rejects.toMatchObject({ code: "RUNTIME_RUN_CHECKPOINT_CONFLICT" });
+    await expect(checkpointRunProgress(workspace, owned.runId, {
+      toolCalls: ["tool-1", "tool-2"], evidenceRefs: ["evidence-1"], budgetUsage: { toolCalls: 2, files: 1, bytes: 10 }
+    }, { ownerToken: "b".repeat(64), expectedEpoch: 0 })).rejects.toMatchObject({ code: "RUNTIME_RUN_FENCED" });
   });
 
   it("rejects backward lifecycle transitions", async () => {

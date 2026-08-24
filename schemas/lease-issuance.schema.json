@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stinkycobbler.dev/schemas/lease-issuance.schema.json",
+  "title": "Lease Issuance Journal",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version", "journalId", "status", "requestHash", "taskId", "leaseId",
+    "preparedAt", "updatedAt"
+  ],
+  "properties": {
+    "version": { "const": 1 },
+    "journalId": { "type": "string", "pattern": "^issuance-[A-Za-z0-9._-]{1,110}$" },
+    "status": { "enum": ["PREPARED", "COMMITTED"] },
+    "requestHash": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "taskId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$" },
+    "approvalRef": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$" },
+    "leaseId": { "type": "string", "pattern": "^lease-[A-Za-z0-9][A-Za-z0-9._-]{0,121}$" },
+    "preparedAt": { "type": "string", "format": "date-time" },
+    "updatedAt": { "type": "string", "format": "date-time" },
+    "committedAt": { "type": "string", "format": "date-time" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "status": { "const": "COMMITTED" } } },
+      "then": { "required": ["committedAt"] },
+      "else": { "not": { "required": ["committedAt"] } }
+    }
+  ]
+}

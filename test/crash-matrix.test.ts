@@ -128,7 +128,7 @@ describe("crash consistency matrix", () => {
       const { workspace, schemas } = await setup();
       await createTask(workspace, { id: "crash-task", workspaceId: "workspace-1", goal: "x", requestedOutputs: ["report"], riskLevel: "L0", state: "SCOPED" });
       await createRun(workspace, run("RUNNING"));
-      const receipt = await recordReceipt(workspace, schemas, { id: "crash-receipt", taskId: "crash-task", role: "scout", status: "BLOCKED", facts: [], proposals: [], unknowns: [], evidenceRefs: [], createdAt: "2026-01-01T00:00:00.000Z", runId: "crash-run" });
+      const receipt = await recordReceipt(workspace, schemas, { id: "crash-receipt", taskId: "crash-task", role: "scout", status: "BLOCKED", facts: [], proposals: [], unknowns: [], evidenceRefs: [], createdAt: "2026-01-01T00:00:00.000Z" });
       await rm(path.join(workspace.directory, "receipts", `${receipt.id}.json`));
       const report = await diagnoseRuntime(workspace, schemas);
       expect(report.issues.some((issue: any) => issue.code === "LEDGER_RECEIPT_REF_ORPHAN")).toBe(true);
@@ -138,7 +138,7 @@ describe("crash consistency matrix", () => {
       const { workspace, schemas } = await setup();
       await createTask(workspace, { id: "crash-task", workspaceId: "workspace-1", goal: "x", requestedOutputs: ["report"], riskLevel: "L0", state: "SCOPED" });
       await createRun(workspace, run("RUNNING"));
-      await recordReceipt(workspace, schemas, { id: "crash-receipt", taskId: "crash-task", role: "scout", status: "BLOCKED", facts: [], proposals: [], unknowns: [], evidenceRefs: [], createdAt: "2026-01-01T00:00:00.000Z", runId: "crash-run" });
+      await recordReceipt(workspace, schemas, { id: "crash-receipt", taskId: "crash-task", role: "scout", status: "BLOCKED", facts: [], proposals: [], unknowns: [], evidenceRefs: [], createdAt: "2026-01-01T00:00:00.000Z" });
       await truncateTail(workspace, 1);
       const report = await diagnoseRuntime(workspace, schemas);
       expect(report.issues.some((issue: any) => issue.code === "RECEIPT_LEDGER_EVENT_MISSING")).toBe(true);

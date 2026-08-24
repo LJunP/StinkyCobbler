@@ -53,7 +53,7 @@ describe("entry install-host (codex)", () => {
     });
     expect(merged.desktop).toMatchObject({ codeFontSize: 14 });
     const backups = await readdir(path.join(home, ".codex"));
-    expect(backups.some((name) => name.startsWith("config.toml.bak-"))).toBe(true);
+    expect(backups.some((name) => name.startsWith("config.toml.stinky-cobbler-backup-"))).toBe(true);
     const again = await installHost({ host: "codex", scope: "user", installMcp: true, homeDir: home });
     expect(again.mcp?.action).toBe("ready");
   });

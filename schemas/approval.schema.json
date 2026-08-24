@@ -5,16 +5,59 @@
   "type": "object",
   "required": ["id", "taskId", "action", "status", "requestedAt"],
   "properties": {
-    "id": {"type": "string", "pattern": "^[A-Za-z0-9._-]+$"},
-    "taskId": {"type": "string", "pattern": "^[A-Za-z0-9._-]+$"},
-    "action": {"type": "string", "minLength": 1},
+    "id": {"type": "string", "maxLength": 128, "pattern": "^[A-Za-z0-9._-]+$"},
+    "taskId": {"type": "string", "maxLength": 128, "pattern": "^[A-Za-z0-9._-]+$"},
+    "action": {"type": "string", "minLength": 1, "maxLength": 128},
     "status": {"enum": ["requested", "approved", "rejected", "expired", "revoked"]},
     "requestedAt": {"type": "string", "format": "date-time"},
     "expiresAt": {"type": "string", "format": "date-time"},
     "decidedAt": {"type": "string", "format": "date-time"},
-    "decidedBy": {"type": "string"},
-    "scope": {"type": "array", "items": {"type": "string"}},
-    "reason": {"type": "string", "maxLength": 512}
+    "decidedBy": {"type": "string", "minLength": 1, "maxLength": 256, "pattern": "^[^\\u0000\\r\\n]+$"},
+    "scope": {"type": "array", "maxItems": 50, "items": {"type": "string", "maxLength": 512}},
+    "reason": {"type": "string", "minLength": 1, "maxLength": 512},
+    "subjectKind": {"type": "string", "minLength": 1, "maxLength": 128},
+    "subjectId": {"type": "string", "minLength": 1, "maxLength": 256},
+    "subjectVersion": {"oneOf": [{"type": "string", "minLength": 1, "maxLength": 128}, {"type": "number"}]},
+    "subjectHash": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+    "capability": {"type": "string", "minLength": 1, "maxLength": 128},
+    "expectedPreimageHash": {
+      "oneOf": [
+        {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+        {"type": "null"}
+      ]
+    },
+    "proposedContentHash": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"},
+    "budget": {
+      "type": "object",
+      "maxProperties": 2,
+      "properties": {
+        "maxToolCalls": {"type": "integer", "minimum": 1, "maximum": 1000000},
+        "expiresAt": {"type": "string", "format": "date-time"}
+      },
+      "additionalProperties": false
+    },
+    "policyVersion": {"type": "string", "minLength": 1, "maxLength": 128},
+    "requestedBy": {"type": "string", "minLength": 1, "maxLength": 256},
+    "hostSessionId": {"type": "string", "minLength": 1, "maxLength": 256, "pattern": "^[^\\u0000\\r\\n]+$"},
+    "nonce": {"type": "string", "minLength": 16, "maxLength": 256},
+    "pendingDecision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "decidedBy", "reason", "decidedAt", "decisionHash"],
+      "properties": {
+        "status": {"enum": ["approved", "rejected", "expired"]},
+        "decidedBy": {"type": "string", "minLength": 1, "maxLength": 256, "pattern": "^[^\\u0000\\r\\n]+$"},
+        "reason": {"type": "string", "minLength": 1, "maxLength": 512},
+        "decidedAt": {"type": "string", "format": "date-time"},
+        "expiresAt": {"type": "string", "format": "date-time"},
+        "decisionHash": {"type": "string", "pattern": "^sha256:[a-f0-9]{64}$"}
+      }
+    },
+    "consumedAt": {"type": "string", "format": "date-time"},
+    "consumedBy": {"type": "string", "minLength": 1, "maxLength": 256},
+    "revokedAt": {"type": "string", "format": "date-time"},
+    "revokedBy": {"type": "string", "minLength": 1, "maxLength": 256},
+    "revocationReason": {"type": "string", "minLength": 1, "maxLength": 512}
   },
   "additionalProperties": false
 }

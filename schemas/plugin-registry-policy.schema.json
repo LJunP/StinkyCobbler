@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stinkycobbler.dev/schemas/plugin-registry-policy.schema.json",
+  "title": "Built-in Plugin Registry Policy",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "plugins"],
+  "properties": {
+    "version": { "const": 2 },
+    "plugins": {
+      "type": "array",
+      "maxItems": 1000,
+      "items": { "$ref": "https://stinkycobbler.dev/schemas/plugin-manifest.schema.json" }
+    }
+  }
+}

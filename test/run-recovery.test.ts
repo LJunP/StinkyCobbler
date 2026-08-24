@@ -3,7 +3,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import type { AgentRun } from "../src/contracts/types.js";
-import { createRun, getRun, getRunStaleness, recoverStaleRun } from "../src/storage/runs.js";
+import { createRun, getRun, getRunStaleness, injectRunLifecycleFaultForTesting, recoverStaleRun } from "../src/storage/runs.js";
 import { listLedgerEntries } from "../src/storage/ledger.js";
 import { initWorkspace } from "../src/storage/workspace.js";
 
@@ -110,4 +110,40 @@ describe("stale Agent run recovery", () => {
     });
     expect(recovered).toMatchObject({ status: "FAILED", errorCode: "RUNTIME_STALE_RECOVERY" });
   });
+
+  it("repairs a missing creation event before stale recovery", async () => {
+    const workspace = await setup();
+    const target = run("RUNNING", "2026-01-01T00:00:00.000Z");
+    injectRunLifecycleFaultForTesting(workspace, "after-run");
+    await expect(createRun(workspace, target)).rejects.toMatchObject({
+      code: "RUNTIME_RUN_LIFECYCLE_FAULT_INJECTED",
+      details: { point: "after-run" }
+    });
+    await expect(recoverStaleRun(workspace, target.runId, {
+      staleMs: 60_000,
+      now: new Date("2026-01-01T00:02:00.000Z")
+    })).resolves.toMatchObject({ status: "FAILED", errorCode: "RUNTIME_STALE_RECOVERY" });
+    expect((await listLedgerEntries(workspace)).filter((entry) => entry.runId === target.runId).map((entry) => entry.event))
+      .toEqual(["run-created", "run-recovered"]);
+  });
+
+  for (const point of ["after-run", "after-ledger"] as const) {
+    it(`repairs stale recovery exactly once after ${point}`, async () => {
+      const workspace = await setup();
+      const target = run("RUNNING", "2026-01-01T00:00:00.000Z");
+      await createRun(workspace, target);
+      injectRunLifecycleFaultForTesting(workspace, point);
+      await expect(recoverStaleRun(workspace, target.runId, {
+        staleMs: 60_000,
+        now: new Date("2026-01-01T00:02:00.000Z")
+      })).rejects.toMatchObject({ code: "RUNTIME_RUN_LIFECYCLE_FAULT_INJECTED", details: { point } });
+      await expect(recoverStaleRun(workspace, target.runId, {
+        staleMs: 60_000,
+        now: new Date("2026-01-01T00:03:00.000Z")
+      })).resolves.toMatchObject({ status: "FAILED", errorCode: "RUNTIME_STALE_RECOVERY" });
+      const recovered = (await listLedgerEntries(workspace)).filter((entry) => entry.event === "run-recovered" && entry.runId === target.runId);
+      expect(recovered).toHaveLength(1);
+      expect(recovered[0]).toMatchObject({ fromStatus: "RUNNING", toStatus: "FAILED" });
+    });
+  }
 });

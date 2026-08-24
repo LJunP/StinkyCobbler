@@ -1,9 +1,7 @@
 /** Out-of-the-box customization templates: init scaffolds commented example files under .stinky-cobbler/policies/. */
 
-import { mkdir, writeFile } from "node:fs/promises";
-import path from "node:path";
-import type { LocalWorkspace } from "../storage/workspace.js";
-import { userPoliciesDir } from "./tiered.js";
+import { writeFile } from "node:fs/promises";
+import { createWorkspaceDirectory, workspaceFile, type LocalWorkspace } from "../storage/workspace.js";
 
 const HEADER = `# ============================================================
 # Stinky Cobbler 用户配置模板（由工具初始化时自动生成）
@@ -42,7 +40,7 @@ const ORCHESTRATION_TEMPLATE = `# defaults:   ← 需要自定义时：取消注
   # 预估成本达到该值时推荐走编排（否则推荐直接执行 1.0 路径）。
   # orchestrateTokenThreshold: 50000
 
-  # ── 规模与上限（大项目可放宽）───────────────────────────
+  # ── 规模与上限（默认即 schema 上限；当前只可收紧）────────
   # 契约全局验收标准条数上限（默认 20）。
   # maxContractCriteria: 20
   # 子任务验收标准条数上限（默认 10）。
@@ -55,6 +53,12 @@ const ORCHESTRATION_TEMPLATE = `# defaults:   ← 需要自定义时：取消注
   # maxContractScopeItems: 50
   # 子任务 scope 前缀数量上限（默认 50）。
   # maxSubtaskScopeItems: 50
+  # domain 字符长度上限（默认 64；schema 硬上限 64）。
+  # maxDomainLength: 64
+  # 注入子任务的领域指令总条数上限（默认 30；schema 硬上限 30）。
+  # maxDomainInstructions: 30
+  # 1.x 计划最多步骤数（默认 10；schema 硬上限 10）。
+  # maxSteps: 10
 
   # ── 受控写入 ─────────────────────────────────────────────
   # 单次写入内容大小上限（字节，默认 1MiB = 1048576）。
@@ -62,11 +66,15 @@ const ORCHESTRATION_TEMPLATE = `# defaults:   ← 需要自定义时：取消注
   # maxWriteContentBytes: 1048576
 
   # ── Lease 授权默认值 ────────────────────────────────────
+  # 未指定时的默认调用次数（默认 20）。
+  # leaseDefaultToolCalls: 20
+  # 单个 Lease 调用次数硬上限（默认 100；不可超过 100）。
+  # leaseMaxToolCallsCap: 100
   # 签发 lease 时未指定时长的默认分钟数（默认 60）。
   # leaseDefaultMinutes: 60
   # lease 时长上限（分钟，默认 1440）。
   # leaseMaxMinutes: 1440
-  # lease 到期宽限期（分钟，默认 15，进行中任务不中断）。
+  # lease 到期宽限期（分钟；2.0.1 固定为 15，暂不支持工作区覆盖）。
   # leaseGraceMinutes: 15
 
   # ── 审查质量门 ──────────────────────────────────────────
@@ -126,16 +134,20 @@ const SPECIALISTS_TEMPLATE = `# ── 专才注册表（自定义你的专业 w
 `;
 
 const TEMPLATES_TEMPLATE = `# ── 话术 / 审查风格 / 指令语言模板 ─────────────────────────
-# 这些是 orchestrator skill 消费的指导字典（config show 可查看）。
+# 这些是 config show 展示、供宿主/操作者参考的指导字典；引擎与 skill 不会自动套用。
 # 想改交互文案：编辑宿主侧 skill 文件（SKILL.md）最直接。
 # domainConfirmation:
 #   prompt: 识别到问题领域：{domain}。请确认或一句话修正。
+#   exampleHint: 不确认就按识别结果继续
+#   unknownHint: 未识别出明确领域，将使用通用专才。
 # reviewStyle:
 #   default: reason 直述结论；defects 每条含位置、问题、建议。
 #   concise: reason ≤2 句；defects 每条一行。
+#   detailed: reason 分条论证；defects 附证据引用与优先级。
 # instructionsLanguage:
 #   default: zh
 #   options: [zh, en]
+#   note: 指令语言仅是供宿主参考的偏好，不会自动改写专才内容。
 `;
 
 const CONTRACT_TEMPLATES_TEMPLATE = `# ── 契约模板库（一键建契约）─────────────────────────────────
@@ -168,11 +180,10 @@ const SCAFFOLD_FILES: { fileName: string; body: string }[] = [
  * Never overwrites existing files (user edits survive). Returns the created file names.
  */
 export async function scaffoldUserPolicies(workspace: LocalWorkspace): Promise<string[]> {
-  const directory = userPoliciesDir(workspace);
   const created: string[] = [];
-  await mkdir(directory, { recursive: true, mode: 0o700 });
+  await createWorkspaceDirectory(workspace, "policies");
   for (const { fileName, body } of SCAFFOLD_FILES) {
-    const file = path.join(directory, fileName);
+    const file = await workspaceFile(workspace, `policies/${fileName}`);
     try {
       await writeFile(file, `${HEADER}${body}`, { encoding: "utf8", mode: 0o600, flag: "wx" });
       created.push(fileName);

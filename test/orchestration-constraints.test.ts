@@ -12,7 +12,8 @@ const run: OrchestrationRun = {
 };
 
 const subtask: SubtaskPackage = {
-  version: 1, subtaskId: "subtask-1", contractRef: "contract-1", runRef: "run-1", goal: "g",
+  version: 1, subtaskId: "subtask-1", contractRef: "contract-1", runRef: "run-1", domain: "general", domainInstructions: ["general"],
+  contractGoal: "g", globalAcceptanceCriteria: ["a"], goal: "g",
   inputArtifacts: [], acceptanceCriteria: ["a"], scope: ["docs"], maxRetries: 2, capabilities: ["repository-read"],
   status: "REJECTED", round: 1, retriesUsed: 1, dependsOn: [], createdAt: "2026-08-11T00:00:00Z"
 };
@@ -22,20 +23,24 @@ function review(round: number, score: number, defects: { location: string; probl
     version: 1, reviewId: `review-${round}`, runRef: "run-1", subtaskRef: "subtask-1", round,
     decision: defects.length > 0 ? "REJECTED" : "ACCEPTED",
     criteriaResults: [], defects: defects.map((d) => ({ ...d, suggestion: "fix" })), score, reason: "r",
-    validatorEvidence: [], createdAt: "2026-08-11T00:00:00Z", reviewedBy: "host"
+    validatorReceiptIds: ["validator-receipt-1"], attempt: 0,
+    reviewIndependence: "INDEPENDENT", tokenAccounting: { status: "UNKNOWN", chargedTokens: 0 }, tokensUsed: 0,
+    createdAt: "2026-08-11T00:00:00Z", reviewedBy: "host"
   };
 }
 
 describe("orchestration constraint engine", () => {
   it("detects round and token budget exhaustion (global, never resets)", () => {
-    expect(exceedsRoundBudget({ ...run, round: 5 })).toBe(false);
-    expect(exceedsRoundBudget({ ...run, round: 6 })).toBe(true);
+    expect(exceedsRoundBudget({ ...run, round: 4 })).toBe(false);
+    expect(exceedsRoundBudget({ ...run, round: 5 })).toBe(true);
+    expect(exceedsTokenBudget({ ...run, budget: { ...run.budget, usedTokens: 1000 } })).toBe(false);
     expect(exceedsTokenBudget({ ...run, budget: { ...run.budget, usedTokens: 1001 } })).toBe(true);
   });
 
   it("detects retry exhaustion", () => {
     expect(retriesExhausted({ ...subtask, retriesUsed: 1 })).toBe(false);
-    expect(retriesExhausted({ ...subtask, retriesUsed: 2 })).toBe(true);
+    expect(retriesExhausted({ ...subtask, retriesUsed: 2 })).toBe(false);
+    expect(retriesExhausted({ ...subtask, retriesUsed: 3 })).toBe(true);
   });
 
   it("detects oscillation: same defect fingerprint twice across rounds", () => {
@@ -70,12 +75,23 @@ describe("orchestration constraint engine", () => {
     expect(oscillation).toMatchObject({ action: "escalate", code: "OSCILLATION" });
     const regression = evaluateConstraints({ run, subtask, reviews: [review(1, 80, []), review(2, 70, [])] });
     expect(regression).toMatchObject({ action: "escalate", code: "REGRESSION" });
-    const budget = evaluateConstraints({ run: { ...run, round: 6 }, subtask, reviews: [] });
+    const budget = evaluateConstraints({ run: { ...run, round: 5 }, subtask, reviews: [] });
     expect(budget).toMatchObject({ action: "fail", code: "ROUND_BUDGET" });
-    const exhausted = evaluateConstraints({ run, subtask: { ...subtask, retriesUsed: 2 }, reviews: [] });
-    expect(exhausted).toMatchObject({ action: "fail", code: "RETRIES_EXHAUSTED" });
+    const exhausted = evaluateConstraints({ run, subtask: { ...subtask, retriesUsed: 3 }, reviews: [] });
+    expect(exhausted).toMatchObject({ action: "degrade", code: "RETRIES_EXHAUSTED" });
+    const exhaustedAndOscillating = evaluateConstraints({ run, subtask: { ...subtask, retriesUsed: 3 }, reviews: [review(1, 40, [{ location: "x", problem: "p" }]), review(2, 40, [{ location: "x", problem: "p" }])] });
+    expect(exhaustedAndOscillating).toMatchObject({ action: "degrade", code: "RETRIES_EXHAUSTED" });
+    const overTokenAndOscillating = evaluateConstraints({ run: { ...run, budget: { ...run.budget, usedTokens: 1001 } }, subtask, reviews: [review(1, 40, [{ location: "x", problem: "p" }]), review(2, 40, [{ location: "x", problem: "p" }])] });
+    expect(overTokenAndOscillating).toMatchObject({ action: "fail", code: "TOKEN_BUDGET" });
     const ok = evaluateConstraints({ run, subtask: { ...subtask, retriesUsed: 0 }, reviews: [] });
     expect(ok.action).toBe("continue");
+  });
+
+  it("fails the whole run on retry exhaustion only for critical or fail-fast work", () => {
+    expect(evaluateConstraints({ run, subtask: { ...subtask, retriesUsed: 3, critical: true }, reviews: [] }))
+      .toMatchObject({ action: "fail", code: "RETRIES_EXHAUSTED" });
+    expect(evaluateConstraints({ run: { ...run, failFast: true }, subtask: { ...subtask, retriesUsed: 3 }, reviews: [] }))
+      .toMatchObject({ action: "fail", code: "RETRIES_EXHAUSTED" });
   });
 
   it("produces stable defect fingerprints", () => {

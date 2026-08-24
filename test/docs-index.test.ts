@@ -1,9 +1,11 @@
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { link, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { buildDocumentationIndex, readDocumentationIndex } from "../src/mcp/docs-index.js";
+import { buildDocumentationIndex, DOCS_INDEX_BUDGET, readDocumentationIndex } from "../src/mcp/docs-index.js";
+import { listRepositoryDirectory } from "../src/mcp/repo-read.js";
 import { initWorkspace, workspaceFile } from "../src/storage/workspace.js";
+import { loadDocumentationIndex, saveDocumentationIndex } from "../src/storage/docs-index.js";
 
 const roots: string[] = [];
 
@@ -67,5 +69,110 @@ describe("documentation index", () => {
 
     await expect(buildDocumentationIndex(access(workspace.root))).rejects.toMatchObject({ code: "DOCS_INDEX_BUDGET_EXCEEDED" });
     await expect(readFile(indexFile, "utf8")).resolves.toBe(previous);
+  });
+
+  it("streams the recursive global entry budget and rejects on exactly limit + 1", async () => {
+    const root = await createProject();
+    const workspace = await initWorkspace(root);
+    const nested = path.join(root, "docs", "nested");
+    await mkdir(nested, { recursive: true });
+    const rootEntryCount = Math.floor(DOCS_INDEX_BUDGET.maxEntries / 2);
+    const nestedEntryCount = DOCS_INDEX_BUDGET.maxEntries - rootEntryCount;
+    await Promise.all(Array.from({ length: rootEntryCount }, (_, index) =>
+      writeFile(path.join(root, "docs", `root-${index}.bin`), "", "utf8")
+    ));
+    await Promise.all(Array.from({ length: nestedEntryCount }, (_, index) =>
+      writeFile(path.join(nested, `nested-${index}.bin`), "", "utf8")
+    ));
+
+    await expect(buildDocumentationIndex(access(workspace.root))).rejects.toMatchObject({
+      code: "DOCS_INDEX_BUDGET_EXCEEDED",
+      details: { budget: "entries", limit: DOCS_INDEX_BUDGET.maxEntries, observed: DOCS_INDEX_BUDGET.maxEntries + 1 }
+    });
+  });
+
+  it("rejects hard-linked documents instead of indexing an alias outside the documentation tree", async () => {
+    const root = await createProject();
+    const outside = await createProject();
+    const workspace = await initWorkspace(root);
+    await mkdir(path.join(root, "docs"));
+    const external = path.join(outside, "external.md");
+    await writeFile(external, "# External\n", "utf8");
+    await link(external, path.join(root, "docs", "linked.md"));
+
+    await expect(buildDocumentationIndex(access(workspace.root)))
+      .rejects.toMatchObject({ code: "DOCS_INDEX_INVALID" });
+  });
+
+  it("inherits custom sensitive paths across recursive indexing and directory listings", async () => {
+    const root = await createProject();
+    const workspace = await initWorkspace(root);
+    await mkdir(path.join(root, ".stinky-cobbler", "policies"), { recursive: true });
+    await writeFile(path.join(root, ".stinky-cobbler", "policies", "orchestration.yaml"), "version: 1\nsensitiveExtraPaths:\n  - docs/internal/\n");
+    await mkdir(path.join(root, "docs", "internal"), { recursive: true });
+    await mkdir(path.join(root, "docs", "public"), { recursive: true });
+    await writeFile(path.join(root, "docs", "internal", "roadmap.md"), "# Private roadmap\n");
+    await writeFile(path.join(root, "docs", "public", "guide.md"), "# Public guide\n");
+
+    const built = await buildDocumentationIndex(access(workspace.root));
+    expect(built.data?.documents).toEqual([{ path: "docs/public/guide.md", title: "Public guide" }]);
+
+    const listed = await listRepositoryDirectory(access(workspace.root, {
+      capability: "repository-read",
+      level: "L0",
+      writeSet: []
+    }), "docs");
+    expect(listed.data).toEqual([{ path: "docs/public", kind: "directory" }]);
+  });
+
+  it("rejects a stored root index when the reading Lease is narrower", async () => {
+    const root = await createProject();
+    const workspace = await initWorkspace(root);
+    await mkdir(path.join(root, "docs"));
+    await writeFile(path.join(root, "README.md"), "# Root document\n");
+    await writeFile(path.join(root, "docs", "guide.md"), "# Guide\n");
+
+    await buildDocumentationIndex(access(workspace.root, { readScope: ["."] }), ".");
+    const denied = await readDocumentationIndex(access(workspace.root)).catch((error: unknown) => error);
+    expect(denied).toMatchObject({ code: "DOCS_INDEX_ACCESS_DENIED" });
+    expect(JSON.stringify(denied)).not.toContain("README.md");
+  });
+
+  it("revalidates an existing index against newly configured sensitive paths", async () => {
+    const root = await createProject();
+    const workspace = await initWorkspace(root);
+    await mkdir(path.join(root, "docs", "internal"), { recursive: true });
+    await writeFile(path.join(root, "docs", "internal", "roadmap.md"), "# Roadmap\n");
+    await buildDocumentationIndex(access(workspace.root));
+
+    await mkdir(path.join(root, ".stinky-cobbler", "policies"), { recursive: true });
+    await writeFile(path.join(root, ".stinky-cobbler", "policies", "orchestration.yaml"), "version: 1\nsensitiveExtraPaths:\n  - docs/internal/\n");
+    const denied = await readDocumentationIndex(access(workspace.root)).catch((error: unknown) => error);
+    expect(denied).toMatchObject({ code: "DOCS_INDEX_ACCESS_DENIED" });
+    expect(JSON.stringify(denied)).not.toContain("docs/internal/roadmap.md");
+  });
+
+  it("schema-validates save/load and enforces canonical paths, titles, duplicates, timestamps, and document budget", async () => {
+    const root = await createProject();
+    const workspace = await initWorkspace(root);
+    const base = { version: 1 as const, generatedAt: "2026-01-01T00:00:00.000Z", documents: [{ path: "docs/a.md", title: "A" }] };
+
+    await expect(saveDocumentationIndex(workspace, { ...base, documents: [...base.documents, ...base.documents] }))
+      .rejects.toMatchObject({ code: "DOCS_INDEX_INVALID" });
+    await expect(saveDocumentationIndex(workspace, { ...base, documents: [{ path: "docs/../secret.md", title: "A" }] }))
+      .rejects.toMatchObject({ code: "DOCS_INDEX_INVALID" });
+    await expect(saveDocumentationIndex(workspace, { ...base, documents: [{ path: ".stinky-cobbler/private.md", title: "A" }] }))
+      .rejects.toMatchObject({ code: "DOCS_INDEX_INVALID" });
+    await expect(saveDocumentationIndex(workspace, { ...base, documents: [{ path: "docs/a.md", title: " A " }] }))
+      .rejects.toMatchObject({ code: "DOCS_INDEX_INVALID" });
+    await expect(saveDocumentationIndex(workspace, { ...base, generatedAt: "2026-01-01T00:00:00Z" }))
+      .rejects.toMatchObject({ code: "SCHEMA_INVALID", details: { kind: "docs-index" } });
+    await expect(saveDocumentationIndex(workspace, {
+      ...base,
+      documents: Array.from({ length: 101 }, (_, index) => ({ path: `docs/${index}.md`, title: String(index) }))
+    })).rejects.toMatchObject({ code: "SCHEMA_INVALID", details: { kind: "docs-index" } });
+
+    await writeFile(await workspaceFile(workspace, "docs-index.json"), JSON.stringify({ ...base, extra: true }), "utf8");
+    await expect(loadDocumentationIndex(workspace)).rejects.toMatchObject({ code: "SCHEMA_INVALID", details: { kind: "docs-index" } });
   });
 });

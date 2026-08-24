@@ -1,0 +1,173 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stinkycobbler.dev/schemas/write-intent.schema.json",
+  "title": "Single-target WriteIntent record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version", "writeIntentId", "planId", "stepId", "status", "writes", "createdAt"
+  ],
+  "properties": {
+    "version": { "const": 1 },
+    "writeIntentId": { "type": "string", "pattern": "^write-[A-Za-z0-9][A-Za-z0-9._-]{0,127}$" },
+    "planId": { "type": "string", "pattern": "^(?:-|[A-Za-z0-9][A-Za-z0-9._-]{0,127})$" },
+    "stepId": { "type": "string", "pattern": "^(?:-|[A-Za-z0-9][A-Za-z0-9._-]{0,127})$" },
+    "taskId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$" },
+    "runRef": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$" },
+    "subtaskRef": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$" },
+    "attempt": { "type": "integer", "minimum": 0 },
+    "status": { "enum": ["PENDING", "CONFIRMED", "REJECTED", "APPLIED", "FAILED", "RECOVERY_REQUIRED", "ROLLED_BACK"] },
+    "writes": {
+      "type": "array", "minItems": 1, "maxItems": 20,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["target", "action", "purpose"],
+        "properties": {
+          "target": { "type": "string", "minLength": 1, "maxLength": 512 },
+          "action": { "enum": ["create", "modify", "delete"] },
+          "purpose": { "type": "string", "minLength": 1, "maxLength": 512 }
+        }
+      }
+    },
+    "confirmedTargets": { "type": "array", "minItems": 1, "maxItems": 20, "uniqueItems": true, "items": { "type": "string", "minLength": 1, "maxLength": 512 } },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "confirmedAt": { "type": "string", "format": "date-time" },
+    "approvalRef": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "intentHash": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "expectedPreimageHash": {
+      "oneOf": [
+        { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+        { "type": "null" }
+      ]
+    },
+    "proposedContentHash": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "authorityApprovalRefs": { "type": "array", "maxItems": 64, "uniqueItems": true, "items": { "type": "string", "minLength": 1, "maxLength": 128 } },
+    "authorityApprovalRef": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "authorityConsumptionOwner": { "type": "string", "pattern": "^write-[A-Za-z0-9][A-Za-z0-9._-]{0,127}$" },
+    "parentGrantRef": { "type": "string", "minLength": 1, "maxLength": 256 },
+    "taskAuthorityHash": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+    "policyVersion": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "hostSessionId": { "type": "string", "minLength": 1, "maxLength": 256 },
+    "autoAllowed": { "type": "boolean" },
+    "appliedTarget": { "type": "string", "minLength": 1, "maxLength": 512 },
+    "postImageHash": {
+      "oneOf": [
+        { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+        { "type": "null" }
+      ]
+    },
+    "preImageMissing": { "type": "boolean" },
+    "recoveryJournal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "operation", "target", "expectedPreimageHash", "preImageMissing", "postImageHash", "backupPath", "startedAt"],
+      "properties": {
+        "state": { "const": "UNCERTAIN" },
+        "operation": { "enum": ["create", "modify", "delete"] },
+        "target": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "expectedPreimageHash": {
+          "oneOf": [
+            { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+            { "type": "null" }
+          ]
+        },
+        "preImageMissing": { "type": "boolean" },
+        "postImageHash": {
+          "oneOf": [
+            { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+            { "type": "null" }
+          ]
+        },
+        "backupPath": {
+          "oneOf": [
+            { "type": "string", "minLength": 1, "maxLength": 1024 },
+            { "type": "null" }
+          ]
+        },
+        "startedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "rollbackRecoveryJournal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "operation", "target", "expectedCurrentHash", "restoredHash", "evidenceContentHash", "backupPath", "reason", "evidenceObservedAt", "startedAt"],
+      "properties": {
+        "state": { "const": "UNCERTAIN" },
+        "operation": { "enum": ["remove-created", "restore-backup"] },
+        "target": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "expectedCurrentHash": { "oneOf": [{ "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" }, { "type": "null" }] },
+        "restoredHash": { "oneOf": [{ "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" }, { "type": "null" }] },
+        "evidenceContentHash": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+        "backupPath": { "oneOf": [{ "type": "string", "minLength": 1, "maxLength": 1024 }, { "type": "null" }] },
+        "reason": { "type": "string", "minLength": 1, "maxLength": 512 },
+        "evidenceObservedAt": { "type": "string", "format": "date-time" },
+        "startedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "cancelledAt": { "type": "string", "format": "date-time" },
+    "cancellationReason": { "type": "string", "minLength": 1, "maxLength": 512 }
+  },
+  "allOf": [
+    {
+      "if": { "required": ["runRef"] },
+      "then": { "required": ["subtaskRef"] }
+    },
+    {
+      "if": { "required": ["subtaskRef"] },
+      "then": { "required": ["runRef"] }
+    },
+    {
+      "if": { "properties": { "status": { "enum": ["CONFIRMED", "APPLIED", "ROLLED_BACK"] } }, "required": ["status"] },
+      "then": {
+        "required": ["confirmedTargets", "confirmedAt"],
+        "anyOf": [
+          { "required": ["approvalRef"] },
+          { "properties": { "autoAllowed": { "const": true } }, "required": ["autoAllowed"] }
+        ]
+      }
+    },
+    {
+      "oneOf": [
+        {
+          "required": [
+            "taskId", "intentHash", "expectedPreimageHash", "authorityApprovalRefs", "authorityApprovalRef",
+            "authorityConsumptionOwner", "parentGrantRef", "taskAuthorityHash", "policyVersion", "hostSessionId"
+          ],
+          "properties": {
+            "writes": { "maxItems": 1 },
+            "confirmedTargets": { "maxItems": 1 }
+          },
+          "allOf": [
+            {
+              "if": { "properties": { "status": { "enum": ["APPLIED", "ROLLED_BACK"] } }, "required": ["status"] },
+              "then": { "required": ["appliedTarget", "postImageHash", "preImageMissing"] }
+            },
+            {
+              "if": { "properties": { "status": { "const": "RECOVERY_REQUIRED" } }, "required": ["status"] },
+              "then": {
+                "required": ["confirmedTargets", "confirmedAt"],
+                "anyOf": [{ "required": ["recoveryJournal"] }, { "required": ["rollbackRecoveryJournal"] }]
+              }
+            }
+          ]
+        },
+        {
+          "not": {
+            "anyOf": [
+              { "required": ["taskId"] },
+              { "required": ["intentHash"] },
+              { "required": ["expectedPreimageHash"] },
+              { "required": ["authorityApprovalRefs"] },
+              { "required": ["authorityApprovalRef"] },
+              { "required": ["authorityConsumptionOwner"] },
+              { "required": ["parentGrantRef"] },
+              { "required": ["taskAuthorityHash"] },
+              { "required": ["policyVersion"] },
+              { "required": ["hostSessionId"] }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

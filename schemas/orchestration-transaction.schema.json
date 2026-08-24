@@ -1,0 +1,193 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stinkycobbler.dev/schemas/orchestration-transaction.schema.json",
+  "title": "Orchestration Transaction Journal",
+  "oneOf": [
+    { "$ref": "#/$defs/reviewTransaction" },
+    { "$ref": "#/$defs/completionTransaction" },
+    { "$ref": "#/$defs/escalationTransaction" }
+  ],
+  "$defs": {
+    "hash": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
+    },
+    "ledgerEffect": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["effectId", "event", "summary", "taskId", "contractRef", "runRef"],
+      "properties": {
+        "effectId": { "$ref": "#/$defs/id" },
+        "event": {
+          "enum": [
+            "review-recorded",
+            "subtask-accepted",
+            "subtask-rejected",
+            "round-completed",
+            "orchestration-completed",
+            "orchestration-failed",
+            "orchestration-escalated",
+            "run-transitioned"
+          ]
+        },
+        "summary": { "type": "string", "minLength": 1, "maxLength": 2048 },
+        "taskId": { "$ref": "#/$defs/id" },
+        "contractRef": { "$ref": "#/$defs/id" },
+        "runRef": { "$ref": "#/$defs/id" },
+        "subtaskRef": { "$ref": "#/$defs/id" },
+        "reviewRef": { "$ref": "#/$defs/id" },
+        "round": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "reviewTransaction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version", "transactionId", "kind", "status", "requestHash", "contractRef", "runRef",
+        "subtaskRef", "round", "attempt", "reviewRef", "sourceRunHash", "sourceSubtaskHash",
+        "validatorReceipts", "review", "nextRun", "nextSubtask", "ledgerEffects", "preparedAt", "updatedAt"
+      ],
+      "properties": {
+        "version": { "const": 1 },
+        "transactionId": { "$ref": "#/$defs/id" },
+        "kind": { "const": "REVIEW" },
+        "status": { "enum": ["PREPARED", "COMMITTED", "ABORTED"] },
+        "requestHash": { "$ref": "#/$defs/hash" },
+        "contractRef": { "$ref": "#/$defs/id" },
+        "runRef": { "$ref": "#/$defs/id" },
+        "subtaskRef": { "$ref": "#/$defs/id" },
+        "round": { "type": "integer", "minimum": 0 },
+        "attempt": { "type": "integer", "minimum": 0 },
+        "reviewRef": { "$ref": "#/$defs/id" },
+        "sourceRunHash": { "$ref": "#/$defs/hash" },
+        "sourceSubtaskHash": { "$ref": "#/$defs/hash" },
+        "validatorReceipts": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "items": { "$ref": "https://stinkycobbler.dev/schemas/orchestration-validator-receipt.schema.json" }
+        },
+        "review": { "$ref": "https://stinkycobbler.dev/schemas/orchestration-review.schema.json" },
+        "nextRun": { "$ref": "https://stinkycobbler.dev/schemas/orchestration-run.schema.json" },
+        "nextSubtask": { "$ref": "https://stinkycobbler.dev/schemas/orchestration-subtask.schema.json" },
+        "ledgerEffects": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 5,
+          "items": { "$ref": "#/$defs/ledgerEffect" }
+        },
+        "preparedAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "committedAt": { "type": "string", "format": "date-time" },
+        "abortedAt": { "type": "string", "format": "date-time" },
+        "abortReasonHash": { "$ref": "#/$defs/hash" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "status": { "const": "COMMITTED" } } },
+          "then": { "required": ["committedAt"] },
+          "else": { "not": { "required": ["committedAt"] } }
+        },
+        {
+          "if": { "properties": { "status": { "const": "ABORTED" } } },
+          "then": { "required": ["abortedAt", "abortReasonHash"] },
+          "else": { "not": { "anyOf": [{ "required": ["abortedAt"] }, { "required": ["abortReasonHash"] }] } }
+        }
+      ]
+    },
+    "completionTransaction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version", "transactionId", "kind", "status", "requestHash", "contractRef", "runRef",
+        "round", "sourceRunHash", "sourceContractHash", "nextRun", "nextContract", "ledgerEffects",
+        "preparedAt", "updatedAt"
+      ],
+      "properties": {
+        "version": { "const": 1 },
+        "transactionId": { "$ref": "#/$defs/id" },
+        "kind": { "const": "COMPLETION" },
+        "status": { "enum": ["PREPARED", "COMMITTED", "ABORTED"] },
+        "requestHash": { "$ref": "#/$defs/hash" },
+        "contractRef": { "$ref": "#/$defs/id" },
+        "runRef": { "$ref": "#/$defs/id" },
+        "round": { "type": "integer", "minimum": 0 },
+        "sourceRunHash": { "$ref": "#/$defs/hash" },
+        "sourceContractHash": { "$ref": "#/$defs/hash" },
+        "nextRun": { "$ref": "https://stinkycobbler.dev/schemas/orchestration-run.schema.json" },
+        "nextContract": { "$ref": "https://stinkycobbler.dev/schemas/orchestration-contract.schema.json" },
+        "ledgerEffects": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+          "items": { "$ref": "#/$defs/ledgerEffect" }
+        },
+        "preparedAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "committedAt": { "type": "string", "format": "date-time" },
+        "abortedAt": { "type": "string", "format": "date-time" },
+        "abortReasonHash": { "$ref": "#/$defs/hash" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "status": { "const": "COMMITTED" } } },
+          "then": { "required": ["committedAt"] },
+          "else": { "not": { "required": ["committedAt"] } }
+        },
+        {
+          "if": { "properties": { "status": { "const": "ABORTED" } } },
+          "then": { "required": ["abortedAt", "abortReasonHash"] },
+          "else": { "not": { "anyOf": [{ "required": ["abortedAt"] }, { "required": ["abortReasonHash"] }] } }
+        }
+      ]
+    },
+    "escalationTransaction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version", "transactionId", "kind", "status", "requestHash", "contractRef", "runRef",
+        "round", "escalationGeneration", "sourceRunHash", "nextRun", "ledgerEffects", "preparedAt", "updatedAt"
+      ],
+      "properties": {
+        "version": { "const": 1 },
+        "transactionId": { "$ref": "#/$defs/id" },
+        "kind": { "const": "ESCALATION" },
+        "status": { "enum": ["PREPARED", "COMMITTED", "ABORTED"] },
+        "requestHash": { "$ref": "#/$defs/hash" },
+        "contractRef": { "$ref": "#/$defs/id" },
+        "runRef": { "$ref": "#/$defs/id" },
+        "round": { "type": "integer", "minimum": 0 },
+        "escalationGeneration": { "type": "integer", "minimum": 1 },
+        "sourceRunHash": { "$ref": "#/$defs/hash" },
+        "nextRun": { "$ref": "https://stinkycobbler.dev/schemas/orchestration-run.schema.json" },
+        "ledgerEffects": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "items": { "$ref": "#/$defs/ledgerEffect" }
+        },
+        "preparedAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "committedAt": { "type": "string", "format": "date-time" },
+        "abortedAt": { "type": "string", "format": "date-time" },
+        "abortReasonHash": { "$ref": "#/$defs/hash" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "status": { "const": "COMMITTED" } } },
+          "then": { "required": ["committedAt"] },
+          "else": { "not": { "required": ["committedAt"] } }
+        },
+        {
+          "if": { "properties": { "status": { "const": "ABORTED" } } },
+          "then": { "required": ["abortedAt", "abortReasonHash"] },
+          "else": { "not": { "anyOf": [{ "required": ["abortedAt"] }, { "required": ["abortReasonHash"] }] } }
+        }
+      ]
+    }
+  }
+}

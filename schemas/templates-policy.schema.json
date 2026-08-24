@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://stinkycobbler.dev/schemas/templates-policy.schema.json",
+  "title": "Tiered Interaction Templates Policy Layer",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version"],
+  "properties": {
+    "version": { "const": 1 },
+    "domainConfirmation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "prompt": { "$ref": "#/$defs/templateText" },
+        "exampleHint": { "$ref": "#/$defs/templateText" },
+        "unknownHint": { "$ref": "#/$defs/templateText" }
+      }
+    },
+    "reviewStyle": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "default": { "$ref": "#/$defs/templateText" },
+        "concise": { "$ref": "#/$defs/templateText" },
+        "detailed": { "$ref": "#/$defs/templateText" }
+      }
+    },
+    "instructionsLanguage": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "default": { "$ref": "#/$defs/templateText" },
+        "options": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 2,
+          "uniqueItems": true,
+          "items": { "enum": ["zh", "en"] }
+        },
+        "note": { "$ref": "#/$defs/templateText" }
+      }
+    }
+  },
+  "$defs": {
+    "templateText": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1024,
+      "pattern": "^[^\\u0000\\r\\n]+$"
+    }
+  }
+}

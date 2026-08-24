@@ -1,12 +1,13 @@
 import { mkdir, readFile, readdir } from "node:fs/promises";
-import type { EvidenceRef, AgentRun } from "../contracts/types.js";
+import type { EvidenceRef } from "../contracts/types.js";
+import { defaultSchemaRegistry } from "../contracts/default-schema-registry.js";
 import type { SchemaRegistry } from "../contracts/schema-registry.js";
 import { ExitCode, StinkyCobblerError } from "../errors.js";
 import { appendLedgerEntry, listLedgerEntries } from "./ledger.js";
 import type { LocalWorkspace } from "./workspace.js";
 import { createWorkspaceDirectory, createWorkspaceJson, workspaceFile } from "./workspace.js";
 import { withWorkspaceLock } from "./workspace-lock.js";
-import { assertRunOwner } from "./runs.js";
+import { assertRunOwner, listRuns } from "./runs.js";
 
 const DIRECTORY = "evidence";
 const ID_PATTERN = /^evidence-[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
@@ -110,11 +111,7 @@ export async function inspectEvidence(workspace: LocalWorkspace, schemas: Schema
 
 async function findEvidenceLinks(workspace: LocalWorkspace): Promise<Map<string, EvidenceLink>> {
   const links = new Map<string, EvidenceLink>();
-  let names: string[];
-  try { names = await readdir(await workspaceFile(workspace, "runs")); } catch (error: unknown) { if (isCode(error, "ENOENT")) return links; throw error; }
-  for (const name of names.filter((item) => /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}\.json$/.test(item))) {
-    let run: AgentRun;
-    try { run = JSON.parse(await readFile(await workspaceFile(workspace, `runs/${name}`), "utf8")) as AgentRun; } catch { continue; }
+  for (const run of await listRuns(workspace)) {
     const refs = [...(run.evidenceRefs ?? [])];
     for (const call of run.toolCalls ?? []) {
       if (typeof call === "string") continue;
@@ -132,7 +129,9 @@ async function findEvidenceLinks(workspace: LocalWorkspace): Promise<Map<string,
 
 async function readStoredEvidence(workspace: LocalWorkspace, evidenceId: string): Promise<EvidenceRef> {
   try {
-    const value = validateEvidence(JSON.parse(await readFile(await workspaceFile(workspace, `${DIRECTORY}/${evidenceId}.json`), "utf8")) as EvidenceRef);
+    const parsed: unknown = JSON.parse(await readFile(await workspaceFile(workspace, `${DIRECTORY}/${evidenceId}.json`), "utf8"));
+    (await defaultSchemaRegistry()).validate("evidence-ref", parsed);
+    const value = validateEvidence(parsed as EvidenceRef);
     if (value.id !== evidenceId) throw evidenceError("EVIDENCE_INVALID", "Stored Evidence ID does not match its filename.", { evidenceId });
     return value;
   } catch (error: unknown) {
@@ -159,4 +158,3 @@ function assertEvidenceId(value: string): void { if (typeof value !== "string" |
 function isCanonicalDate(value: string): boolean { const date = new Date(value); return !Number.isNaN(date.getTime()) && date.toISOString() === value; }
 function evidenceError(code: string, message: string, details: Record<string, unknown> = {}): StinkyCobblerError { return new StinkyCobblerError(code, ExitCode.VALIDATION, message, details); }
 function isCode(error: unknown, code: string): boolean { return typeof error === "object" && error !== null && "code" in error && error.code === code; }
-
