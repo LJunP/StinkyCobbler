@@ -8,6 +8,8 @@ coverage/
 *.tgz
 *.sha256
 sbom.cyclonedx.json
+*.sbom.cyclonedx.json
+/STINKY-COBBLER-MANUAL.md
 .DS_Store
 .stinky-cobbler/
 
