@@ -134,6 +134,8 @@ describe("release contract", () => {
     expect(workflow).toContain("generate-checksum.mjs --kind offline --file");
     expect(workflow).toContain("stinky-cobbler-*-offline-full.zip.sha256");
     expect(workflow).toContain("STINKY-COBBLER-MANUAL.md");
+    expect(workflow).not.toContain("node -p \\\"require('");
+    expect(workflow.match(/version=\$\(node -p 'require\("\.\/package\.json"\)\.version'\)/g)).toHaveLength(2);
     expect(offlineBuilder).toContain("--tarball");
     expect(offlineBuilder).toContain("package-lock.json");
     expect(offlineBuilder).not.toMatch(/stinky-cobbler@\$\{version\}/);

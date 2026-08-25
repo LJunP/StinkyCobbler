@@ -77,16 +77,18 @@ jobs:
       - run: npm audit --audit-level=high
       - run: npm run build
       - name: Generate dependency SBOM
-        run: node scripts/generate-sbom.mjs --out "stinky-cobbler-$(node -p \"require('./package.json').version\").sbom.cyclonedx.json"
+        run: node scripts/generate-sbom.mjs --out "stinky-cobbler-$(node -p 'require(\"./package.json\").version').sbom.cyclonedx.json"
       - name: Generate, inspect, and checksum the exact release tarball
         run: |
+          version=$(node -p 'require("./package.json").version')
           npm pack --json
-          node scripts/package-smoke.mjs --tarball "stinky-cobbler-$(node -p \"require('./package.json').version\").tgz"
-          node scripts/generate-checksum.mjs --kind tarball --file "stinky-cobbler-$(node -p \"require('./package.json').version\").tgz"
+          node scripts/package-smoke.mjs --tarball "stinky-cobbler-${version}.tgz"
+          node scripts/generate-checksum.mjs --kind tarball --file "stinky-cobbler-${version}.tgz"
       - name: Build and verify the lockfile-pinned offline bundle
         run: |
+          version=$(node -p 'require("./package.json").version')
           node scripts/build-offline-bundle.mjs
-          node scripts/generate-checksum.mjs --kind offline --file "stinky-cobbler-$(node -p \"require('./package.json').version\")-offline-full.zip"
+          node scripts/generate-checksum.mjs --kind offline --file "stinky-cobbler-${version}-offline-full.zip"
           node scripts/verify-offline-bundle.mjs
       - name: Generate the standalone manual from its tracked source
         run: node scripts/generate-release-manual.mjs
