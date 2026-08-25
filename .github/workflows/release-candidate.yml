@@ -77,7 +77,7 @@ jobs:
       - run: npm audit --audit-level=high
       - run: npm run build
       - name: Generate dependency SBOM
-        run: node scripts/generate-sbom.mjs --out "stinky-cobbler-$(node -p 'require(\"./package.json\").version').sbom.cyclonedx.json"
+        run: node scripts/generate-sbom.mjs
       - name: Generate, inspect, and checksum the exact release tarball
         run: |
           version=$(node -p 'require("./package.json").version')
