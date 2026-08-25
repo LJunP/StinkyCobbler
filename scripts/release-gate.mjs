@@ -6,6 +6,14 @@ import { isDirectInvocation } from "./release-utils.mjs";
 const STRICT_SEMVER = /^\d+\.\d+\.\d+$/;
 const RELEASE_GATE_OPTIONS = new Set(["--git-ref", "--expected"]);
 
+export function releaseCandidateRef(version) {
+  return `codex/stinky-cobbler-${version}-hardening`;
+}
+
+export function isAllowedDispatchRef(gitRef, version) {
+  return gitRef === "main" || gitRef === `v${version}` || gitRef === releaseCandidateRef(version);
+}
+
 /**
  * Pure release gate: the package.json version is the single source of truth.
  * Validates file-to-file consistency, an optional git tag (`v*` must equal
@@ -18,7 +26,7 @@ const RELEASE_GATE_OPTIONS = new Set(["--git-ref", "--expected"]);
  * @param {unknown} input.sourceVersion
  * @param {string} [input.gitRef] Git ref such as a tag (`v0.3.0`) or a branch (`main`).
  * @param {string} [input.expectedVersion] Explicit version declared by a workflow_dispatch run.
- * @returns {{valid: boolean, version?: string, actual: object, mismatches: string[], tagMismatch?: boolean, tagNotApplicable?: boolean, dispatchMismatch?: boolean}}
+ * @returns {{valid: boolean, version?: string, actual: object, mismatches: string[], tagMismatch?: boolean, tagNotApplicable?: boolean, dispatchMismatch?: boolean, dispatchRefMismatch?: boolean}}
  */
 export function evaluateReleaseGate(input) {
   const actual = {
@@ -55,7 +63,7 @@ export function evaluateReleaseGate(input) {
       result.dispatchMismatch = true;
       result.valid = false;
     }
-    if (input.gitRef !== "main" && input.gitRef !== `v${expected}`) {
+    if (!isAllowedDispatchRef(input.gitRef, expected)) {
       result.dispatchRefMismatch = true;
       result.valid = false;
     }

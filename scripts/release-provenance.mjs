@@ -1,7 +1,7 @@
 import { appendFile, readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { evaluateReleaseGate } from "./release-gate.mjs";
+import { evaluateReleaseGate, isAllowedDispatchRef } from "./release-gate.mjs";
 import { isDirectInvocation } from "./release-utils.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -10,12 +10,14 @@ export function evaluateReleaseProvenance(input) {
   const result = evaluateReleaseGate(input);
   const eventValid = input.eventName === "push"
     ? input.gitRef === `v${result.version}`
-    : input.eventName === "workflow_dispatch" && (input.gitRef === "main" || input.gitRef === `v${result.version}`);
+    : input.eventName === "workflow_dispatch" && isAllowedDispatchRef(input.gitRef, result.version);
   const shaValid = typeof input.sha === "string" && /^[0-9a-f]{40}$/.test(input.sha);
+  const artifactRef = typeof input.gitRef === "string" ? input.gitRef.replaceAll("/", "-") : input.gitRef;
   return {
     valid: result.valid && eventValid && shaValid,
     version: result.version,
-    ref: input.gitRef,
+    ref: artifactRef,
+    sourceRef: input.gitRef,
     sha: input.sha,
     releaseGate: result,
     eventValid,
@@ -48,7 +50,7 @@ async function main() {
   const output = process.env.GITHUB_OUTPUT;
   if (typeof output !== "string" || output === "") throw new Error("GITHUB_OUTPUT is required for validated release provenance.");
   await appendFile(output, `version=${result.version}\nref=${result.ref}\nsha=${result.sha}\n`, "utf8");
-  console.log(JSON.stringify({ valid: true, version: result.version, ref: result.ref, sha: result.sha }));
+  console.log(JSON.stringify({ valid: true, version: result.version, ref: result.ref, sourceRef: result.sourceRef, sha: result.sha }));
 }
 
 if (isDirectInvocation(import.meta.url)) await main();

@@ -86,7 +86,7 @@ describe("release contract", () => {
     expect(upload.with?.path).toContain("stinky-cobbler-*.sbom.cyclonedx.json");
   });
 
-  it("uses only validated main-or-exact-tag provenance in artifact names", () => {
+  it("uses only validated main, exact-tag, or version-bound candidate provenance in artifact names", () => {
     const aligned = {
       packageJsonVersion: "2.0.1",
       lockfileVersion: "2.0.1",
@@ -98,6 +98,23 @@ describe("release contract", () => {
       .toMatchObject({ valid: true, version: "2.0.1", ref: "main" });
     expect(evaluateReleaseProvenance({ ...aligned, eventName: "push", gitRef: "v2.0.1" }))
       .toMatchObject({ valid: true, version: "2.0.1", ref: "v2.0.1" });
+    expect(evaluateReleaseProvenance({
+      ...aligned,
+      eventName: "workflow_dispatch",
+      expectedVersion: "2.0.1",
+      gitRef: "codex/stinky-cobbler-2.0.1-hardening"
+    })).toMatchObject({
+      valid: true,
+      version: "2.0.1",
+      ref: "codex-stinky-cobbler-2.0.1-hardening",
+      sourceRef: "codex/stinky-cobbler-2.0.1-hardening"
+    });
+    expect(evaluateReleaseProvenance({
+      ...aligned,
+      eventName: "workflow_dispatch",
+      expectedVersion: "2.0.1",
+      gitRef: "codex/stinky-cobbler-2.0.2-hardening"
+    })).toMatchObject({ valid: false, eventValid: false });
     expect(evaluateReleaseProvenance({ ...aligned, eventName: "workflow_dispatch", expectedVersion: "2.0.1", gitRef: "feature/x" }))
       .toMatchObject({ valid: false, eventValid: false });
     expect(evaluateReleaseProvenance({ ...aligned, eventName: "push", gitRef: "main" }))
@@ -155,9 +172,13 @@ describe("release gate pure function", () => {
     expect(evaluateReleaseGate({ ...aligned, gitRef: "main" })).toMatchObject({ valid: true, tagNotApplicable: true });
   });
 
-  it("accepts workflow_dispatch only from main or its exact version tag", () => {
+  it("accepts workflow_dispatch only from main, its exact tag, or its version-bound candidate branch", () => {
     expect(evaluateReleaseGate({ ...aligned, expectedVersion: "0.3.0", gitRef: "main" })).toMatchObject({ valid: true });
     expect(evaluateReleaseGate({ ...aligned, expectedVersion: "0.3.0", gitRef: "v0.3.0" })).toMatchObject({ valid: true });
+    expect(evaluateReleaseGate({ ...aligned, expectedVersion: "0.3.0", gitRef: "codex/stinky-cobbler-0.3.0-hardening" }))
+      .toMatchObject({ valid: true });
+    expect(evaluateReleaseGate({ ...aligned, expectedVersion: "0.3.0", gitRef: "codex/stinky-cobbler-0.3.1-hardening" }))
+      .toMatchObject({ valid: false, dispatchRefMismatch: true });
     expect(evaluateReleaseGate({ ...aligned, expectedVersion: "0.3.0", gitRef: "feature/release" }))
       .toMatchObject({ valid: false, dispatchRefMismatch: true });
   });
