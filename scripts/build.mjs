@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { lstat, mkdir, rename, rm } from "node:fs/promises";
+import { chmod, lstat, mkdir, rename, rm } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
@@ -30,6 +30,11 @@ export async function buildProject(options = {}) {
     await compile({ root, output: temporary });
     await assertBuiltOutput(temporary);
     await addShebangs(temporary);
+    // A fresh tsc output is not executable. Preserve npm-linked CLI/MCP bins
+    // across rebuilds, before making the replacement directory visible.
+    for (const name of ["cli.js", "mcp-server.js"]) {
+      await chmod(path.join(temporary, name), 0o755);
+    }
 
     if (await exists(output)) {
       await rename(output, backup);

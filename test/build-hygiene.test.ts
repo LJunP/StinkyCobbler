@@ -3,6 +3,10 @@ import { access, lstat, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 
 import os from "node:os";
 import path from "node:path";
 import { buildProject } from "../scripts/build.mjs";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+
+const execFileAsync = promisify(execFile);
 
 const roots: string[] = [];
 afterEach(async () => { await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true }))); });
@@ -22,6 +26,29 @@ async function fakeCompile({ output }: { root: string; output: string }): Promis
 }
 
 describe("release build hygiene", () => {
+  it("keeps both bin entries executable through source links after rebuilding", async () => {
+    const root = await temporaryRoot();
+    const entries = [["cli.js", "cli"], ["mcp-server.js", "mcp"]] as const;
+    // POSIX npm installs expose bin symlinks; Windows uses npm-generated shims,
+    // covered by package smoke, so here Windows checks the rebuilt entry bytes.
+    for (const [name] of entries) {
+      if (process.platform !== "win32") await symlink(path.join(root, "dist", name), path.join(root, name));
+    }
+    for (let generation = 0; generation < 2; generation += 1) {
+      await buildProject({ root, compile: fakeCompile });
+      for (const [name, expected] of entries) {
+        const entry = path.join(root, "dist", name);
+        if (process.platform !== "win32") {
+          expect((await lstat(entry)).mode & 0o777).toBe(0o755);
+        }
+        const result = process.platform === "win32"
+          ? await execFileAsync(process.execPath, [entry])
+          : await execFileAsync(path.join(root, name), []);
+        expect(result.stdout.trim()).toBe(expected);
+      }
+    }
+  });
+
   it("replaces dist after a successful fresh build and removes stale compiler outputs", async () => {
     const root = await temporaryRoot();
     await mkdir(path.join(root, "dist", "mcp"), { recursive: true });

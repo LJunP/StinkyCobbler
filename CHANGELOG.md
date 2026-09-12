@@ -4,6 +4,7 @@
 
 ## 2.0.1
 
+- Preserve executable permissions on both CLI/MCP entry points before replacing `dist`, so rebuilding a source-linked global installation does not break POSIX bin launchers. Add a two-generation source-link execution regression.
 - September 2026 local hardening follow-up (not a publication): serialize MCP NUL exclusions as `\u0000` instead of `\0`, with a real stdio tool-schema regression; keep NUL/CR/LF rejection unchanged.
 - Update the locked production dependencies fast-uri to 3.1.7, hono to 4.13.7 and qs to 6.16.0; pin Vitest to 4.1.11 to address current audit findings without jumping to Vitest 5. The resolved Vite 8 development toolchain requires Node 22.12+ or Node 24; installed CLI/MCP runtime support remains Node 22+.
 - Reorganize README around product value, implemented entry points, explicit enforcement boundaries, onboarding and development stages. Correct the candidate gate example to pass its Git ref, and scope historical six-matrix CI evidence to its exact commit.
