@@ -32,6 +32,11 @@ async function tmp(): Promise<string> {
 
 async function initRepo(dir: string): Promise<string> {
   await execFileAsync("git", ["init", "-q", dir]);
+  // Recent Git versions detach maintenance after fixture commits. Its short-
+  // lived objects/maintenance.lock can disappear during the metadata scan.
+  // Keep fixtures quiescent; do not weaken the engine's fail-closed traversal.
+  await execFileAsync("git", ["-C", dir, "config", "maintenance.auto", "false"]);
+  await execFileAsync("git", ["-C", dir, "config", "gc.auto", "0"]);
   await execFileAsync("git", ["-C", dir, "config", "user.name", "test"]);
   await execFileAsync("git", ["-C", dir, "config", "user.email", "test@example.com"]);
   await writeFile(path.join(dir, "README.md"), "git-read evidence\n", "utf8");
@@ -41,6 +46,13 @@ async function initRepo(dir: string): Promise<string> {
 }
 
 describe("git-read boundary and revision handling", () => {
+  it.skipIf(!gitAvailable)("disables background maintenance before fixture commits", async () => {
+    const repo = await initRepo(await tmp());
+    expect((await execFileAsync("git", ["-C", repo, "config", "--get", "maintenance.auto"])).stdout.trim()).toBe("false");
+    expect((await execFileAsync("git", ["-C", repo, "config", "--get", "gc.auto"])).stdout.trim()).toBe("0");
+    await expect(assertGitRepoWithinWorkspace(repo)).resolves.toBeUndefined();
+  });
+
   it.skipIf(!gitAvailable)("places the terminator after the revision so git show honors it", async () => {
     const repo = await initRepo(await tmp());
     const result = await runGitRead(access(repo), { operation: "show", revision: "HEAD", path: "README.md" });
