@@ -126,6 +126,27 @@ describe("MCP stdio black-box", () => {
     expect(names).toContain("docs_index");
     expect(names).not.toContain("test_run");
     expect(names).not.toContain("test-run");
+    const serializedSchemas = JSON.stringify(tools.tools.map((tool) => tool.inputSchema));
+    expect(serializedSchemas).not.toContain("\\\\0");
+    expect(serializedSchemas).toContain("\\\\u0000");
+    // Check the actual exported patterns, not only their spelling: portability
+    // must not weaken the NUL/CR/LF boundary or reject ordinary Unicode paths.
+    let checkedPatterns = 0;
+    function inspectPatterns(value: unknown): void {
+      if (value === null || typeof value !== "object") return;
+      for (const [key, child] of Object.entries(value)) {
+        if (key === "pattern" && typeof child === "string" && child.includes("\\u0000")) {
+          const pattern = new RegExp(child);
+          expect(pattern.test("目录/文件.md")).toBe(true);
+          for (const control of ["\u0000", "\r", "\n"]) {
+            expect(pattern.test(`before${control}after`)).toBe(false);
+          }
+          checkedPatterns += 1;
+        } else inspectPatterns(child);
+      }
+    }
+    inspectPatterns(tools.tools.map((tool) => tool.inputSchema));
+    expect(checkedPatterns).toBeGreaterThan(0);
   }, 30_000);
 
   it("calls a no-side-effect governance tool over real stdio", async () => {

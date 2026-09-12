@@ -6,6 +6,16 @@ Stinky Cobbler 是一个本地 CLI/MCP 控制面。它不替代 Codex 或 ZCode�
 
 ![npm](https://img.shields.io/npm/v/stinky-cobbler) ![license](https://img.shields.io/badge/license-Apache--2.0-green)
 
+[快速开始](#安装与验证) · [功能](#当前实现能力矩阵) · [开发进度](#开发阶段与后续路线) · [文档](#文档) · [贡献指南](./CONTRIBUTING.md)
+
+## 为什么使用它
+
+当 AI 修改仓库时，仅有“请不要改这些文件”的提示不足以形成可检查的授权记录。Stinky Cobbler 把任务范围、批准、执行凭证和文件变更串起来：允许的操作留下证据，越界、过期授权、写前内容漂移和重复执行会被相应门禁拒绝。
+
+适合需要审批、可追溯变更和条件回滚的本地 AI 编程工作流。使用者需要理解 CLI、Git 和宿主 MCP 配置；只想直接聊天生成代码、或者需要操作系统强隔离的用户，应先阅读下面的产品边界。
+
+例如：批准 AI 修改一个配置文件后，如果有人先改了该文件，原 WriteIntent 会因写前 hash 不匹配而拒绝应用。需要基于新内容重新申请，避免覆盖第三方修改。
+
 ## 版本与验证状态
 
 - 当前 checkout 的版本和 Node.js 要求以 `package.json` 为准。
@@ -33,6 +43,24 @@ Stinky Cobbler 当前解决一个具体问题：**让宿主对本地仓库的受
 npm 包的受支持执行面只有 `stinky-cobbler` CLI 与 `stinky-cobbler-mcp` 两个 bin；`dist/**` 是内部实现，不是 library API，package exports 会拒绝标准 Node.js deep import。能直接读写安装目录或 workspace 控制面文件的同进程代码，本来就在 Cooperative Mode 边界之外。
 
 ## 当前实现能力矩阵
+
+### 可使用的入口
+
+| 功能组 | 已实现的操作 | 主要入口 |
+|---|---|---|
+| 初始化与诊断 | workspace 配置、Profile/Pack 校验、默认策略模板、健康检查 | CLI `init`、`doctor`、`config`、`validate` |
+| 任务与权限 | Task 生命周期、规则式角色推荐、Approval 请求/决定、Lease 签发/撤销/使用重验 | CLI `task`、`recommend`、`approval`、`lease` |
+| 仓库只读 | 有界文件读取、目录列表、固定 Git 只读操作、文档索引 | MCP `repo_read`、`repo_list`、`git_read`、`docs_index` |
+| 仓库变更 | 单文件 create/modify/delete、写前校验、备份、条件回滚与恢复 | CLI `write`；MCP `repo_write`、`repo_delete` |
+| 计划与编排 | Plan 步骤推进、Contract/Subtask、依赖、重试、审查、产物与完成门禁 | CLI `plan`、`orchestration` |
+| 只读运行时 | 显式请求执行、预算、心跳、取消/超时、终态收据、恢复与核对 | CLI `runtime` |
+| 证据与审计 | Evidence/Receipt 查询、审计恢复、hash-chain 验证与归档 | CLI `evidence`、`receipt`、`audit`、`ledger` |
+| 宿主接入 | Codex/ZCode 安装预览、受管配置升级、冲突保护、备份回滚 | CLI `entry` |
+| 分发与验证 | npm 包 smoke、离线包、SBOM、校验和、六矩阵 CI | `scripts/`、GitHub Actions |
+
+MCP 另外提供 `validate_contract`、`resolve_config`、`recommend_task`、`evaluate_lease` 四个校验/查询工具。`evaluate_lease` 检查传入值，不签发权限；实际操作还会重读持久化授权。当前未注册 `test_run`，也没有通用 Shell、网络或 Git 写入工具。
+
+### 保证由谁提供
 
 状态只使用 `ENGINE_ENFORCED`、`HOST_PROCEDURAL`、`DECLARED_ONLY`、`NOT_AVAILABLE`。
 
@@ -69,9 +97,18 @@ stinky-cobbler doctor --json
 
 验证当前 checkout 时从源码安装，避免把 registry 的另一版本误认为当前 bytes：
 
+尚未取得源码时，可克隆当前候选分支；已有工作区请直接在其中执行后面的构建步骤，不要重复克隆：
+
 ```bash
-node --version                       # 必须 >= 22
-npm install
+git clone --branch codex/stinky-cobbler-2.0.1-hardening https://github.com/LJunP/StinkyCobbler.git
+cd StinkyCobbler
+```
+
+注意：分支克隆只取得已推送内容，不包含维护者本地尚未提交的修复。候选测试结论必须对应你实际取得的提交。
+
+```bash
+node --version                       # 源码开发使用 Node 22.12+ 或 Node 24
+npm ci                             # 按已提交的 lockfile 安装
 npm run build
 npm install -g .                    # 安装当前 checkout，而不是 registry 版本
 stinky-cobbler --version             # 应与 package.json 一致
@@ -135,18 +172,57 @@ stinky-cobbler init \
 
 ## 开发候选验证
 
+运行已安装的 CLI/MCP 要求 Node.js 22+；源码开发和测试中的 Vite 8 要求 Node.js 22.12+（也支持 Node 24）。推荐使用相应主版本的最新补丁版，并通过 `npm ci` 保留锁定的依赖树。
+
 ```bash
-PACKAGE_VERSION="$(node -p "require('./package.json').version")"
+npm ci
+PACKAGE_VERSION=$(node -p 'require("./package.json").version')
+PACKAGE_REF=$(git branch --show-current)
+npm run check:version
 npm run typecheck
+npm run build
 npm test
 npm run test:integration
 npm run test:package
-node scripts/release-gate.mjs --expected "$PACKAGE_VERSION"
+node scripts/release-gate.mjs --expected "$PACKAGE_VERSION" --git-ref "$PACKAGE_REF"
 npm audit --registry=https://registry.npmjs.org --audit-level=high
 git diff --check
 ```
 
+上述 dispatch 门禁接受 `main`、精确版本标签或 `codex/stinky-cobbler-<版本>-hardening` 分支；其他开发分支可运行 `npm run check:version`，准备候选时再使用允许的 ref。标签 checkout 应把 `PACKAGE_REF` 显式设置为对应标签。
+
 这些命令只验证当前源码候选的相应契约。正式发布还需同一候选 bytes 的真实 Codex/ZCode 消费者 E2E、最终资产/checksum/SBOM 复核，以及单独授权的 commit、tag、GitHub Release 和 npm publish。
+
+## 开发阶段与后续路线
+
+当前处于 **2.0.1 加固与发布准备阶段**：受控执行内核已有实现和自动化回归，真实宿主验收与正式发布仍是后续门禁。源码提交可以先进入 GitHub 分支接受 CI；不必等所有未来能力完成。
+
+| 阶段 | 当前状态 | 完成标准 / 剩余工作 |
+|---|---|---|
+| 本地权限、单目标变更与审计内核 | 已实现，有自动化覆盖 | 持续维护授权、路径、漂移、故障恢复回归 |
+| 计划、编排状态与只读 Runtime | 已实现，范围已收缩 | 宿主负责实际执行工作；引擎负责记录与门禁 |
+| 2.0.1 安全和分发加固 | 发布准备中 | 依赖安全更新、当前工作区测试通过后提交；为新 SHA 取得六矩阵及候选资产 |
+| 当前版本真实双宿主验收 | UNKNOWN / PENDING | Codex 和 ZCode 分别验证安装/重启发现、MCP 调用、读写删除回滚、取消/超时；绑定同一候选 bytes |
+| 2.0.1 正式发布 | 待发布门禁与授权 | 固定候选、确认资产与校验和、tag/npm/GitHub Release，随后全新安装验证 |
+| 后续扩展 | 未承诺排期 | 根据真实用户使用结果选范围，单独设计和验收 |
+
+尚未实现的能力包括：自动创建和监督 worker 的统一 Host Adapter、可验证的 Provider token receipt、CAS、结构化 Context/Memory、跨会话检索，以及非开发 Pack 对应的外部执行器。这些不是当前 2.0.1 的交付承诺，不应仅为了凑齐功能而扩大范围。OS sandbox、真实身份与外部审计见证也不是现有引擎保证。
+
+历史证据：提交 `4dba92a` 的 [六矩阵 CI](https://github.com/LJunP/StinkyCobbler/actions/runs/32808278496) 和 [候选构建](https://github.com/LJunP/StinkyCobbler/actions/runs/32808307244) 于 2026-08-25 通过。它们只证明该提交；后续代码、依赖或文档改动需要新 SHA 的验证。最新修复清单与本地验收见[当前修复与验收记录](docs/项目状态与修复记录.md)。
+
+## 仓库导航
+
+| 路径 | 内容 |
+|---|---|
+| `src/cli.ts`、`src/mcp-server.ts` | 公共 CLI / MCP 入口 |
+| `src/storage/`、`src/security/`、`src/policy/` | 持久化状态、事务恢复、权限与路径校验 |
+| `src/runtime/`、`src/contracts/`、`schemas/` | 只读 Runtime 与数据契约 |
+| `profiles/`、`packs/`、`policies/`、`plugins/` | 配置与能力声明；声明不等于执行器 |
+| `.codex/`、`.zcode/` | 宿主入口模板 |
+| `test/`、`scripts/`、`.github/workflows/` | 回归测试、构建/分发校验与 CI |
+| `docs/`、`examples/` | 使用、安全、架构及任务示例 |
+
+`dist/`、`node_modules/` 和根目录旧压缩包是本地生成物，不作为当前发布版本的依据。提交源码时以 Git 跟踪文件为准；候选产物必须从最终提交重新生成。
 
 ## 文档
 

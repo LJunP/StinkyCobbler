@@ -11,11 +11,11 @@
 
 ## 开发环境
 
-当前运行时要求以 `package.json` 的 `engines` 为准。开发前至少执行：
+当前运行时要求以 `package.json` 的 `engines` 为准。源码开发与测试使用 Node.js 22.12+ 或 Node 24（Vite 8 的开发依赖要求比 CLI/MCP 运行时更高）。开发前至少执行：
 
 ```bash
 node --version
-npm install
+npm ci
 npm run build
 npm run typecheck
 npm test
