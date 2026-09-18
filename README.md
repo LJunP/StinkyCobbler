@@ -8,6 +8,26 @@ Stinky Cobbler 是一个本地 CLI/MCP 控制面。它不替代 Codex 或 ZCode�
 
 [快速开始](#安装与验证) · [功能](#当前实现能力矩阵) · [开发进度](#开发阶段与后续路线) · [文档](#文档) · [贡献指南](./CONTRIBUTING.md)
 
+---
+
+> ### 三句话
+>
+> **解决什么问题** —— AI 改仓库时，「请不要改这些文件」只是提示，不是可检查的授权记录。
+> Stinky Cobbler 把**任务范围 → 批准 → 执行凭证 → 文件变更**串成一条带证据的链：
+> 越界、过期授权、写前内容漂移、重复执行都会被对应门禁拒绝，允许与拒绝都进审计账本。
+>
+> **怎么用** —— `npm i -g stinky-cobbler` → `init` 建 workspace → `task` 定范围 →
+> `approval` / `lease` 拿授权 → `write` 落盘 → `ledger verify` 验哈希链。
+> 需要 Node.js 22+ 与一次显式的宿主接入（Codex / ZCode），**不是零配置**。
+>
+> **边界在哪**（这条最重要，别跳过）—— 所有保证都以「操作确实经过本 CLI/MCP 路由」为前提，
+> 即 **Cooperative Mode**。它**不是操作系统沙箱**：宿主的原生文件工具、Shell、Git
+> 或第三方 MCP 可以完全绕过它，本项目既不提供也未验证那层隔离。
+> 需要强制中介时，必须由宿主把 worker 放进只暴露受控工具的隔离环境。
+> 完整清单见[产品边界](#产品边界)。
+
+---
+
 ## 为什么使用它
 
 当 AI 修改仓库时，仅有“请不要改这些文件”的提示不足以形成可检查的授权记录。Stinky Cobbler 把任务范围、批准、执行凭证和文件变更串起来：允许的操作留下证据，越界、过期授权、写前内容漂移和重复执行会被相应门禁拒绝。
@@ -100,7 +120,7 @@ stinky-cobbler doctor --json
 尚未取得源码时，可克隆当前候选分支；已有工作区请直接在其中执行后面的构建步骤，不要重复克隆：
 
 ```bash
-git clone --branch codex/stinky-cobbler-2.0.1-hardening https://github.com/LJunP/StinkyCobbler.git
+git clone --branch main https://github.com/LJunP/StinkyCobbler.git   # v2.0.1 已合入 main
 cd StinkyCobbler
 ```
 
@@ -195,20 +215,49 @@ git diff --check
 
 ## 开发阶段与后续路线
 
-当前处于 **2.0.1 加固与发布准备阶段**：受控执行内核已有实现和自动化回归，真实宿主验收与正式发布仍是后续门禁。源码提交可以先进入 GitHub 分支接受 CI；不必等所有未来能力完成。
+**2.0.1 已发布**（npm `latest` = 2.0.1，tag `v2.0.1` → `cf7e1dc`，GitHub Release 2026-09-13）。受控执行内核已有实现和自动化回归；**真实双宿主验收仍未完成**，这是当前唯一的未决门禁。功能开发已停止，不再扩大范围。
 
 | 阶段 | 当前状态 | 完成标准 / 剩余工作 |
 |---|---|---|
 | 本地权限、单目标变更与审计内核 | 已实现，有自动化覆盖 | 持续维护授权、路径、漂移、故障恢复回归 |
 | 计划、编排状态与只读 Runtime | 已实现，范围已收缩 | 宿主负责实际执行工作；引擎负责记录与门禁 |
-| 2.0.1 安全和分发加固 | 发布准备中 | 依赖安全更新、当前工作区测试通过后提交；为新 SHA 取得六矩阵及候选资产 |
+| 2.0.1 安全和分发加固 | **已完成** | 依赖安全更新与测试已提交；候选资产与校验和已随 Release 发布 |
 | 当前版本真实双宿主验收 | UNKNOWN / PENDING | Codex 和 ZCode 分别验证安装/重启发现、MCP 调用、读写删除回滚、取消/超时；绑定同一候选 bytes |
-| 2.0.1 正式发布 | 待发布门禁与授权 | 固定候选、确认资产与校验和、tag/npm/GitHub Release，随后全新安装验证 |
+| 2.0.1 正式发布 | **已完成**（2026-09-13） | npm / tag / GitHub Release 三者齐备；全新安装验证见下方[发布后验证记录](#发布后验证记录2026-09-19) |
 | 后续扩展 | 未承诺排期 | 根据真实用户使用结果选范围，单独设计和验收 |
 
 尚未实现的能力包括：自动创建和监督 worker 的统一 Host Adapter、可验证的 Provider token receipt、CAS、结构化 Context/Memory、跨会话检索，以及非开发 Pack 对应的外部执行器。这些不是当前 2.0.1 的交付承诺，不应仅为了凑齐功能而扩大范围。OS sandbox、真实身份与外部审计见证也不是现有引擎保证。
 
 历史证据：提交 `4dba92a` 的 [六矩阵 CI](https://github.com/LJunP/StinkyCobbler/actions/runs/32808278496) 和 [候选构建](https://github.com/LJunP/StinkyCobbler/actions/runs/32808307244) 于 2026-08-25 通过。它们只证明该提交；后续代码、依赖或文档改动需要新 SHA 的验证。最新修复清单与本地验收见[当前修复与验收记录](docs/项目状态与修复记录.md)。
+
+## 发布后验证记录（2026-09-19）
+
+在**全新空目录**从公开 registry 安装已发布版本，实测记录如下。
+这一节只记录当次运行观察到的事实，不代表对其他环境的承诺。
+
+```bash
+npm install stinky-cobbler@2.0.1     # 98 packages, 3s
+```
+
+| 检查 | 结果 |
+|---|---|
+| 安装版本 | `2.0.1`（与 npm `latest` 一致） |
+| 两个 bin | `stinky-cobbler`、`stinky-cobbler-mcp` 均已链接且可执行 |
+| `doctor --json` | `healthy: true` / 4 profiles / 7 packs / 25 roles |
+| `init` | 生成 `.stinky-cobbler/`：`workspace.json`、`ledger.jsonl`、4 份策略脚手架 |
+| `task create` / `task list` | 往返一致，落 `authorityGeneration: 0` |
+| `ledger verify` | `valid: true`，2 条记录，链尾 `sha256:18fa149d…` |
+| **`ledger verify`（篡改后）** | **`valid: false`，`INVALID_ENTRY`，`entries: 0`** |
+
+最后一行是这次验证里唯一真正有意义的：
+改掉账本首条记录的一个字段之后，验证器**确实拒绝**了。
+一个从未拒绝过任何输入的校验器，不能算校验器。
+
+**本次未覆盖**：`write` 的完整落盘链需要先有 `runtime` 的 `--run` id，
+本次只验到 Task 与账本层；真实双宿主（Codex / ZCode）安装与重启后发现**仍未验收**，
+这是 README 上方状态表里唯一未决的门禁。
+
+运行环境：macOS 15.2 / Node.js v22.23.2 / npm 10.9.8。
 
 ## 仓库导航
 
