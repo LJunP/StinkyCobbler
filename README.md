@@ -115,6 +115,36 @@ stinky-cobbler --version
 stinky-cobbler doctor --json
 ```
 
+### 初始化 workspace：三个参数都必填，且没有默认值
+
+`init` 的 `--profile`、`--mode`、`--pack` 全部必填。CLI 不会列出合法值，
+填错时的报错也不一定指向真正的原因，所以这里把三组值写全。
+
+```bash
+stinky-cobbler init \
+  --workspace-id my-ws \
+  --profile individual \
+  --mode draft-first \
+  --pack software-engineering \
+  --root . --json
+```
+
+| 参数 | 合法值 |
+|---|---|
+| `--profile` | `individual` · `team` · `organization` · `regulated` |
+| `--mode` | `draft-first` · `reviewed-workflow` · `policy-governed` · `advice-only` |
+| `--pack` | `software-engineering` · `knowledge-work` · `business-operations` · `data-analysis` · `creative-production` · `education` · `regulated-work` |
+
+`--pack` 可重复，但**至少要给一个**；一个都不给会报 `SCHEMA_INVALID`
+而不是 usage 错误。另外 profile 与 pack 之间有准入关系：
+`individual` 不启用某个 pack 时会报 **`PROFILE_PACK_DENIED`**，
+**这个错误也会在 pack 名本身拼错或不存在时出现**——先核对上表的拼写，
+再去怀疑 profile 配置。
+
+初始化成功后 `--root` 下会出现 `.stinky-cobbler/`：
+`workspace.json`、`ledger.jsonl` 与四份策略脚手架。
+随后 `stinky-cobbler ledger verify --root .` 应返回 `valid: true`。
+
 验证当前 checkout 时从源码安装，避免把 registry 的另一版本误认为当前 bytes：
 
 尚未取得源码时，可克隆当前候选分支；已有工作区请直接在其中执行后面的构建步骤，不要重复克隆：
