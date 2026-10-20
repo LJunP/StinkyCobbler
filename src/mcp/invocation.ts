@@ -12,6 +12,7 @@ import { loadRegistries } from "../config/registry.js";
 import { openWorkspace, workspaceFile, type LocalWorkspace } from "../storage/workspace.js";
 import type { SchemaRegistry } from "../contracts/schema-registry.js";
 import type { ToolOutcome } from "./shared.js";
+import { StinkyCobblerError } from "../errors.js";
 
 const degradedWorkspaces = new Set<string>();
 
@@ -172,9 +173,22 @@ export async function invokeControlled(
   try {
     const result = await run({ lease, taskId: lease.taskId, role: lease.role, workspace: workspace.root });
     return finish(workspace, schemas, authoritativeInput(input, lease), auditAuthority, result.decision.allowed ? "completed" : "rejected", result, dependencies, callId);
-  } catch {
-    return finish(workspace, schemas, authoritativeInput(input, lease), auditAuthority, "failed", denied("INVOCATION_FAILED", "The invocation failed."), dependencies, callId);
+  } catch (error: unknown) {
+    return finish(workspace, schemas, authoritativeInput(input, lease), auditAuthority, "failed", { decision: executionFailureDecision(error) }, dependencies, callId);
   }
+}
+
+/**
+ * Engine errors carry a stable code and a user-facing message, so the host can
+ * act on them (stop on preimage drift, re-request on an unconfirmed intent).
+ * Anything else stays opaque: its message may expose internal paths or state.
+ */
+function executionFailureDecision(error: unknown): PolicyDecision {
+  if (error instanceof StinkyCobblerError) {
+    const reason = error.message.slice(0, 200).replace(/[\x00-\x1f]/g, " ") || "The invocation failed.";
+    return deniedDecision(error.code, reason);
+  }
+  return deniedDecision("INVOCATION_FAILED", "The invocation failed.");
 }
 
 /** Test-only, single-use crash point after the durable pre-execution marker. */

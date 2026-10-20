@@ -1,6 +1,5 @@
-import { createHash, randomUUID } from "node:crypto";
-import { COPYFILE_EXCL } from "node:constants";
-import { copyFile, lstat, mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { lstat, mkdir, readFile, rm } from "node:fs/promises";
 import path from "node:path";
 import type { CapabilityLease, EvidenceRef } from "../contracts/types.js";
 import type { SchemaRegistry } from "../contracts/schema-registry.js";
@@ -13,6 +12,7 @@ import { listEvidence, recordEvidence } from "./evidence.js";
 import type { LocalWorkspace } from "./workspace.js";
 import { createWorkspaceDirectory, workspaceFile, writeWorkspaceJson } from "./workspace.js";
 import { withWorkspaceLock } from "./workspace-lock.js";
+import { copyFileDurably, publishFileDurably, removeFileDurably } from "./durability.js";
 import { getWriteIntent, type WriteIntentRecord } from "./write-intents.js";
 import { resolveWorkspacePath } from "../security/workspace-path.js";
 import { getLease } from "./leases.js";
@@ -128,7 +128,7 @@ export async function applyDelete(
     await writeWorkspaceJson(workspace, `write-intents/${current.writeIntentId}.json`, recoveryCurrent);
 
     await assertPrivateRegularFile(absoluteTarget, target);
-    await rm(absoluteTarget, { force: true });
+    await removeFileDurably(absoluteTarget);
     businessFileChanged = true;
 
     const completed = await completeApplyRecovery(workspace, schemas, recoveryCurrent);
@@ -226,14 +226,8 @@ export async function applyWrite(
     await writeWorkspaceJson(workspace, `write-intents/${current.writeIntentId}.json`, recoveryCurrent);
 
     await mkdir(path.dirname(absoluteTarget), { recursive: true });
-    const temporary = path.join(path.dirname(absoluteTarget), `.${path.basename(absoluteTarget)}.${randomUUID()}.tmp`);
-    try {
-      await writeFile(temporary, content, { encoding: "utf8", mode: 0o600 });
-      await rename(temporary, absoluteTarget);
-      businessFileChanged = true;
-    } finally {
-      await import("node:fs/promises").then(({ rm }) => rm(temporary, { force: true })).catch(() => undefined);
-    }
+    await publishFileDurably(absoluteTarget, content, { mode: 0o600 });
+    businessFileChanged = true;
 
     const completed = await completeApplyRecovery(workspace, schemas, recoveryCurrent);
     return { evidenceId: completed.evidenceId!, target, ...(backupRelativePath === undefined ? {} : { backupPath: backupRelativePath }) };
@@ -468,7 +462,7 @@ async function copyBackup(source: string, destination: string, target: string): 
     await assertPrivateRegularFile(source, target);
     // Never overwrite a prior backup. It may be the only recoverable preimage
     // left by a crash after the business file changed but before APPLIED state.
-    await copyFile(source, destination, COPYFILE_EXCL);
+    await copyFileDurably(source, destination);
   } catch (error: unknown) {
     if (isCode(error, "EEXIST")) {
       throw writeError("WRITE_BACKUP_CONFLICT", "A backup already exists for this write; preserve it and diagnose the incomplete prior attempt before retrying.", { target });

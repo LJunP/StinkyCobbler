@@ -4,6 +4,11 @@
 
 ## 2.0.2 (unreleased)
 
+- MCP controlled tools now surface engine error codes (for example `WRITE_PREIMAGE_MISMATCH`, `WRITE_INTENT_NOT_CONFIRMED`) with their messages instead of a blanket `INVOCATION_FAILED`, and mark every denial or failure with MCP `isError: true`. Non-engine exceptions remain opaque.
+- Business-file writes, backups, deletes and rollback restores now fsync the file before its atomic rename and fsync the parent directory afterwards, so a crash can no longer leave an applied target whose backup never reached disk.
+- `entry preflight --host` rejects unknown hosts with `ENTRY_HOST_INVALID` (exit 2) instead of crashing; `entry install-host` exits with the new code 7 (`CONFLICT`) when it preserves user-edited managed content.
+- The two remaining fault-injection hooks without a test-runner guard now refuse to arm outside `NODE_ENV=test`.
+- Document how to diagnose and clear a leftover `.stinky-cobbler/workspace.lock/` after a crashed control-plane process.
 - Keep the rollback backup when a `modify` write applies bytes identical to the current file. Previously both the pre-image and post-image predicates were true, so apply recovery discarded the backup and a later `write rollback` had nothing to restore from.
 
 ## 2.0.1

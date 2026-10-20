@@ -4,7 +4,9 @@ export const ExitCode = {
   POLICY_DENIED: 3,
   PATH_DENIED: 4,
   TEST_FAILED: 5,
-  INTERNAL: 6
+  INTERNAL: 6,
+  /** The command refused to overwrite user-owned content (e.g. an edited managed host file). */
+  CONFLICT: 7
 } as const;
 
 export class StinkyCobblerError extends Error {

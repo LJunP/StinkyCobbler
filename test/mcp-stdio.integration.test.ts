@@ -200,6 +200,17 @@ describe("MCP stdio black-box", () => {
     expect(ledger.at(-1)).toMatchObject({ event: "mcp-call", taskId: "stdio-task", role: "scout", tool: "repository-read", receiptRef: receipts[0]?.id });
   }, 30_000);
 
+  it("marks denied controlled calls with isError so hosts can see refusals", async () => {
+    const workspace = await createInitializedWorkspace();
+    const client = await connect();
+    const result = await client.callTool({ name: "repo_read", arguments: { leaseId: "lease-missing", taskId: "stdio-task", role: "scout", workspace, path: "README.md" } });
+    expect(result.isError).toBe(true);
+    const text = (result.content as Array<{ type: string; text: string }>).find((item) => item.type === "text");
+    expect(JSON.parse(text!.text)).toMatchObject({ decision: { allowed: false, code: "LEASE_NOT_FOUND" } });
+    const ok = await client.callTool({ name: "resolve_config", arguments: {} });
+    expect(ok.isError).toBeFalsy();
+  }, 30_000);
+
   it("rejects never-issued and malformed lease references without increasing lease usage", async () => {
     const workspace = await createInitializedWorkspace();
     await writeFile(path.join(workspace, "README.md"), "should not be read\n");
@@ -269,7 +280,7 @@ describe("MCP stdio black-box", () => {
 
     await writeFile(path.join(workspace, "docs", "too-large.md"), "x".repeat(64 * 1024 + 1));
     const overBudget = await callJson(client, "docs_index", { ...common, action: "build", docsPath: "docs" });
-    expect(overBudget).toMatchObject({ decision: { allowed: false, code: "INVOCATION_FAILED" } });
+    expect(overBudget).toMatchObject({ decision: { allowed: false, code: "DOCS_INDEX_BUDGET_EXCEEDED" } });
     expect(await readFile(indexPath, "utf8")).toBe(previousIndex);
     expect(await readUsage(workspace)).toEqual({ [lease.id]: 3 });
   }, 30_000);
