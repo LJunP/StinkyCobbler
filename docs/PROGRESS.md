@@ -2,6 +2,16 @@
 
 > 只追加，最新在上。每条：日期 / 任务 / 做了什么 / 验证 / 待办与问题。
 
+## 2026-10-20 · M0-T2 删除旧产物、M0-T5 工具链、依赖安全更新
+
+- 作者确认按推荐执行。删除根目录四个已 ignore 的 2.0.0 旧产物（zip 5.7 MB、孤儿 sha256、旧 SBOM、手册）。
+- 新增 devDependencies（精确版本）：eslint 10.13.0、@eslint/js 10.0.1、typescript-eslint 8.72.0、prettier 3.9.10、dependency-cruiser 18.7.0、husky 9.1.7、lint-staged 17.6.0、@vitest/coverage-v8 4.1.11。
+- `npm audit` 在安装前就有 6 条 advisory（1 critical / 2 high / 3 moderate，均为生产依赖链：MCP SDK、fast-uri、smol-toml、ip-address、proxy-addr、source-map-js），CI 的 `--audit-level=high` 本就会失败。`npm audit fix` 后 0 条；MCP SDK 1.12.x → 1.32.1，全量测试 71 文件 / 784 项通过，`typecheck` 通过。
+- 守卫落地：`eslint.config.js`（新代码：文件 ≤ 400 行、函数 ≤ 50 行、嵌套 ≤ 4、禁裸 `throw new Error`；冻结内核/测试/脚本的存量问题降为 warning，当前 44 条）；`.dependency-cruiser.cjs`（禁循环、禁用动态 import 解环、`src/core` 不碰 fs、`src/gate` 只能被入口引用）+ 15 条已知 storage 循环写入 `.dependency-cruiser-known-violations.json` 基线（只降不升）；husky pre-commit 跑 lint-staged、pre-push 跑 lint + unit；Dependabot 周更。
+- 守卫实证：在 `src/core/probe.ts` 放入 `import fs` + `throw new Error` 探针，eslint 报 `no-restricted-syntax`，depcruise 报 `core-has-no-io`，探针已删。
+- `npm run lint` = typecheck + 测试类型基线 + eslint + depcruise，全部通过。
+- 推迟：`gate/` 行数不得增加的守卫等 M1-T1 目录存在后再加；Prettier 只对新目录生效（`npm run format`），存量代码不重排。
+
 ## 2026-10-20 · M0-T6 evaluator 复核与返工
 
 - 复验结论 **PASS**（evaluator 自跑：3 个新/改套件 13/13；`npm run lint` 通过；完整 `npm test` 71 文件 / 784 项，155 s）。

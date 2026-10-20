@@ -9,6 +9,8 @@
 - `entry preflight --host` rejects unknown hosts with `ENTRY_HOST_INVALID` (exit 2) instead of crashing; `entry install-host` exits with the new code 7 (`CONFLICT`) when it preserves user-edited managed content.
 - The two remaining fault-injection hooks without a test-runner guard now refuse to arm outside `NODE_ENV=test`.
 - Document how to diagnose and clear a leftover `.stinky-cobbler/workspace.lock/` after a crashed control-plane process.
+- Update locked dependencies flagged by the current npm advisory data: `@modelcontextprotocol/sdk` 1.12.x → 1.32.1 (GHSA-6qxp-vccf-f47h), `fast-uri` → 3.1.9, `smol-toml` → 1.9.1, and the transitive `ip-address`, `proxy-addr`, `source-map-js`; `npm audit --audit-level=low` reports 0 vulnerabilities on the resolved tree. The public MCP entry is stdio-only, so the HTTP/OAuth advisories were not exploitable through this package, but the fix is cheap and keeps the candidate clean.
+- Development tooling (not shipped): ESLint 10 + typescript-eslint with file/function size, nesting and bare-`throw new Error` rules for new code, dependency-cruiser with a frozen baseline of the 15 known 2.x storage cycles (`npm run lint:deps`), Prettier config, `.editorconfig`, `.nvmrc`, husky/lint-staged hooks, Dependabot, and `@vitest/coverage-v8` (`npm run coverage`).
 - Keep the rollback backup when a `modify` write applies bytes identical to the current file. Previously both the pre-image and post-image predicates were true, so apply recovery discarded the backup and a later `write rollback` had nothing to restore from.
 
 ## 2.0.1
