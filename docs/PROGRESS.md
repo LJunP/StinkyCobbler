@@ -2,6 +2,16 @@
 
 > 只追加，最新在上。每条：日期 / 任务 / 做了什么 / 验证 / 待办与问题。
 
+## 2026-10-20 · M1-T3 managed-file、segment-file、保格式 TOML
+
+- 事实：当前 `smol-toml` 的 `stringify` 会丢掉注释（用一段带 `# keep me` 的 TOML 实测，输出里没有这行注释）。所以 Codex `config.toml` 不再整文件重写，只在原文后面追加新的 `[mcp_servers.<id>]` 表。追加结果若不能再被 parse，安装拒绝，不改写成无注释文本。
+- 新增 `src/io/toml-edit.ts`、`src/io/managed-file.ts`、`src/io/segment-file.ts`。sidecar 名仍是 `<file>.stinky-cobbler-managed.json`，备份名仍是 `<file>.stinky-cobbler-backup-<sha256>.bak`。`install-host` 的备份、原子替换和 MCP 合并改调这些函数。
+- 段落标记是 `<!-- stinky-cobbler:begin <id> -->` 与 `<!-- stinky-cobbler:end <id> -->`。结束标记带上 id，避免同一文件里两段互相截断。架构评审草稿的结束标记没有 id，这是偏差。
+- 回滚的 `HostFileAction` 文案仍留在 `install-host`。用户改过受管文件后返回 `conflict` 且不覆盖，这条行为原来的 `slash-entry` 测试仍覆盖。
+- `git diff --cached` 为 10 files，396 insertions，142 deletions。新增行数没有超过 400。sidecar、备份和 TOML 追加放在同一次提交，避免安装路径一半走旧写、一半走新写。
+- 验证：先红后绿（注释测试在整文件 stringify 时 `startsWith` 为 false）。`npm run lint` 通过（测试类型基线 0、eslint 0 error / 44 warning、depcruise 15 条已知循环）。`npm test` 75 文件 / 794 项通过。`npm run test:package` 在移开未跟踪的交接文件后打印 `Package smoke passed`（316 个包内文件）。交接文件含本机家目录路径，留在工作区时会被敏感内容检查拒绝；测完已放回，仍未跟踪。
+- 未做：推送。`gate/` 总行数守卫仍未加。
+
 ## 2026-10-20 · M1-T2 io/fs-boundary 与有界写
 
 - 新增 `src/io/path-lex.ts`、`src/io/bounded-read.ts`、`src/io/fs-boundary.ts`。`fs-boundary` 再导出计划里的读/写表面：`normalizeRelativePath`、`resolveBounded`、`readBounded`、`writeBounded`、`listBounded`。

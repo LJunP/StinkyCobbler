@@ -1,12 +1,23 @@
-import { COPYFILE_EXCL } from "node:constants";
-import { createHash, randomUUID } from "node:crypto";
 import { accessSync, constants } from "node:fs";
-import { copyFile, lstat, mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { lstat, mkdir, readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse as parseToml, stringify as stringifyToml } from "smol-toml";
 import { ExitCode, StinkyCobblerError } from "../errors.js";
+import {
+  atomicReplace,
+  backupManagedFile,
+  backupPathFor,
+  installManagedBytes,
+  managedMetadataPath,
+  readManagedMetadata,
+  readRegularHostFile,
+  relativeHostPath,
+  sha256,
+  writeManagedMetadata
+} from "../io/managed-file.js";
+import { appendTomlDocument } from "../io/toml-edit.js";
 import { STINKY_COBBLER_VERSION } from "../version.js";
 import { MCP_SERVER_COMMAND, HOST_CONFIG_FILE, hostConfigHasMcpServer } from "./preflight.js";
 import { resolveHostSpec, type HostId, type HostSpec } from "./host-spec.js";
@@ -58,19 +69,6 @@ export interface InstallHostResult {
   mcp?: HostFileAction;
 }
 
-interface ManagedInstallMetadata {
-  version: 1;
-  productVersion: string;
-  installedSha256: string;
-  updatedAt: string;
-  previous?: {
-    productVersion: string;
-    sha256: string;
-    backup: string;
-  };
-}
-
-const SHA256_PATTERN = /^[0-9a-f]{64}$/;
 const KNOWN_BUNDLED_VERSIONS = new Map<string, ReadonlyMap<string, string>>([
   ["zcode:command file", new Map([["10f3eb9bb025410367d279da2dad277fbd1ebf6af2af0b7406da090269a5a807", "2.0.0"]])],
   ["zcode:skill file", new Map([["c86e354cda5cc758755a71018f39773fc3b417a668ed57af70a3d66ac7dc6bae", "2.0.0"]])],
@@ -324,39 +322,10 @@ async function adoptManagedFile(target: string, productVersion: string, installe
 
 async function installManagedMergedFile(target: string, next: string): Promise<void> {
   const existing = await readExisting(target);
-  const previous = existing === undefined
-    ? undefined
-    : await backupManagedFile(target, sha256(existing), detectTemplateVersion(existing) ?? "unversioned-host-config");
-  await atomicReplace(target, next, existing === undefined ? undefined : sha256(existing));
-  await writeManagedMetadata(target, {
-    version: 1,
-    productVersion: STINKY_COBBLER_VERSION,
-    installedSha256: sha256(next),
-    updatedAt: new Date().toISOString(),
-    ...(previous === undefined ? {} : { previous })
-  });
-}
-
-async function backupManagedFile(target: string, digest: string, productVersion: string): Promise<NonNullable<ManagedInstallMetadata["previous"]>> {
-  const backup = path.basename(backupPathFor(target, digest));
-  const backupPath = path.join(path.dirname(target), backup);
-  try {
-    await copyFile(target, backupPath, COPYFILE_EXCL);
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
-    const info = await lstat(backupPath);
-    if (!info.isFile() || info.isSymbolicLink() || sha256(await readFile(backupPath)) !== digest) {
-      throw installError("ENTRY_BACKUP_CONFLICT", "The deterministic managed backup path already exists with different or unsafe content.", {
-        target: relativeHostPath(target),
-        backup: relativeHostPath(backupPath)
-      });
-    }
-  }
-  if (sha256(await readFile(backupPath)) !== digest) {
-    await rm(backupPath, { force: true });
-    throw installError("ENTRY_INSTALL_RACE", "The host target changed while its managed backup was being created.", { target: relativeHostPath(target) });
-  }
-  return { productVersion, sha256: digest, backup };
+  const previousVersion = existing === undefined
+    ? STINKY_COBBLER_VERSION
+    : detectTemplateVersion(existing) ?? "unversioned-host-config";
+  await installManagedBytes(target, next, STINKY_COBBLER_VERSION, previousVersion);
 }
 
 async function rollbackManagedFile(target: string, kind: string, dryRun: boolean): Promise<HostFileAction> {
@@ -422,54 +391,6 @@ async function rollbackManagedFile(target: string, kind: string, dryRun: boolean
   return { ...preview, action: "rolled-back", detail: `${label} restored from its verified managed backup.` };
 }
 
-async function readManagedMetadata(target: string): Promise<ManagedInstallMetadata | undefined> {
-  const file = managedMetadataPath(target);
-  let info;
-  try {
-    info = await lstat(file);
-  } catch {
-    return undefined;
-  }
-  if (!info.isFile() || info.isSymbolicLink()) {
-    throw installError("ENTRY_MANAGED_STATE_INVALID", "Managed install metadata must be a regular file.", { target: relativeHostPath(target) });
-  }
-  let value: unknown;
-  try {
-    value = JSON.parse(await readFile(file, "utf8")) as unknown;
-  } catch {
-    throw installError("ENTRY_MANAGED_STATE_INVALID", "Managed install metadata is not valid JSON.", { target: relativeHostPath(target) });
-  }
-  if (!isManagedMetadata(value)) {
-    throw installError("ENTRY_MANAGED_STATE_INVALID", "Managed install metadata does not match the supported schema.", { target: relativeHostPath(target) });
-  }
-  return value;
-}
-
-function isManagedMetadata(value: unknown): value is ManagedInstallMetadata {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
-  const record = value as Record<string, unknown>;
-  if (record.version !== 1 || typeof record.productVersion !== "string" || typeof record.updatedAt !== "string"
-    || typeof record.installedSha256 !== "string" || !SHA256_PATTERN.test(record.installedSha256)) return false;
-  if (record.previous === undefined) return true;
-  if (typeof record.previous !== "object" || record.previous === null || Array.isArray(record.previous)) return false;
-  const previous = record.previous as Record<string, unknown>;
-  return typeof previous.productVersion === "string"
-    && typeof previous.sha256 === "string" && SHA256_PATTERN.test(previous.sha256)
-    && typeof previous.backup === "string" && previous.backup.length > 0
-    && path.basename(previous.backup) === previous.backup;
-}
-
-async function writeManagedMetadata(target: string, metadata: ManagedInstallMetadata): Promise<void> {
-  await atomicWrite(managedMetadataPath(target), `${JSON.stringify(metadata, null, 2)}\n`);
-}
-
-function managedMetadataPath(target: string): string {
-  return `${target}.stinky-cobbler-managed.json`;
-}
-
-function backupPathFor(target: string, digest: string): string {
-  return path.join(path.dirname(target), `${path.basename(target)}.stinky-cobbler-backup-${digest}.bak`);
-}
 
 function targetEffect(operation: "create" | "replace", target: string, beforeSha256: string | undefined, afterSha256: string): HostWriteEffect {
   return {
@@ -497,39 +418,11 @@ function managedStateEffect(target: string, productVersion: string, installedSha
   };
 }
 
-async function atomicWrite(target: string, contents: string | Buffer): Promise<void> {
-  await mkdir(path.dirname(target), { recursive: true, mode: 0o700 });
-  const temporary = path.join(path.dirname(target), `.${path.basename(target)}.tmp-${randomUUID()}`);
-  try {
-    await writeFile(temporary, contents, { mode: 0o600, flag: "wx" });
-    await rename(temporary, target);
-  } finally {
-    await rm(temporary, { force: true }).catch(() => undefined);
-  }
-}
-
-async function atomicReplace(target: string, contents: string | Buffer, expectedSha256: string | undefined): Promise<void> {
-  await mkdir(path.dirname(target), { recursive: true, mode: 0o700 });
-  const temporary = path.join(path.dirname(target), `.${path.basename(target)}.tmp-${randomUUID()}`);
-  try {
-    await writeFile(temporary, contents, { mode: 0o600, flag: "wx" });
-    const observed = await readExisting(target);
-    if (expectedSha256 === undefined ? observed !== undefined : observed === undefined || sha256(observed) !== expectedSha256) {
-      throw installError("ENTRY_INSTALL_RACE", "The host target changed after preview/backup; refusing to replace it.", { target: relativeHostPath(target) });
-    }
-    await rename(temporary, target);
-  } finally {
-    await rm(temporary, { force: true }).catch(() => undefined);
-  }
-}
 
 function detectTemplateVersion(contents: string): string | undefined {
   return contents.match(/Stinky Cobbler\s+(\d+\.\d+\.\d+)/i)?.[1];
 }
 
-function sha256(contents: string | Buffer): string {
-  return createHash("sha256").update(contents).digest("hex");
-}
 
 async function installMcpConfigFor(host: HostSpec, configFile: string, options: { dryRun: boolean; mcpCommand: string; legacyConfigFile?: string }): Promise<HostFileAction> {
   if (host.mcpConfigFormat === "toml") {
@@ -600,7 +493,12 @@ async function installMcpConfigToml(configFile: string, options: { dryRun: boole
   const template = mcpServerConfigTemplateToml(options.mcpCommand);
   const next = { ...config, mcp_servers: { ...servers, ...template.mcp_servers } };
   const currentBytes = await readExisting(configFile);
-  const nextBytes = `${stringifyToml(next)}\n`;
+  const nextBytes = currentBytes === undefined ? `${stringifyToml(template)}\n` : appendTomlDocument(currentBytes, template);
+  try {
+    parseToml(nextBytes);
+  } catch {
+    throw installError("ENTRY_HOST_CONFIG_INVALID", "The host config.toml cannot accept an appended MCP table without rewriting existing bytes.", { configFile: targetRelative });
+  }
   const currentHash = currentBytes === undefined ? undefined : sha256(currentBytes);
   const nextHash = sha256(nextBytes);
   const writes: HostWriteEffect[] = [
@@ -649,16 +547,7 @@ async function readTomlConfig(file: string): Promise<unknown | "invalid" | undef
 }
 
 async function readExisting(file: string): Promise<string | undefined> {
-  let info;
-  try {
-    info = await lstat(file);
-  } catch {
-    return undefined;
-  }
-  if (!info.isFile() || info.isSymbolicLink()) {
-    throw installError("ENTRY_TARGET_INVALID", "The host target must be a regular file, not a directory or link.", { target: relativeHostPath(file) });
-  }
-  return readFile(file, "utf8");
+  return readRegularHostFile(file);
 }
 
 function isExactMcpServer(value: unknown, expectedCommand: string): boolean {
@@ -674,11 +563,6 @@ function defaultTemplatePath(host: HostSpec, kind: string): string {
   return path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..", relative);
 }
 
-function relativeHostPath(file: string): string {
-  const home = homedir();
-  const displayed = file.startsWith(`${home}${path.sep}`) ? path.join("~", path.relative(home, file)) : file;
-  return displayed.split(path.sep).join("/");
-}
 
 function installError(code: string, message: string, details: Record<string, unknown> = {}): StinkyCobblerError {
   return new StinkyCobblerError(code, ExitCode.POLICY_DENIED, message, details);

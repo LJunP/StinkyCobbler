@@ -58,6 +58,27 @@ describe("entry install-host (codex)", () => {
     expect(again.mcp?.action).toBe("ready");
   });
 
+  it("keeps comments and unrelated config.toml sections byte-for-byte when registering MCP", async () => {
+    const home = await tmp("stinky-codex-comments-");
+    const configPath = path.join(home, ".codex", "config.toml");
+    await mkdir(path.join(home, ".codex"), { recursive: true });
+    const existing = "# user comment\nmodel = \"gpt-5.6-sol\"\n\n[desktop]\n  codeFontSize = 14\n";
+    await writeFile(configPath, existing, "utf8");
+
+    const result = await installHost({ host: "codex", scope: "user", installMcp: true, homeDir: home });
+
+    expect(result.mcp?.action).toBe("installed");
+    const merged = await readFile(configPath, "utf8");
+    expect(merged.startsWith(existing)).toBe(true);
+    expect(merged).toContain("  codeFontSize = 14\n");
+    const parsed = parseToml(merged) as Record<string, unknown>;
+    expect(parsed.model).toBe("gpt-5.6-sol");
+    expect(parsed.desktop).toMatchObject({ codeFontSize: 14 });
+    expect(parsed.mcp_servers).toMatchObject({
+      [MCP_SERVER_ID]: { command: expect.stringContaining("stinky-cobbler-mcp"), args: [] }
+    });
+  });
+
   it("refuses to overwrite a conflicting codex MCP server command", async () => {
     const home = await tmp("stinky-codex-conflict-");
     await mkdir(path.join(home, ".codex"), { recursive: true });
