@@ -1,6 +1,5 @@
 import { createHash } from "node:crypto";
-import { lstat, mkdir, readFile, rm } from "node:fs/promises";
-import path from "node:path";
+import { lstat, readFile, rm } from "node:fs/promises";
 import type { CapabilityLease, EvidenceRef } from "../../contracts/types.js";
 import type { SchemaRegistry } from "../../contracts/schema-registry.js";
 import { ExitCode, StinkyCobblerError } from "../../errors.js";
@@ -12,7 +11,8 @@ import { listEvidence, recordEvidence } from "./evidence.js";
 import type { LocalWorkspace } from "./workspace.js";
 import { createWorkspaceDirectory, workspaceFile, writeWorkspaceJson } from "./workspace.js";
 import { withWorkspaceLock } from "./workspace-lock.js";
-import { copyFileDurably, publishFileDurably, removeFileDurably } from "./durability.js";
+import { writeBounded } from "../../io/fs-boundary.js";
+import { copyFileDurably, removeFileDurably } from "./durability.js";
 import { getWriteIntent, type WriteIntentRecord } from "./write-intents.js";
 import { resolveWorkspacePath } from "../../security/workspace-path.js";
 import { getLease } from "./leases.js";
@@ -225,8 +225,7 @@ export async function applyWrite(
     };
     await writeWorkspaceJson(workspace, `write-intents/${current.writeIntentId}.json`, recoveryCurrent);
 
-    await mkdir(path.dirname(absoluteTarget), { recursive: true });
-    await publishFileDurably(absoluteTarget, content, { mode: 0o600 });
+    await writeBounded(workspace.root, target, content, { mode: 0o600, fsync: true });
     businessFileChanged = true;
 
     const completed = await completeApplyRecovery(workspace, schemas, recoveryCurrent);

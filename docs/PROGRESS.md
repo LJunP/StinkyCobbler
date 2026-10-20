@@ -2,6 +2,16 @@
 
 > 只追加，最新在上。每条：日期 / 任务 / 做了什么 / 验证 / 待办与问题。
 
+## 2026-10-20 · M1-T2 io/fs-boundary 与有界写
+
+- 新增 `src/io/path-lex.ts`、`src/io/bounded-read.ts`、`src/io/fs-boundary.ts`。`fs-boundary` 再导出计划里的读/写表面：`normalizeRelativePath`、`resolveBounded`、`readBounded`、`writeBounded`、`listBounded`。
+- `writeBounded` 修 D-02：逐级 lstat，缺目录只建一层；父目录用 `O_DIRECTORY|O_NOFOLLOW` 打开并在 rename 前后核对 dev/ino；临时文件 fsync 后 rename，再 lstat 目标；非 Windows 对父目录 fd 做 fsync。Node 没有 `renameat`，所以用这次复验代替。祖先若是指向 workspace 外的符号链接，抛 `PATH_DENIED` 且不落盘。
+- 只换了两处业务落盘：`writes.ts` 的 apply，`write-intents.ts` 的回滚恢复。备份复制、删除、控制面 JSON 仍走原来的 durability / workspace 写。`publishFileDurably` 还在。
+- `src/security/workspace-path.ts` 变成策略门面，不是一行 re-export。`io` 不能引用 `gate/policy`。门面只把 `PATH_DENIED` 译回普通 `Error`；`WorkspaceReadBoundaryError` 和调用方自己抛的 `StinkyCobblerError`（例如 docs-index 预算）原样传出。`normalizeWorkspaceRelativePath` 保持原实现，避免 shell 元字符、绝对路径、`..` 的报错顺序变化。
+- 偏差：单文件会超过 400 行，而且 `fs-boundary` 与 `bounded-read` 互相 import 会成环，所以拆成三个文件。代码约 569 行新增 / 296 行删除，超过每任务 400 行；读边界必须和有界写一起搬，拆开不能编译。
+- 验证：`npm run lint` 通过（typecheck、测试类型基线 0、eslint 0 error / 44 warning、depcruise 93 modules，15 条已知循环被忽略，条数未增加）。`npm test` 72 文件 / 786 项通过。中途一次全量里 `orchestration.test.ts` 的 “rejects an input while its producer is not ACCEPTED” 在 setup 报 “Approval decision cannot precede the request”；单独重跑通过，最终全量也通过。该失败栈在 approval 时间戳校验，不在本次写路径上。
+- 未做：推送。交接文件仍未跟踪。`gate/` 总行数守卫仍未加。控制面写与备份复制没有改成 `writeBounded`。
+
 ## 2026-10-20 · M1-T1 治理内核搬入 src/gate
 
 - `git mv` 把 `src/storage`、`src/runtime`、`src/policy`、`src/domain`、`src/mcp` 搬到 `src/gate/`。`src/contracts/` 整目录留在原地（含 `schema-registry.ts`）。`src/cli.ts`、`src/mcp-server.ts`、`src/config`、`src/security`、测试的 import 改为新路径。行为没有改。
@@ -13,7 +23,8 @@
   4. `git diff --stat` 为 116 files, 575 insertions, 578 deletions，超过每任务 400 行。超出的是搬迁必需的 import 前缀，拆开不能编译。逻辑改动只有上述四个包根常量、eslint 列表和 depcruise 规则。
 - 未改：架构评审文档（`main` `e4dcdb9` 的快照）、历史 PROGRESS 条目、`tsconfig`、`package.json` 的 `files`。`gate/` 总行数不得增加的守卫仍未加（M0-T5 推迟项，不在本任务验收里）。
 - 验证：`npm run lint` 通过（typecheck、测试类型基线 0、eslint 0 error / 44 warning、depcruise 15 条已知循环被忽略，条数未增加，路径只从 `src/storage/` 换成 `src/gate/storage/`）。`npm test` 71 文件 / 784 项通过。
-- 未做：推送。交接文件 `docs/交接提示词-3.x执行.md` 仍未跟踪。目录搬迁的独立 evaluator 在本条之后补记。
+- 未做：推送。交接文件 `docs/交接提示词-3.x执行.md` 仍未跟踪。
+- 补记：独立 evaluator（`01a159a5-ebc5-7053-adab-19a63dd89b95`）复核 `1cf19a0` 为 **PASS**。五目录是 rename；`src/contracts` 与 `src/entry` 无 diff；四个包根常量是 `../../..`；depcruise 基线仍是 15 条且都在 `src/gate/storage/`；identical-byte 备份条件未改。未 amend 该提交。
 
 ## 2026-10-20 · M0-T7 2.0.2 候选就绪
 

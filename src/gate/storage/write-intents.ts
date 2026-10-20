@@ -10,7 +10,8 @@ import { appendLedgerEntry, auditTextFingerprint, listLedgerEntries, prepareLedg
 import type { LocalWorkspace } from "./workspace.js";
 import { createWorkspaceJson, workspaceFile, writeWorkspaceJson } from "./workspace.js";
 import { withWorkspaceLock } from "./workspace-lock.js";
-import { publishFileDurably, removeFileDurably } from "./durability.js";
+import { writeBounded } from "../../io/fs-boundary.js";
+import { removeFileDurably } from "./durability.js";
 import { assertCurrentPlanExecutionAuthority, assertCurrentPlanGeneration, getPlan } from "./plans.js";
 import { consumeApproval, listApprovals } from "./approvals.js";
 import { isApprovalExpired } from "../policy/approval.js";
@@ -574,9 +575,8 @@ async function completeRollbackRecovery(workspace: LocalWorkspace, schemas: Sche
       const backup = await readRollbackBackup(await workspaceFile(workspace, journal.backupPath), journal.target);
       const backupHash = `sha256:${createHash("sha256").update(backup).digest("hex")}`;
       if (backupHash !== journal.restoredHash) throw writeError("WRITE_ROLLBACK_JOURNAL_INVALID", "Rollback backup no longer matches the fenced restoration hash.", { writeIntentId: intent.writeIntentId });
-      const absoluteTarget = await safeRollbackTarget(workspace, journal.target, true, cfg.sensitiveExtraPaths);
-      await mkdir(path.dirname(absoluteTarget), { recursive: true });
-      await publishFileDurably(absoluteTarget, backup, { mode: 0o600 });
+      await safeRollbackTarget(workspace, journal.target, true, cfg.sensitiveExtraPaths);
+      await writeBounded(workspace.root, journal.target, backup, { mode: 0o600, fsync: true });
     }
   }
 
