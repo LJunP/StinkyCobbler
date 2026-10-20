@@ -25,8 +25,8 @@ module.exports = {
     {
       name: "gate-is-only-reached-from-cli",
       severity: "error",
-      comment: "ADR-0002: the frozen 2.x kernel is referenced only by the entry points.",
-      from: { pathNot: "^src/(gate/|cli\\.ts$|mcp-server\\.ts$)" },
+      comment: "ADR-0002: the frozen 2.x kernel is referenced only by the entry points. M1-T1 temporary: config, entry, security and contracts still import the kernel until later M1 tasks remove those edges. Drop those four prefixes before the M1 exit check.",
+      from: { pathNot: "^src/(gate/|cli\\.ts$|mcp-server\\.ts$|config/|entry/|security/|contracts/)" },
       to: { path: "^src/gate/" }
     }
   ],

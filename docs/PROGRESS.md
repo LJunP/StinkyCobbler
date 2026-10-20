@@ -2,6 +2,19 @@
 
 > 只追加，最新在上。每条：日期 / 任务 / 做了什么 / 验证 / 待办与问题。
 
+## 2026-10-20 · M1-T1 治理内核搬入 src/gate
+
+- `git mv` 把 `src/storage`、`src/runtime`、`src/policy`、`src/domain`、`src/mcp` 搬到 `src/gate/`。`src/contracts/` 整目录留在原地（含 `schema-registry.ts`）。`src/cli.ts`、`src/mcp-server.ts`、`src/config`、`src/security`、测试的 import 改为新路径。行为没有改。
+- 四个包根常量各多一层 `..`，源码和 `dist` 都仍然解析到仓库根，而不是 `src/` 或 `dist/`：`gate/storage/leases.ts`、`gate/storage/write-intents.ts`、`gate/storage/orchestration.ts`、`gate/mcp/invocation.ts`。未搬的 `src/config/tiered.ts`、`src/contracts/default-schema-registry.ts`、`src/entry/install-host.ts` 保持原来的 `../..`。
+- 偏差（记在这里，不改评审快照）：
+  1. §3.4 写了连 `contracts` 一起搬、只留 `schema-registry.ts`。交接提示词只列五个目录，且拆 `contracts/` 会打断同目录相对 import，所以整份 `src/contracts/` 不动。
+  2. `FROZEN_KERNEL` 的内核部分改为 `src/gate/**`。`config`、`entry`、`security`、`contracts`、`cli.ts`、`mcp-server.ts` 仍豁免，否则未搬的超长文件会在本任务里被行数规则挡住。
+  3. `gate-is-only-reached-from-cli` 临时允许 `config`、`entry`、`security`、`contracts` 引用 `src/gate/`。这些边是原有的，M1 出口前必须收回。
+  4. `git diff --stat` 为 116 files, 575 insertions, 578 deletions，超过每任务 400 行。超出的是搬迁必需的 import 前缀，拆开不能编译。逻辑改动只有上述四个包根常量、eslint 列表和 depcruise 规则。
+- 未改：架构评审文档（`main` `e4dcdb9` 的快照）、历史 PROGRESS 条目、`tsconfig`、`package.json` 的 `files`。`gate/` 总行数不得增加的守卫仍未加（M0-T5 推迟项，不在本任务验收里）。
+- 验证：`npm run lint` 通过（typecheck、测试类型基线 0、eslint 0 error / 44 warning、depcruise 15 条已知循环被忽略，条数未增加，路径只从 `src/storage/` 换成 `src/gate/storage/`）。`npm test` 71 文件 / 784 项通过。
+- 未做：推送。交接文件 `docs/交接提示词-3.x执行.md` 仍未跟踪。目录搬迁的独立 evaluator 在本条之后补记。
+
 ## 2026-10-20 · M0-T7 2.0.2 候选就绪
 
 - 最终 evaluator 复核（372080b、ae8a88e、0fc2b81）**PASS**：自跑 lint / 784 项测试 / package smoke / check:version / release-gate / audit 全部通过；eslint 探针复现；depcruise `core-has-no-io` 探针由我在 372080b 前实跑并记录于 M0-T5 条目。

@@ -10,10 +10,10 @@ import {
   openWorkspace,
   workspaceFile,
   type LocalWorkspace
-} from "../storage/workspace.js";
+} from "../gate/storage/workspace.js";
 import type { Registries } from "./registry.js";
-import { withWorkspaceLock } from "../storage/workspace-lock.js";
-import { syncDirectory } from "../storage/durability.js";
+import { withWorkspaceLock } from "../gate/storage/workspace-lock.js";
+import { syncDirectory } from "../gate/storage/durability.js";
 
 export const WORKSPACE_CONFIG_FILE = "workspace.json";
 

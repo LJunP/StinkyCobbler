@@ -2,9 +2,9 @@ import { afterEach, describe, expect, it } from "vitest";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { initWorkspace, workspaceFile } from "../src/storage/workspace.js";
-import { admitAndReserveLeaseCall, getLeaseCallUsage, MAX_LEASE_USAGE_COUNTERS, releaseLatestLeaseCall, reserveLeaseCall } from "../src/storage/lease-usage.js";
-import { withWorkspaceLock } from "../src/storage/workspace-lock.js";
+import { initWorkspace, workspaceFile } from "../src/gate/storage/workspace.js";
+import { admitAndReserveLeaseCall, getLeaseCallUsage, MAX_LEASE_USAGE_COUNTERS, releaseLatestLeaseCall, reserveLeaseCall } from "../src/gate/storage/lease-usage.js";
+import { withWorkspaceLock } from "../src/gate/storage/workspace-lock.js";
 
 const roots: string[] = [];
 afterEach(async () => { await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true }))); });

@@ -7,40 +7,40 @@ import { SchemaRegistry, type ContractKind } from "./contracts/schema-registry.j
 import type { CapabilityLease, PolicyDecision, TaskCapsule, TaskCharter, TaskState } from "./contracts/types.js";
 import { loadRegistries } from "./config/registry.js";
 import { createWorkspaceConfig, migrateWorkspaceConfig, WorkspaceConfigService, type WorkspaceConfig } from "./config/workspace.js";
-import { evaluateLease, evaluateTask } from "./policy/evaluate.js";
-import { evaluateTaskApproval } from "./policy/approval.js";
-import { recommendTask } from "./domain/recommend.js";
-import { appendLedgerEntry, verifyLedger, archiveLedger } from "./storage/ledger.js";
-import { listPendingAudits, recoverMcpAudit } from "./storage/audit-service.js";
-import { decideApproval, getApproval, inspectApproval, listApprovals, requestApproval, type ApprovalRequestInput } from "./storage/approvals.js";
-import { getReceipt, inspectReceipt, listReceipts, recordReceipt, validateReceipt } from "./storage/receipts.js";
-import { getEvidence, inspectEvidence, listEvidence } from "./storage/evidence.js";
-import { assertSafeTaskId, createTask, getTask, listTasks, taskPlan } from "./storage/tasks.js";
-import { transitionTask } from "./storage/task-transitions.js";
-import { isTaskExecutionState } from "./domain/task-state.js";
-import { initWorkspace, openWorkspace } from "./storage/workspace.js";
+import { evaluateLease, evaluateTask } from "./gate/policy/evaluate.js";
+import { evaluateTaskApproval } from "./gate/policy/approval.js";
+import { recommendTask } from "./gate/domain/recommend.js";
+import { appendLedgerEntry, verifyLedger, archiveLedger } from "./gate/storage/ledger.js";
+import { listPendingAudits, recoverMcpAudit } from "./gate/storage/audit-service.js";
+import { decideApproval, getApproval, inspectApproval, listApprovals, requestApproval, type ApprovalRequestInput } from "./gate/storage/approvals.js";
+import { getReceipt, inspectReceipt, listReceipts, recordReceipt, validateReceipt } from "./gate/storage/receipts.js";
+import { getEvidence, inspectEvidence, listEvidence } from "./gate/storage/evidence.js";
+import { assertSafeTaskId, createTask, getTask, listTasks, taskPlan } from "./gate/storage/tasks.js";
+import { transitionTask } from "./gate/storage/task-transitions.js";
+import { isTaskExecutionState } from "./gate/domain/task-state.js";
+import { initWorkspace, openWorkspace } from "./gate/storage/workspace.js";
 import { ExitCode, StinkyCobblerError } from "./errors.js";
-import { cancelRuntime, executeReadonlyRuntime, validateRuntime } from "./runtime/service.js";
-import { getRun, getRunStaleness, recoverStaleRun } from "./storage/runs.js";
-import { inspectRuntimeRun, reconcileRuntimeRun } from "./storage/runtime-reconciliation.js";
-import { diagnoseRuntime } from "./storage/runtime-diagnostics.js";
+import { cancelRuntime, executeReadonlyRuntime, validateRuntime } from "./gate/runtime/service.js";
+import { getRun, getRunStaleness, recoverStaleRun } from "./gate/storage/runs.js";
+import { inspectRuntimeRun, reconcileRuntimeRun } from "./gate/storage/runtime-reconciliation.js";
+import { diagnoseRuntime } from "./gate/storage/runtime-diagnostics.js";
 import { STINKY_COBBLER_VERSION } from "./version.js";
 import { preflightEntry } from "./entry/preflight.js";
 import { installHost, mcpServerConfigTemplate, mcpServerConfigTemplateToml, resolveMcpServerCommand, type HostScope } from "./entry/install-host.js";
 import { isHostId, type HostId } from "./entry/host-spec.js";
-import { issueLease, getLease, listLeases, revokeLease } from "./storage/leases.js";
-import { createPlan, getPlan, listPlans, confirmPlan, cancelPlan, executePlan, beginStep, completeStep, failStep, finishPlan, failPlan } from "./storage/plans.js";
-import { requestWrites, confirmWrites, rejectWrites, getWriteIntent, listWriteIntents, rollbackWrite, reconcileRollbackWrite } from "./storage/write-intents.js";
-import { applyWrite, applyDelete, reconcileApplyWrite } from "./storage/writes.js";
+import { issueLease, getLease, listLeases, revokeLease } from "./gate/storage/leases.js";
+import { createPlan, getPlan, listPlans, confirmPlan, cancelPlan, executePlan, beginStep, completeStep, failStep, finishPlan, failPlan } from "./gate/storage/plans.js";
+import { requestWrites, confirmWrites, rejectWrites, getWriteIntent, listWriteIntents, rollbackWrite, reconcileRollbackWrite } from "./gate/storage/write-intents.js";
+import { applyWrite, applyDelete, reconcileApplyWrite } from "./gate/storage/writes.js";
 import {
   createContract, getContract, listContracts, updateContractStatus, recommendExecutionMode,
   createRun, getRun as getOrchestrationRun, listRuns,
   addSubtask, getSubtask, dispatchSubtask, beginSubtask,
   reportArtifact, getArtifact,
   recordReview, getReview, completeRound, escalateRun, resumeRun, cancelRun, estimateRunCost
-} from "./storage/orchestration.js";
-import { listSpecialists, getSpecialist } from "./storage/specialists.js";
-import { listContractTemplates, getContractTemplate } from "./storage/contract-templates.js";
+} from "./gate/storage/orchestration.js";
+import { listSpecialists, getSpecialist } from "./gate/storage/specialists.js";
+import { listContractTemplates, getContractTemplate } from "./gate/storage/contract-templates.js";
 import { loadOrchestrationConfig, loadTieredYaml } from "./config/tiered.js";
 import { loadAndValidateAllTieredConfig } from "./config/tiered-health.js";
 import { scaffoldUserPolicies } from "./config/scaffold.js";

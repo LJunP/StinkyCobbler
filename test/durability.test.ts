@@ -2,7 +2,7 @@ import { chmod, mkdtemp, readdir, readFile, rm, stat, writeFile } from "node:fs/
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { copyFileDurably, publishFileDurably, removeFileDurably, syncDirectory } from "../src/storage/durability.js";
+import { copyFileDurably, publishFileDurably, removeFileDurably, syncDirectory } from "../src/gate/storage/durability.js";
 
 const roots: string[] = [];
 

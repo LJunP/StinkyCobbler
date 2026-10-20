@@ -4,9 +4,9 @@ import os from "node:os";
 import path from "node:path";
 import type { AgentRun, EvidenceRef } from "../src/contracts/types.js";
 import { SchemaRegistry } from "../src/contracts/schema-registry.js";
-import { initWorkspace } from "../src/storage/workspace.js";
-import { recordEvidence, listEvidence, inspectEvidence } from "../src/storage/evidence.js";
-import { createRun } from "../src/storage/runs.js";
+import { initWorkspace } from "../src/gate/storage/workspace.js";
+import { recordEvidence, listEvidence, inspectEvidence } from "../src/gate/storage/evidence.js";
+import { createRun } from "../src/gate/storage/runs.js";
 
 const roots: string[] = [];
 const projectRoot = path.resolve(import.meta.dirname, "..");

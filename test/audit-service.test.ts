@@ -3,12 +3,12 @@ import { mkdtemp, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { SchemaRegistry } from "../src/contracts/schema-registry.js";
-import { createAuditOutbox, injectAuditOutboxCreateFaultForTesting, updateAuditOutbox } from "../src/storage/audit-outbox.js";
-import { persistMcpAudit, prepareMcpAudit, recoverMcpAudit, listPendingAudits } from "../src/storage/audit-service.js";
-import { initWorkspace } from "../src/storage/workspace.js";
-import { createTask } from "../src/storage/tasks.js";
-import { listLedgerEntries, verifyLedger } from "../src/storage/ledger.js";
-import { listReceipts } from "../src/storage/receipts.js";
+import { createAuditOutbox, injectAuditOutboxCreateFaultForTesting, updateAuditOutbox } from "../src/gate/storage/audit-outbox.js";
+import { persistMcpAudit, prepareMcpAudit, recoverMcpAudit, listPendingAudits } from "../src/gate/storage/audit-service.js";
+import { initWorkspace } from "../src/gate/storage/workspace.js";
+import { createTask } from "../src/gate/storage/tasks.js";
+import { listLedgerEntries, verifyLedger } from "../src/gate/storage/ledger.js";
+import { listReceipts } from "../src/gate/storage/receipts.js";
 
 const roots: string[] = [];
 afterEach(async () => { await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true }))); });

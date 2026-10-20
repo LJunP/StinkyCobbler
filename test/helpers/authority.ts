@@ -1,11 +1,11 @@
 import { randomUUID } from "node:crypto";
 import type { SchemaRegistry } from "../../src/contracts/schema-registry.js";
 import type { Approval, OrchestrationPlan, TaskCharter } from "../../src/contracts/types.js";
-import { decideApproval, requestApproval } from "../../src/storage/approvals.js";
-import type { WriteIntentRecord } from "../../src/storage/write-intents.js";
-import { hashTaskAuthority, TASK_AUTHORITY_POLICY_VERSION } from "../../src/storage/task-authority.js";
-import { PLAN_CONFIRM_CAPABILITY } from "../../src/storage/plans.js";
-import type { LocalWorkspace } from "../../src/storage/workspace.js";
+import { decideApproval, requestApproval } from "../../src/gate/storage/approvals.js";
+import type { WriteIntentRecord } from "../../src/gate/storage/write-intents.js";
+import { hashTaskAuthority, TASK_AUTHORITY_POLICY_VERSION } from "../../src/gate/storage/task-authority.js";
+import { PLAN_CONFIRM_CAPABILITY } from "../../src/gate/storage/plans.js";
+import type { LocalWorkspace } from "../../src/gate/storage/workspace.js";
 
 const EXPIRES_AT = "2099-01-01T00:00:00.000Z";
 

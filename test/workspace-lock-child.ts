@@ -1,5 +1,5 @@
-import { initWorkspace } from "../src/storage/workspace.js";
-import { withWorkspaceLock } from "../src/storage/workspace-lock.js";
+import { initWorkspace } from "../src/gate/storage/workspace.js";
+import { withWorkspaceLock } from "../src/gate/storage/workspace-lock.js";
 
 const [root, mode] = process.argv.slice(2);
 if (!root || (mode !== "hold" && mode !== "once")) process.exit(2);

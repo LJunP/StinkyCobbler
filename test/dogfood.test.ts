@@ -4,8 +4,8 @@ import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { SchemaRegistry } from "../src/contracts/schema-registry.js";
 import { loadRegistries } from "../src/config/registry.js";
-import { recommendTask } from "../src/domain/recommend.js";
-import { evaluateLease } from "../src/policy/evaluate.js";
+import { recommendTask } from "../src/gate/domain/recommend.js";
+import { evaluateLease } from "../src/gate/policy/evaluate.js";
 import { asLegacyLease } from "./helpers/lease.js";
 
 const projectRoot = path.resolve(import.meta.dirname, "..");

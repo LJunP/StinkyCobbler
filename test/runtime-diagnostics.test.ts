@@ -4,12 +4,12 @@ import os from "node:os";
 import path from "node:path";
 import type { AgentRun } from "../src/contracts/types.js";
 import { SchemaRegistry } from "../src/contracts/schema-registry.js";
-import { initWorkspace } from "../src/storage/workspace.js";
-import { createRun, transitionRun } from "../src/storage/runs.js";
-import { createTask } from "../src/storage/tasks.js";
-import { recordRuntimeReceipt, runtimeReceiptId } from "../src/storage/runtime-finalization.js";
-import { appendLedgerEntry } from "../src/storage/ledger.js";
-import { diagnoseRuntime } from "../src/storage/runtime-diagnostics.js";
+import { initWorkspace } from "../src/gate/storage/workspace.js";
+import { createRun, transitionRun } from "../src/gate/storage/runs.js";
+import { createTask } from "../src/gate/storage/tasks.js";
+import { recordRuntimeReceipt, runtimeReceiptId } from "../src/gate/storage/runtime-finalization.js";
+import { appendLedgerEntry } from "../src/gate/storage/ledger.js";
+import { diagnoseRuntime } from "../src/gate/storage/runtime-diagnostics.js";
 
 const roots: string[] = [];
 const projectRoot = path.resolve(import.meta.dirname, "..");

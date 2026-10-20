@@ -3,13 +3,13 @@ import path from "node:path";
 import type { CapabilityLease } from "../src/contracts/types.js";
 import type { SchemaRegistry } from "../src/contracts/schema-registry.js";
 import type { Registries } from "../src/config/registry.js";
-import type { LocalWorkspace } from "../src/storage/workspace.js";
-import { createTask } from "../src/storage/tasks.js";
-import { createPlan, confirmPlan, executePlan, beginStep } from "../src/storage/plans.js";
-import { requestWrites, confirmWrites } from "../src/storage/write-intents.js";
-import { issueLease } from "../src/storage/leases.js";
-import { applyWrite } from "../src/storage/writes.js";
-import type { WriteIntentRecord } from "../src/storage/write-intents.js";
+import type { LocalWorkspace } from "../src/gate/storage/workspace.js";
+import { createTask } from "../src/gate/storage/tasks.js";
+import { createPlan, confirmPlan, executePlan, beginStep } from "../src/gate/storage/plans.js";
+import { requestWrites, confirmWrites } from "../src/gate/storage/write-intents.js";
+import { issueLease } from "../src/gate/storage/leases.js";
+import { applyWrite } from "../src/gate/storage/writes.js";
+import type { WriteIntentRecord } from "../src/gate/storage/write-intents.js";
 import { approvePlanConfirmation, approveTaskCapability, approveWriteIntent } from "./helpers/authority.js";
 import type { TaskCharter } from "../src/contracts/types.js";
 
@@ -44,7 +44,7 @@ export async function prepareConfirmedWrite(workspace: LocalWorkspace, schemas: 
 }
 
 async function getWriteIntentRecord(workspace: LocalWorkspace, writeIntentId: string): Promise<WriteIntentRecord> {
-  const { getWriteIntent } = await import("../src/storage/write-intents.js");
+  const { getWriteIntent } = await import("../src/gate/storage/write-intents.js");
   return getWriteIntent(workspace, writeIntentId);
 }
 

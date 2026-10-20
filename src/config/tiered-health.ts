@@ -5,10 +5,10 @@ import { loadOrchestrationConfig, loadTemplatesConfig } from "./tiered.js";
 import type { WorkerProfile } from "../contracts/orchestration.js";
 import { ExitCode, StinkyCobblerError } from "../errors.js";
 import { assertWorkspacePathPolicy } from "../security/workspace-path.js";
-import type { ContractTemplate } from "../storage/contract-templates.js";
-import { listContractTemplates } from "../storage/contract-templates.js";
-import { listSpecialists } from "../storage/specialists.js";
-import type { LocalWorkspace } from "../storage/workspace.js";
+import type { ContractTemplate } from "../gate/storage/contract-templates.js";
+import { listContractTemplates } from "../gate/storage/contract-templates.js";
+import { listSpecialists } from "../gate/storage/specialists.js";
+import type { LocalWorkspace } from "../gate/storage/workspace.js";
 
 export interface EffectiveTieredConfiguration {
   orchestration: OrchestrationConfig;

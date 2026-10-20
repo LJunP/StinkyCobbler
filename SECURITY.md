@@ -22,7 +22,7 @@ The public Runtime is limited to the built-in `scripted-readonly` adapter and `r
 
 ## TaskAuthority and capability delegation
 
-`src/storage/task-authority.ts` is the central persisted authority gate for supported capabilities.
+`src/gate/storage/task-authority.ts` is the central persisted authority gate for supported capabilities.
 
 1. It reloads the Task from workspace storage and hashes the authority-bearing fields: state, risk, data classification, scope, writeSet, approval settings/references, constraints, and stop conditions.
 2. It checks that the Task state admits the requested capability, rejects L3, and ensures requested read/write scope is inside the persisted Task.

@@ -3,14 +3,14 @@ import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promis
 import os from "node:os";
 import path from "node:path";
 import { SchemaRegistry } from "../src/contracts/schema-registry.js";
-import { createTask } from "../src/storage/tasks.js";
-import { initWorkspace } from "../src/storage/workspace.js";
-import { injectLeaseIssuanceFaultForTesting, injectLeaseRevocationFaultForTesting, issueLease, getLease, listLeases, revokeLease, type LeaseIssueInput } from "../src/storage/leases.js";
-import { listLedgerEntries } from "../src/storage/ledger.js";
-import { evaluateLease } from "../src/policy/evaluate.js";
+import { createTask } from "../src/gate/storage/tasks.js";
+import { initWorkspace } from "../src/gate/storage/workspace.js";
+import { injectLeaseIssuanceFaultForTesting, injectLeaseRevocationFaultForTesting, issueLease, getLease, listLeases, revokeLease, type LeaseIssueInput } from "../src/gate/storage/leases.js";
+import { listLedgerEntries } from "../src/gate/storage/ledger.js";
+import { evaluateLease } from "../src/gate/policy/evaluate.js";
 import type { TaskCharter } from "../src/contracts/types.js";
-import { getApproval } from "../src/storage/approvals.js";
-import { createContract, getContract } from "../src/storage/orchestration.js";
+import { getApproval } from "../src/gate/storage/approvals.js";
+import { createContract, getContract } from "../src/gate/storage/orchestration.js";
 import { approveTaskCapability } from "./helpers/authority.js";
 
 const roots: string[] = [];

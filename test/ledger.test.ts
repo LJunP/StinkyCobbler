@@ -8,8 +8,8 @@ import {
   appendLedgerEntry,
   listLedgerEntries,
   verifyLedger
-} from "../src/storage/ledger.js";
-import { initWorkspace, workspaceFile } from "../src/storage/workspace.js";
+} from "../src/gate/storage/ledger.js";
+import { initWorkspace, workspaceFile } from "../src/gate/storage/workspace.js";
 
 const roots: string[] = [];
 

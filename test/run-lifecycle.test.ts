@@ -3,9 +3,9 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import type { AgentRun } from "../src/contracts/types.js";
-import { checkpointRunProgress, createRun, getRun, injectRunLifecycleFaultForTesting, listRuns, saveRun, transitionRun } from "../src/storage/runs.js";
-import { listLedgerEntries } from "../src/storage/ledger.js";
-import { initWorkspace } from "../src/storage/workspace.js";
+import { checkpointRunProgress, createRun, getRun, injectRunLifecycleFaultForTesting, listRuns, saveRun, transitionRun } from "../src/gate/storage/runs.js";
+import { listLedgerEntries } from "../src/gate/storage/ledger.js";
+import { initWorkspace } from "../src/gate/storage/workspace.js";
 
 const roots: string[] = [];
 afterEach(async () => { await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true }))); });
@@ -103,7 +103,7 @@ describe("Agent Run persistence lifecycle", () => {
     const workspace = await setup();
     const owned = { ...run(), ownerToken: "a".repeat(64), fenceEpoch: 0 };
     await createRun(workspace, owned);
-    const { assertRunOwner } = await import("../src/storage/runs.js");
+    const { assertRunOwner } = await import("../src/gate/storage/runs.js");
     await expect(assertRunOwner(workspace, owned.runId, owned.ownerToken, 0)).resolves.toMatchObject({ ownerToken: owned.ownerToken, fenceEpoch: 0 });
     await expect(assertRunOwner(workspace, owned.runId, "b".repeat(64), 0)).rejects.toMatchObject({ code: "RUNTIME_RUN_FENCED" });
   });

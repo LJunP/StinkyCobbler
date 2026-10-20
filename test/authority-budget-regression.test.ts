@@ -3,12 +3,12 @@ import { mkdtemp, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { SchemaRegistry } from "../src/contracts/schema-registry.js";
-import { decideApproval, requestApproval } from "../src/storage/approvals.js";
-import { admitAndReserveLeaseCall, getLeaseCallUsage } from "../src/storage/lease-usage.js";
-import { issueLease } from "../src/storage/leases.js";
-import { hashTaskAuthority, TASK_AUTHORITY_POLICY_VERSION } from "../src/storage/task-authority.js";
-import { createTask } from "../src/storage/tasks.js";
-import { initWorkspace } from "../src/storage/workspace.js";
+import { decideApproval, requestApproval } from "../src/gate/storage/approvals.js";
+import { admitAndReserveLeaseCall, getLeaseCallUsage } from "../src/gate/storage/lease-usage.js";
+import { issueLease } from "../src/gate/storage/leases.js";
+import { hashTaskAuthority, TASK_AUTHORITY_POLICY_VERSION } from "../src/gate/storage/task-authority.js";
+import { createTask } from "../src/gate/storage/tasks.js";
+import { initWorkspace } from "../src/gate/storage/workspace.js";
 
 const roots: string[] = [];
 const projectRoot = path.resolve(import.meta.dirname, "..");

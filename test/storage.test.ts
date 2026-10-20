@@ -4,8 +4,8 @@ import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { loadRegistries } from "../src/config/registry.js";
 import { SchemaRegistry } from "../src/contracts/schema-registry.js";
-import { appendLedgerEntry, verifyLedger } from "../src/storage/ledger.js";
-import { initWorkspace, workspaceFile } from "../src/storage/workspace.js";
+import { appendLedgerEntry, verifyLedger } from "../src/gate/storage/ledger.js";
+import { initWorkspace, workspaceFile } from "../src/gate/storage/workspace.js";
 
 const temporaryRoots: string[] = [];
 const projectRoot = path.resolve(import.meta.dirname, "..");

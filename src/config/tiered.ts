@@ -7,7 +7,7 @@ import { parse as parseYaml } from "yaml";
 import { defaultSchemaRegistry } from "../contracts/default-schema-registry.js";
 import type { ContractKind } from "../contracts/schema-registry.js";
 import { ExitCode, StinkyCobblerError } from "../errors.js";
-import { workspaceFile, type LocalWorkspace } from "../storage/workspace.js";
+import { workspaceFile, type LocalWorkspace } from "../gate/storage/workspace.js";
 import { assertWorkspacePathPolicy, isReservedWorkspacePath, normalizeWorkspaceRelativePath } from "../security/workspace-path.js";
 
 /** Package-internal policies directory (ships with the tool; npm updates replace it — never edit directly). */

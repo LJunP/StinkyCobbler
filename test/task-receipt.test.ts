@@ -4,10 +4,10 @@ import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { SchemaRegistry } from "../src/contracts/schema-registry.js";
 import type { TaskCharter } from "../src/contracts/types.js";
-import { verifyLedger } from "../src/storage/ledger.js";
-import { getReceipt, listReceipts, recordReceipt, validateReceipt } from "../src/storage/receipts.js";
-import { createTask, getTask, taskPlan } from "../src/storage/tasks.js";
-import { initWorkspace, workspaceFile } from "../src/storage/workspace.js";
+import { verifyLedger } from "../src/gate/storage/ledger.js";
+import { getReceipt, listReceipts, recordReceipt, validateReceipt } from "../src/gate/storage/receipts.js";
+import { createTask, getTask, taskPlan } from "../src/gate/storage/tasks.js";
+import { initWorkspace, workspaceFile } from "../src/gate/storage/workspace.js";
 
 const roots: string[] = [];
 const schemaRoot = path.resolve(import.meta.dirname, "..");

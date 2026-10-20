@@ -2,9 +2,9 @@ import { mkdtemp, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { injectTaskTransitionFaultForTesting } from "../src/storage/task-transitions.js";
-import { injectRuntimeFinalizationFaultOnceForTest } from "../src/storage/runtime-finalization.js";
-import { initWorkspace } from "../src/storage/workspace.js";
+import { injectTaskTransitionFaultForTesting } from "../src/gate/storage/task-transitions.js";
+import { injectRuntimeFinalizationFaultOnceForTest } from "../src/gate/storage/runtime-finalization.js";
+import { initWorkspace } from "../src/gate/storage/workspace.js";
 
 const roots: string[] = [];
 afterEach(async () => { await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true }))); });

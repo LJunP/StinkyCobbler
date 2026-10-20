@@ -3,8 +3,8 @@ import { execFile } from "node:child_process";
 import { access, mkdtemp, mkdir, readFile, rm, utimes, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { initWorkspace, workspaceFile } from "../src/storage/workspace.js";
-import { withWorkspaceLock } from "../src/storage/workspace-lock.js";
+import { initWorkspace, workspaceFile } from "../src/gate/storage/workspace.js";
+import { withWorkspaceLock } from "../src/gate/storage/workspace-lock.js";
 
 const projectRoot = path.resolve(import.meta.dirname, "..");
 const roots: string[] = [];

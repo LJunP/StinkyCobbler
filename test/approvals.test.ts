@@ -3,12 +3,12 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { SchemaRegistry } from "../src/contracts/schema-registry.js";
-import { createTask } from "../src/storage/tasks.js";
-import { initWorkspace } from "../src/storage/workspace.js";
-import { consumeApproval, decideApproval, getApproval, injectApprovalFaultForTesting, inspectApproval, listApprovals, requestApproval } from "../src/storage/approvals.js";
-import { evaluateTaskApproval } from "../src/policy/approval.js";
-import { listLedgerEntries, verifyLedger } from "../src/storage/ledger.js";
-import { writeWorkspaceJson } from "../src/storage/workspace.js";
+import { createTask } from "../src/gate/storage/tasks.js";
+import { initWorkspace } from "../src/gate/storage/workspace.js";
+import { consumeApproval, decideApproval, getApproval, injectApprovalFaultForTesting, inspectApproval, listApprovals, requestApproval } from "../src/gate/storage/approvals.js";
+import { evaluateTaskApproval } from "../src/gate/policy/approval.js";
+import { listLedgerEntries, verifyLedger } from "../src/gate/storage/ledger.js";
+import { writeWorkspaceJson } from "../src/gate/storage/workspace.js";
 import type { TaskCharter } from "../src/contracts/types.js";
 
 const roots: string[] = [];

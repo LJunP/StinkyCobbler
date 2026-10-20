@@ -4,7 +4,7 @@ import { SchemaRegistry } from "../src/contracts/schema-registry.js";
 import type { PluginManifest } from "../src/contracts/types.js";
 import { discoverBuiltinPlugins } from "../src/config/plugin-discovery.js";
 import { loadRegistries } from "../src/config/registry.js";
-import { createAdapterRegistry } from "../src/runtime/adapters.js";
+import { createAdapterRegistry } from "../src/gate/runtime/adapters.js";
 
 const root = path.resolve(import.meta.dirname, "..");
 const base: PluginManifest = {

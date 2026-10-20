@@ -1,7 +1,7 @@
 /** Out-of-the-box customization templates: init scaffolds commented example files under .stinky-cobbler/policies/. */
 
 import { writeFile } from "node:fs/promises";
-import { createWorkspaceDirectory, workspaceFile, type LocalWorkspace } from "../storage/workspace.js";
+import { createWorkspaceDirectory, workspaceFile, type LocalWorkspace } from "../gate/storage/workspace.js";
 
 const HEADER = `# ============================================================
 # Stinky Cobbler 用户配置模板（由工具初始化时自动生成）

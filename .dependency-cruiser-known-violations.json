@@ -1,8 +1,8 @@
 [
   {
     "type": "cycle",
-    "from": "src/storage/leases.ts",
-    "to": "src/storage/orchestration.ts",
+    "from": "src/gate/storage/leases.ts",
+    "to": "src/gate/storage/orchestration.ts",
     "unresolvedTo": "./orchestration.js",
     "dependencyTypes": [
       "local",
@@ -14,14 +14,14 @@
     },
     "cycle": [
       {
-        "name": "src/storage/orchestration.ts",
+        "name": "src/gate/storage/orchestration.ts",
         "dependencyTypes": [
           "local",
           "dynamic-import"
         ]
       },
       {
-        "name": "src/storage/leases.ts",
+        "name": "src/gate/storage/leases.ts",
         "dependencyTypes": [
           "local",
           "import"
@@ -31,8 +31,8 @@
   },
   {
     "type": "cycle",
-    "from": "src/storage/leases.ts",
-    "to": "src/storage/task-authority.ts",
+    "from": "src/gate/storage/leases.ts",
+    "to": "src/gate/storage/task-authority.ts",
     "unresolvedTo": "./task-authority.js",
     "dependencyTypes": [
       "local",
@@ -44,14 +44,14 @@
     },
     "cycle": [
       {
-        "name": "src/storage/task-authority.ts",
+        "name": "src/gate/storage/task-authority.ts",
         "dependencyTypes": [
           "local",
           "import"
         ]
       },
       {
-        "name": "src/storage/leases.ts",
+        "name": "src/gate/storage/leases.ts",
         "dependencyTypes": [
           "local",
           "dynamic-import"
@@ -61,8 +61,8 @@
   },
   {
     "type": "cycle",
-    "from": "src/storage/leases.ts",
-    "to": "src/storage/write-intents.ts",
+    "from": "src/gate/storage/leases.ts",
+    "to": "src/gate/storage/write-intents.ts",
     "unresolvedTo": "./write-intents.js",
     "dependencyTypes": [
       "local",
@@ -74,21 +74,21 @@
     },
     "cycle": [
       {
-        "name": "src/storage/write-intents.ts",
+        "name": "src/gate/storage/write-intents.ts",
         "dependencyTypes": [
           "local",
           "import"
         ]
       },
       {
-        "name": "src/storage/orchestration.ts",
+        "name": "src/gate/storage/orchestration.ts",
         "dependencyTypes": [
           "local",
           "dynamic-import"
         ]
       },
       {
-        "name": "src/storage/leases.ts",
+        "name": "src/gate/storage/leases.ts",
         "dependencyTypes": [
           "local",
           "import"
@@ -98,8 +98,8 @@
   },
   {
     "type": "cycle",
-    "from": "src/storage/orchestration-transactions.ts",
-    "to": "src/storage/task-authority.ts",
+    "from": "src/gate/storage/orchestration-transactions.ts",
+    "to": "src/gate/storage/task-authority.ts",
     "unresolvedTo": "./task-authority.js",
     "dependencyTypes": [
       "local",
@@ -111,28 +111,28 @@
     },
     "cycle": [
       {
-        "name": "src/storage/task-authority.ts",
+        "name": "src/gate/storage/task-authority.ts",
         "dependencyTypes": [
           "local",
           "import"
         ]
       },
       {
-        "name": "src/storage/leases.ts",
+        "name": "src/gate/storage/leases.ts",
         "dependencyTypes": [
           "local",
           "dynamic-import"
         ]
       },
       {
-        "name": "src/storage/orchestration.ts",
+        "name": "src/gate/storage/orchestration.ts",
         "dependencyTypes": [
           "local",
           "dynamic-import"
         ]
       },
       {
-        "name": "src/storage/orchestration-transactions.ts",
+        "name": "src/gate/storage/orchestration-transactions.ts",
         "dependencyTypes": [
           "local",
           "import"
@@ -142,8 +142,8 @@
   },
   {
     "type": "cycle",
-    "from": "src/storage/orchestration.ts",
-    "to": "src/storage/orchestration-transactions.ts",
+    "from": "src/gate/storage/orchestration.ts",
+    "to": "src/gate/storage/orchestration-transactions.ts",
     "unresolvedTo": "./orchestration-transactions.js",
     "dependencyTypes": [
       "local",
@@ -155,21 +155,21 @@
     },
     "cycle": [
       {
-        "name": "src/storage/orchestration-transactions.ts",
+        "name": "src/gate/storage/orchestration-transactions.ts",
         "dependencyTypes": [
           "local",
           "import"
         ]
       },
       {
-        "name": "src/storage/task-authority.ts",
+        "name": "src/gate/storage/task-authority.ts",
         "dependencyTypes": [
           "local",
           "import"
         ]
       },
       {
-        "name": "src/storage/orchestration.ts",
+        "name": "src/gate/storage/orchestration.ts",
         "dependencyTypes": [
           "local",
           "dynamic-import"
@@ -179,8 +179,8 @@
   },
   {
     "type": "cycle",
-    "from": "src/storage/orchestration.ts",
-    "to": "src/storage/task-authority.ts",
+    "from": "src/gate/storage/orchestration.ts",
+    "to": "src/gate/storage/task-authority.ts",
     "unresolvedTo": "./task-authority.js",
     "dependencyTypes": [
       "local",
@@ -192,14 +192,14 @@
     },
     "cycle": [
       {
-        "name": "src/storage/task-authority.ts",
+        "name": "src/gate/storage/task-authority.ts",
         "dependencyTypes": [
           "local",
           "import"
         ]
       },
       {
-        "name": "src/storage/orchestration.ts",
+        "name": "src/gate/storage/orchestration.ts",
         "dependencyTypes": [
           "local",
           "dynamic-import"
@@ -209,8 +209,8 @@
   },
   {
     "type": "cycle",
-    "from": "src/storage/orchestration.ts",
-    "to": "src/storage/write-intents.ts",
+    "from": "src/gate/storage/orchestration.ts",
+    "to": "src/gate/storage/write-intents.ts",
     "unresolvedTo": "./write-intents.js",
     "dependencyTypes": [
       "local",
@@ -222,14 +222,14 @@
     },
     "cycle": [
       {
-        "name": "src/storage/write-intents.ts",
+        "name": "src/gate/storage/write-intents.ts",
         "dependencyTypes": [
           "local",
           "import"
         ]
       },
       {
-        "name": "src/storage/orchestration.ts",
+        "name": "src/gate/storage/orchestration.ts",
         "dependencyTypes": [
           "local",
           "dynamic-import"
@@ -239,8 +239,8 @@
   },
   {
     "type": "cycle",
-    "from": "src/storage/plans.ts",
-    "to": "src/storage/leases.ts",
+    "from": "src/gate/storage/plans.ts",
+    "to": "src/gate/storage/leases.ts",
     "unresolvedTo": "./leases.js",
     "dependencyTypes": [
       "local",
@@ -252,21 +252,21 @@
     },
     "cycle": [
       {
-        "name": "src/storage/leases.ts",
+        "name": "src/gate/storage/leases.ts",
         "dependencyTypes": [
           "local",
           "import"
         ]
       },
       {
-        "name": "src/storage/write-intents.ts",
+        "name": "src/gate/storage/write-intents.ts",
         "dependencyTypes": [
           "local",
           "import"
         ]
       },
       {
-        "name": "src/storage/plans.ts",
+        "name": "src/gate/storage/plans.ts",
         "dependencyTypes": [
           "local",
           "import"
@@ -276,8 +276,8 @@
   },
   {
     "type": "cycle",
-    "from": "src/storage/plans.ts",
-    "to": "src/storage/task-authority.ts",
+    "from": "src/gate/storage/plans.ts",
+    "to": "src/gate/storage/task-authority.ts",
     "unresolvedTo": "./task-authority.js",
     "dependencyTypes": [
       "local",
@@ -289,35 +289,35 @@
     },
     "cycle": [
       {
-        "name": "src/storage/task-authority.ts",
+        "name": "src/gate/storage/task-authority.ts",
         "dependencyTypes": [
           "local",
           "import"
         ]
       },
       {
-        "name": "src/storage/leases.ts",
+        "name": "src/gate/storage/leases.ts",
         "dependencyTypes": [
           "local",
           "dynamic-import"
         ]
       },
       {
-        "name": "src/storage/orchestration.ts",
+        "name": "src/gate/storage/orchestration.ts",
         "dependencyTypes": [
           "local",
           "dynamic-import"
         ]
       },
       {
-        "name": "src/storage/write-intents.ts",
+        "name": "src/gate/storage/write-intents.ts",
         "dependencyTypes": [
           "local",
           "import"
         ]
       },
       {
-        "name": "src/storage/plans.ts",
+        "name": "src/gate/storage/plans.ts",
         "dependencyTypes": [
           "local",
           "import"
@@ -327,8 +327,8 @@
   },
   {
     "type": "cycle",
-    "from": "src/storage/plans.ts",
-    "to": "src/storage/write-intents.ts",
+    "from": "src/gate/storage/plans.ts",
+    "to": "src/gate/storage/write-intents.ts",
     "unresolvedTo": "./write-intents.js",
     "dependencyTypes": [
       "local",
@@ -340,14 +340,14 @@
     },
     "cycle": [
       {
-        "name": "src/storage/write-intents.ts",
+        "name": "src/gate/storage/write-intents.ts",
         "dependencyTypes": [
           "local",
           "import"
         ]
       },
       {
-        "name": "src/storage/plans.ts",
+        "name": "src/gate/storage/plans.ts",
         "dependencyTypes": [
           "local",
           "import"
@@ -357,8 +357,8 @@
   },
   {
     "type": "cycle",
-    "from": "src/storage/write-intents.ts",
-    "to": "src/storage/task-authority.ts",
+    "from": "src/gate/storage/write-intents.ts",
+    "to": "src/gate/storage/task-authority.ts",
     "unresolvedTo": "./task-authority.js",
     "dependencyTypes": [
       "local",
@@ -370,21 +370,21 @@
     },
     "cycle": [
       {
-        "name": "src/storage/task-authority.ts",
+        "name": "src/gate/storage/task-authority.ts",
         "dependencyTypes": [
           "local",
           "import"
         ]
       },
       {
-        "name": "src/storage/leases.ts",
+        "name": "src/gate/storage/leases.ts",
         "dependencyTypes": [
           "local",
           "dynamic-import"
         ]
       },
       {
-        "name": "src/storage/write-intents.ts",
+        "name": "src/gate/storage/write-intents.ts",
         "dependencyTypes": [
           "local",
           "import"
@@ -394,8 +394,8 @@
   },
   {
     "type": "cycle",
-    "from": "src/storage/leases.ts",
-    "to": "src/storage/orchestration.ts",
+    "from": "src/gate/storage/leases.ts",
+    "to": "src/gate/storage/orchestration.ts",
     "unresolvedTo": "./orchestration.js",
     "dependencyTypes": [
       "local",
@@ -407,14 +407,14 @@
     },
     "cycle": [
       {
-        "name": "src/storage/orchestration.ts",
+        "name": "src/gate/storage/orchestration.ts",
         "dependencyTypes": [
           "local",
           "dynamic-import"
         ]
       },
       {
-        "name": "src/storage/leases.ts",
+        "name": "src/gate/storage/leases.ts",
         "dependencyTypes": [
           "local",
           "import"
@@ -424,8 +424,8 @@
   },
   {
     "type": "cycle",
-    "from": "src/storage/task-authority.ts",
-    "to": "src/storage/leases.ts",
+    "from": "src/gate/storage/task-authority.ts",
+    "to": "src/gate/storage/leases.ts",
     "unresolvedTo": "./leases.js",
     "dependencyTypes": [
       "local",
@@ -437,14 +437,14 @@
     },
     "cycle": [
       {
-        "name": "src/storage/leases.ts",
+        "name": "src/gate/storage/leases.ts",
         "dependencyTypes": [
           "local",
           "dynamic-import"
         ]
       },
       {
-        "name": "src/storage/task-authority.ts",
+        "name": "src/gate/storage/task-authority.ts",
         "dependencyTypes": [
           "local",
           "import"
@@ -454,8 +454,8 @@
   },
   {
     "type": "cycle",
-    "from": "src/storage/task-authority.ts",
-    "to": "src/storage/orchestration.ts",
+    "from": "src/gate/storage/task-authority.ts",
+    "to": "src/gate/storage/orchestration.ts",
     "unresolvedTo": "./orchestration.js",
     "dependencyTypes": [
       "local",
@@ -467,14 +467,14 @@
     },
     "cycle": [
       {
-        "name": "src/storage/orchestration.ts",
+        "name": "src/gate/storage/orchestration.ts",
         "dependencyTypes": [
           "local",
           "dynamic-import"
         ]
       },
       {
-        "name": "src/storage/task-authority.ts",
+        "name": "src/gate/storage/task-authority.ts",
         "dependencyTypes": [
           "local",
           "import"
@@ -484,8 +484,8 @@
   },
   {
     "type": "cycle",
-    "from": "src/storage/write-intents.ts",
-    "to": "src/storage/orchestration.ts",
+    "from": "src/gate/storage/write-intents.ts",
+    "to": "src/gate/storage/orchestration.ts",
     "unresolvedTo": "./orchestration.js",
     "dependencyTypes": [
       "local",
@@ -497,14 +497,14 @@
     },
     "cycle": [
       {
-        "name": "src/storage/orchestration.ts",
+        "name": "src/gate/storage/orchestration.ts",
         "dependencyTypes": [
           "local",
           "dynamic-import"
         ]
       },
       {
-        "name": "src/storage/write-intents.ts",
+        "name": "src/gate/storage/write-intents.ts",
         "dependencyTypes": [
           "local",
           "import"

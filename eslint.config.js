@@ -4,16 +4,13 @@ import tseslint from "typescript-eslint";
 
 /**
  * Architecture rules A1, A2 and A6 from docs/架构评审与发展规划-2026-10-20.md §2.5.
- * The 2.x governance kernel (storage/runtime/policy/domain/mcp and the two
- * entry points) is frozen: it keeps its current shape until it moves under
- * src/gate in M1, so size limits apply only to new code.
+ * The 2.x governance kernel now lives under src/gate and stays frozen.
+ * config, entry, security, contracts, cli.ts and mcp-server.ts are still the
+ * old shape. They stay exempt until later M1 tasks extract or split them.
+ * Size limits apply in full to new code under src/core, src/hosts, src/io and src/app.
  */
 const FROZEN_KERNEL = [
-  "src/storage/**",
-  "src/runtime/**",
-  "src/policy/**",
-  "src/domain/**",
-  "src/mcp/**",
+  "src/gate/**",
   "src/config/**",
   "src/entry/**",
   "src/security/**",

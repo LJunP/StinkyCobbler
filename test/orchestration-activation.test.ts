@@ -3,21 +3,21 @@ import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { SchemaRegistry } from "../src/contracts/schema-registry.js";
-import { createTask } from "../src/storage/tasks.js";
-import { initWorkspace } from "../src/storage/workspace.js";
+import { createTask } from "../src/gate/storage/tasks.js";
+import { initWorkspace } from "../src/gate/storage/workspace.js";
 import {
   addSubtask, beginSubtask, cancelRun, createContract, createRun, dispatchSubtask, escalateRun,
   getRun, getSubtask, injectOrchestrationActivationFaultForTesting,
   injectCancellationFaultForTesting, injectSubtaskCreationFaultForTesting, listRuns, recordReview, resumeRun
-} from "../src/storage/orchestration.js";
-import { getRunCancellationFence } from "../src/storage/orchestration-fence.js";
-import { admitAndReserveLeaseCall } from "../src/storage/lease-usage.js";
-import { listLeases } from "../src/storage/leases.js";
-import { appendLedgerEntry, listLedgerEntries } from "../src/storage/ledger.js";
+} from "../src/gate/storage/orchestration.js";
+import { getRunCancellationFence } from "../src/gate/storage/orchestration-fence.js";
+import { admitAndReserveLeaseCall } from "../src/gate/storage/lease-usage.js";
+import { listLeases } from "../src/gate/storage/leases.js";
+import { appendLedgerEntry, listLedgerEntries } from "../src/gate/storage/ledger.js";
 import {
   escalationTransactionId, getOrchestrationTransaction, injectOrchestrationTransactionFaultForTesting,
   reconcileOrchestrationTransaction
-} from "../src/storage/orchestration-transactions.js";
+} from "../src/gate/storage/orchestration-transactions.js";
 
 const roots: string[] = [];
 const projectRoot = path.resolve(import.meta.dirname, "..");

@@ -4,11 +4,11 @@ import os from "node:os";
 import path from "node:path";
 import { SchemaRegistry } from "../src/contracts/schema-registry.js";
 import { loadRegistries } from "../src/config/registry.js";
-import { createTask, saveTask } from "../src/storage/tasks.js";
-import { initWorkspace, writeWorkspaceJson } from "../src/storage/workspace.js";
-import { createPlan, getPlan, listPlans, confirmPlan, cancelPlan, ensurePlanLifecycleCommitted, injectPlanConfirmationFaultForTesting, injectPlanLifecycleFaultForTesting } from "../src/storage/plans.js";
-import { consumeApproval, decideApproval, getApproval, requestApproval } from "../src/storage/approvals.js";
-import { listLedgerEntries } from "../src/storage/ledger.js";
+import { createTask, saveTask } from "../src/gate/storage/tasks.js";
+import { initWorkspace, writeWorkspaceJson } from "../src/gate/storage/workspace.js";
+import { createPlan, getPlan, listPlans, confirmPlan, cancelPlan, ensurePlanLifecycleCommitted, injectPlanConfirmationFaultForTesting, injectPlanLifecycleFaultForTesting } from "../src/gate/storage/plans.js";
+import { consumeApproval, decideApproval, getApproval, requestApproval } from "../src/gate/storage/approvals.js";
+import { listLedgerEntries } from "../src/gate/storage/ledger.js";
 import type { TaskCharter } from "../src/contracts/types.js";
 import { approvePlanConfirmation } from "./helpers/authority.js";
 

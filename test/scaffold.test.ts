@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { initWorkspace } from "../src/storage/workspace.js";
+import { initWorkspace } from "../src/gate/storage/workspace.js";
 import { scaffoldUserPolicies } from "../src/config/scaffold.js";
 import { loadOrchestrationConfig } from "../src/config/tiered.js";
 

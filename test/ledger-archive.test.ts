@@ -3,8 +3,8 @@ import { createHash } from "node:crypto";
 import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { initWorkspace } from "../src/storage/workspace.js";
-import { appendLedgerEntry, verifyLedger, archiveLedger, listArchives, listLedgerEntries } from "../src/storage/ledger.js";
+import { initWorkspace } from "../src/gate/storage/workspace.js";
+import { appendLedgerEntry, verifyLedger, archiveLedger, listArchives, listLedgerEntries } from "../src/gate/storage/ledger.js";
 
 const roots: string[] = [];
 afterEach(async () => { await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true }))); });

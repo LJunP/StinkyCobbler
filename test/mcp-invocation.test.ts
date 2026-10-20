@@ -5,20 +5,20 @@ import { afterEach, describe, expect, it } from "vitest";
 import { SchemaRegistry } from "../src/contracts/schema-registry.js";
 import { createWorkspaceConfig, loadWorkspaceConfig } from "../src/config/workspace.js";
 import { loadRegistries } from "../src/config/registry.js";
-import { injectControlledInvocationFaultForTesting, invokeControlled, isWorkspaceAuditDegraded, type ControlledInvocationDependencies } from "../src/mcp/invocation.js";
-import { initWorkspace, openWorkspace, workspaceFile, type LocalWorkspace } from "../src/storage/workspace.js";
+import { injectControlledInvocationFaultForTesting, invokeControlled, isWorkspaceAuditDegraded, type ControlledInvocationDependencies } from "../src/gate/mcp/invocation.js";
+import { initWorkspace, openWorkspace, workspaceFile, type LocalWorkspace } from "../src/gate/storage/workspace.js";
 import { mkdir, writeFile } from "node:fs/promises";
-import { createTask, getTask, saveTask } from "../src/storage/tasks.js";
-import { admitAndReserveLeaseCall, getLeaseCallUsage, getLeaseDenialAuditUsage, MAX_AUDITED_LEASE_DENIALS } from "../src/storage/lease-usage.js";
-import { listReceipts, recordReceipt } from "../src/storage/receipts.js";
-import { appendLedgerEntry, listLedgerEntries } from "../src/storage/ledger.js";
-import { listPendingAudits, persistMcpAudit, prepareMcpAudit, recoverMcpAudit } from "../src/storage/audit-service.js";
-import { createAuditOutbox, updateAuditOutbox } from "../src/storage/audit-outbox.js";
-import { createPlan, confirmPlan, executePlan, beginStep } from "../src/storage/plans.js";
-import { requestWrites, confirmWrites } from "../src/storage/write-intents.js";
-import { requestApproval, decideApproval } from "../src/storage/approvals.js";
-import { issueLease, revokeLease } from "../src/storage/leases.js";
-import { addSubtask, beginSubtask, createContract, createRun, dispatchSubtask, recordReview, reportArtifact } from "../src/storage/orchestration.js";
+import { createTask, getTask, saveTask } from "../src/gate/storage/tasks.js";
+import { admitAndReserveLeaseCall, getLeaseCallUsage, getLeaseDenialAuditUsage, MAX_AUDITED_LEASE_DENIALS } from "../src/gate/storage/lease-usage.js";
+import { listReceipts, recordReceipt } from "../src/gate/storage/receipts.js";
+import { appendLedgerEntry, listLedgerEntries } from "../src/gate/storage/ledger.js";
+import { listPendingAudits, persistMcpAudit, prepareMcpAudit, recoverMcpAudit } from "../src/gate/storage/audit-service.js";
+import { createAuditOutbox, updateAuditOutbox } from "../src/gate/storage/audit-outbox.js";
+import { createPlan, confirmPlan, executePlan, beginStep } from "../src/gate/storage/plans.js";
+import { requestWrites, confirmWrites } from "../src/gate/storage/write-intents.js";
+import { requestApproval, decideApproval } from "../src/gate/storage/approvals.js";
+import { issueLease, revokeLease } from "../src/gate/storage/leases.js";
+import { addSubtask, beginSubtask, createContract, createRun, dispatchSubtask, recordReview, reportArtifact } from "../src/gate/storage/orchestration.js";
 import { readFile } from "node:fs/promises";
 import { approvePlanConfirmation, approveTaskCapability, approveWriteIntent } from "./helpers/authority.js";
 import { ExitCode, StinkyCobblerError } from "../src/errors.js";
@@ -547,7 +547,7 @@ describe("controlled MCP invocation", () => {
 
     await expect(dispatchSubtask(workspace, schemas, run.runId, subtask.subtaskId, "l2-worker", 0))
       .rejects.toMatchObject({ code: "TASK_APPROVAL_REQUIRED" });
-    const partial = (await import("../src/storage/leases.js").then((module) => module.listLeases(workspace)))
+    const partial = (await import("../src/gate/storage/leases.js").then((module) => module.listLeases(workspace)))
       .filter((lease) => lease.subtaskRef === subtask.subtaskId);
     expect(partial).toHaveLength(1);
     expect(partial[0]).toMatchObject({ capability: "repository-read", status: "active", subtaskAttempt: 0 });
@@ -584,7 +584,7 @@ describe("controlled MCP invocation", () => {
     await confirmWrites(workspace, plan.planId, "step-1", intent.writeIntentId, schemas);
     await approveTaskCapability(workspace, schemas, await getTask(workspace, "task"), "repository-write", ["notes.md"]);
     const writeLease = await issueLease(workspace, schemas, { taskId: "task", agentId: "builder-agent", role: "builder", capability: "repository-write", writeSet: ["notes.md"] });
-    const { writeRepositoryFile } = await import("../src/mcp/repo-write.js");
+    const { writeRepositoryFile } = await import("../src/gate/mcp/repo-write.js");
     const result = await invokeControlled(
       schemas,
       { lease: writeLease, taskId: "task", role: "builder", workspace: await realpath(root) },
@@ -613,7 +613,7 @@ describe("controlled MCP invocation", () => {
     await confirmWrites(workspace, plan.planId, "step-1", intent.writeIntentId, schemas);
     await approveTaskCapability(workspace, schemas, await getTask(workspace, "task"), "repository-write", ["notes.md"]);
     const writeLease = await issueLease(workspace, schemas, { taskId: "task", agentId: "builder-agent", role: "builder", capability: "repository-write", writeSet: ["notes.md"] });
-    const { deleteRepositoryFile } = await import("../src/mcp/repo-write.js");
+    const { deleteRepositoryFile } = await import("../src/gate/mcp/repo-write.js");
     const result = await invokeControlled(
       schemas,
       { lease: writeLease, taskId: "task", role: "builder", workspace: await realpath(root) },
@@ -639,7 +639,7 @@ describe("controlled MCP invocation", () => {
     const intent = await requestWrites(workspace, schemas, plan.planId, "step-1", [{ target: "notes.md", action: "modify", purpose: "Update." }]);
     await approveTaskCapability(workspace, schemas, await getTask(workspace, "task"), "repository-write", ["notes.md"]);
     const writeLease = await issueLease(workspace, schemas, { taskId: "task", agentId: "builder-agent", role: "builder", capability: "repository-write", writeSet: ["notes.md"] });
-    const { writeRepositoryFile } = await import("../src/mcp/repo-write.js");
+    const { writeRepositoryFile } = await import("../src/gate/mcp/repo-write.js");
     const result = await invokeControlled(
       schemas,
       { lease: writeLease, taskId: "task", role: "builder", workspace: await realpath(root) },

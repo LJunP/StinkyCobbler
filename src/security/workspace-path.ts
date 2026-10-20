@@ -1,7 +1,7 @@
 import { constants, type BigIntStats, type Dirent, type Stats } from "node:fs";
 import { lstat, open, opendir, realpath, type FileHandle } from "node:fs/promises";
 import path from "node:path";
-import { containsShellMetacharacter, isSensitivePath } from "../policy/path-policy.js";
+import { containsShellMetacharacter, isSensitivePath } from "../gate/policy/path-policy.js";
 
 const RESERVED_DIRECTORIES = new Set([".git", ".stinky-cobbler"]);
 

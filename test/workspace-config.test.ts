@@ -10,7 +10,7 @@ import {
   validateWorkspaceConfig,
   type WorkspaceConfig
 } from "../src/config/workspace.js";
-import { initWorkspace, workspaceFile } from "../src/storage/workspace.js";
+import { initWorkspace, workspaceFile } from "../src/gate/storage/workspace.js";
 
 const projectRoot = path.resolve(import.meta.dirname, "..");
 const roots: string[] = [];

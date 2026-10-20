@@ -15,7 +15,7 @@
 
 ## M1 提取资产（零行为变化）
 
-- [ ] M1-T1 治理内核搬入 `src/gate/`
+- [x] M1-T1 治理内核搬入 `src/gate/`
 - [ ] M1-T2 `io/fs-boundary` + 有界写（修 D-02）
 - [ ] M1-T3 `io/managed-file` + `segment-file` + 保格式 TOML（修 D-10）
 - [ ] M1-T4 `io/tiered-config` 按文件合并策略 + user 层（修 D-14）

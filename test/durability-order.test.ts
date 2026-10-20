@@ -22,7 +22,7 @@ vi.mock("node:fs/promises", async (importOriginal) => {
   };
 });
 
-const { copyFileDurably, publishFileDurably, removeFileDurably } = await import("../src/storage/durability.js");
+const { copyFileDurably, publishFileDurably, removeFileDurably } = await import("../src/gate/storage/durability.js");
 
 const roots: string[] = [];
 afterEach(async () => { events.length = 0; await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true }))); });

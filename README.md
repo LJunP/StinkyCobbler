@@ -303,8 +303,8 @@ npm install stinky-cobbler@2.0.1     # 98 packages, 3s
 | 路径 | 内容 |
 |---|---|
 | `src/cli.ts`、`src/mcp-server.ts` | 公共 CLI / MCP 入口 |
-| `src/storage/`、`src/security/`、`src/policy/` | 持久化状态、事务恢复、权限与路径校验 |
-| `src/runtime/`、`src/contracts/`、`schemas/` | 只读 Runtime 与数据契约 |
+| `src/gate/storage/`、`src/security/`、`src/gate/policy/` | 持久化状态、事务恢复、权限与路径校验 |
+| `src/gate/runtime/`、`src/contracts/`、`schemas/` | 只读 Runtime 与数据契约 |
 | `profiles/`、`packs/`、`policies/`、`plugins/` | 配置与能力声明；声明不等于执行器 |
 | `.codex/`、`.zcode/` | 宿主入口模板 |
 | `test/`、`scripts/`、`.github/workflows/` | 回归测试、构建/分发校验与 CI |

@@ -5,16 +5,16 @@ import os from "node:os";
 import path from "node:path";
 import { SchemaRegistry } from "../src/contracts/schema-registry.js";
 import { loadRegistries } from "../src/config/registry.js";
-import { createTask, getTask } from "../src/storage/tasks.js";
-import { initWorkspace, writeWorkspaceJson } from "../src/storage/workspace.js";
-import { createPlan, confirmPlan, executePlan, beginStep, getPlan } from "../src/storage/plans.js";
-import { requestWrites, confirmWrites, getWriteIntent, listWriteIntents, reconcileRollbackWrite, rollbackWrite } from "../src/storage/write-intents.js";
-import { issueLease, getLease } from "../src/storage/leases.js";
-import { applyWrite, applyDelete, reconcileApplyWrite } from "../src/storage/writes.js";
-import { listLedgerEntries } from "../src/storage/ledger.js";
+import { createTask, getTask } from "../src/gate/storage/tasks.js";
+import { initWorkspace, writeWorkspaceJson } from "../src/gate/storage/workspace.js";
+import { createPlan, confirmPlan, executePlan, beginStep, getPlan } from "../src/gate/storage/plans.js";
+import { requestWrites, confirmWrites, getWriteIntent, listWriteIntents, reconcileRollbackWrite, rollbackWrite } from "../src/gate/storage/write-intents.js";
+import { issueLease, getLease } from "../src/gate/storage/leases.js";
+import { applyWrite, applyDelete, reconcileApplyWrite } from "../src/gate/storage/writes.js";
+import { listLedgerEntries } from "../src/gate/storage/ledger.js";
 import type { CapabilityLease } from "../src/contracts/types.js";
 import { approvePlanConfirmation, approveTaskCapability, approveWriteIntent } from "./helpers/authority.js";
-import { decideApproval } from "../src/storage/approvals.js";
+import { decideApproval } from "../src/gate/storage/approvals.js";
 
 const roots: string[] = [];
 const projectRoot = path.resolve(import.meta.dirname, "..");
@@ -109,7 +109,7 @@ describe("controlled write execution", () => {
     expect(result.target).toBe(target);
     expect(result.backupPath).toBeUndefined();
     expect(await readFile(path.join(workspace.root, target), "utf8")).toBe(content);
-    const evidence = await import("../src/storage/evidence.js").then(({ getEvidence }) => getEvidence(workspace, result.evidenceId));
+    const evidence = await import("../src/gate/storage/evidence.js").then(({ getEvidence }) => getEvidence(workspace, result.evidenceId));
     expect(evidence).toMatchObject({ kind: "file", locator: target, sensitivity: "internal", contentHash: `sha256:${createHash("sha256").update(content).digest("hex")}` });
     const stored = await getWriteIntent(workspace, intent.writeIntentId);
     expect(stored.status).toBe("APPLIED");
@@ -353,7 +353,7 @@ describe("controlled write execution", () => {
     await writeFile(path.join(workspace.directory, "write-intents", `${intentId}.json`), JSON.stringify({
       version: 1,
       writeIntentId: intentId,
-      planId: (await import("../src/storage/plans.js").then(({ listPlans }) => listPlans(workspace)))[0]!.planId,
+      planId: (await import("../src/gate/storage/plans.js").then(({ listPlans }) => listPlans(workspace)))[0]!.planId,
       stepId: "step-1",
       taskId: "write-task",
       status: "CONFIRMED",

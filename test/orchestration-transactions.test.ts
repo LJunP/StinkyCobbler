@@ -3,20 +3,20 @@ import { mkdir, mkdtemp, readFile, rm, unlink, writeFile } from "node:fs/promise
 import os from "node:os";
 import path from "node:path";
 import { SchemaRegistry } from "../src/contracts/schema-registry.js";
-import { createTask, getTask, saveTask } from "../src/storage/tasks.js";
-import { decideApproval } from "../src/storage/approvals.js";
-import { initWorkspace, writeWorkspaceJson, type LocalWorkspace } from "../src/storage/workspace.js";
+import { createTask, getTask, saveTask } from "../src/gate/storage/tasks.js";
+import { decideApproval } from "../src/gate/storage/approvals.js";
+import { initWorkspace, writeWorkspaceJson, type LocalWorkspace } from "../src/gate/storage/workspace.js";
 import {
   addSubtask, beginSubtask, completeRound, createContract, createRun, dispatchSubtask,
   cancelRun, getContract, getRun, getSubtask, injectCancellationFaultForTesting, recordReview, reportArtifact
-} from "../src/storage/orchestration.js";
-import { getRunCancellationFence } from "../src/storage/orchestration-fence.js";
+} from "../src/gate/storage/orchestration.js";
+import { getRunCancellationFence } from "../src/gate/storage/orchestration-fence.js";
 import {
   completionTransactionId, getOrchestrationTransaction,
   injectOrchestrationTransactionFaultForTesting, listOrchestrationTransactions,
   reviewTransactionId, type ReviewTransaction
-} from "../src/storage/orchestration-transactions.js";
-import { listLedgerEntries } from "../src/storage/ledger.js";
+} from "../src/gate/storage/orchestration-transactions.js";
+import { listLedgerEntries } from "../src/gate/storage/ledger.js";
 import { approveTaskCapability } from "./helpers/authority.js";
 
 const roots: string[] = [];

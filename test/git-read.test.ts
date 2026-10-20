@@ -4,8 +4,8 @@ import { chmod, mkdir, mkdtemp, readFile, rename, rm, symlink, writeFile } from 
 import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
-import { runGitRead, assertGitRepoWithinWorkspace } from "../src/mcp/git-read.js";
-import type { ToolAccess } from "../src/mcp/shared.js";
+import { runGitRead, assertGitRepoWithinWorkspace } from "../src/gate/mcp/git-read.js";
+import type { ToolAccess } from "../src/gate/mcp/shared.js";
 import { asLegacyLease } from "./helpers/lease.js";
 
 const execFileAsync = promisify(execFile);

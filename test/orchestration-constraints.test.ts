@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   artifactInScope, defectFingerprint, evaluateConstraints, exceedsRoundBudget, exceedsTokenBudget,
   oscillationDetected, regressionDetected, retriesExhausted, scopeViolation
-} from "../src/policy/orchestration-constraints.js";
+} from "../src/gate/policy/orchestration-constraints.js";
 import type { Artifact, OrchestrationRun, ReviewRecord, SubtaskPackage } from "../src/contracts/orchestration.js";
 
 const run: OrchestrationRun = {

@@ -3,9 +3,9 @@ import { mkdtemp, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import type { AgentRun } from "../src/contracts/types.js";
-import { createRun, getRun, getRunStaleness, injectRunLifecycleFaultForTesting, recoverStaleRun } from "../src/storage/runs.js";
-import { listLedgerEntries } from "../src/storage/ledger.js";
-import { initWorkspace } from "../src/storage/workspace.js";
+import { createRun, getRun, getRunStaleness, injectRunLifecycleFaultForTesting, recoverStaleRun } from "../src/gate/storage/runs.js";
+import { listLedgerEntries } from "../src/gate/storage/ledger.js";
+import { initWorkspace } from "../src/gate/storage/workspace.js";
 
 const roots: string[] = [];
 afterEach(async () => {

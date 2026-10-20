@@ -3,12 +3,12 @@ import { mkdtemp, readFile, rm, mkdir, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { SchemaRegistry } from "../src/contracts/schema-registry.js";
-import { initWorkspace } from "../src/storage/workspace.js";
+import { initWorkspace } from "../src/gate/storage/workspace.js";
 import type { AgentRun, EvidenceRef } from "../src/contracts/types.js";
-import { getEvidence, inspectEvidence, listEvidence, recordEvidence, recordEvidenceOwned } from "../src/storage/evidence.js";
-import { listLedgerEntries, verifyLedger } from "../src/storage/ledger.js";
-import { createRun, transitionRun } from "../src/storage/runs.js";
-import { withWorkspaceLock } from "../src/storage/workspace-lock.js";
+import { getEvidence, inspectEvidence, listEvidence, recordEvidence, recordEvidenceOwned } from "../src/gate/storage/evidence.js";
+import { listLedgerEntries, verifyLedger } from "../src/gate/storage/ledger.js";
+import { createRun, transitionRun } from "../src/gate/storage/runs.js";
+import { withWorkspaceLock } from "../src/gate/storage/workspace-lock.js";
 
 const roots: string[] = [];
 const projectRoot = path.resolve(import.meta.dirname, "..");

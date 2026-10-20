@@ -3,17 +3,17 @@ import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { SchemaRegistry } from "../src/contracts/schema-registry.js";
-import { createTask, getTask, saveTask } from "../src/storage/tasks.js";
-import { initWorkspace } from "../src/storage/workspace.js";
+import { createTask, getTask, saveTask } from "../src/gate/storage/tasks.js";
+import { initWorkspace } from "../src/gate/storage/workspace.js";
 import { loadOrchestrationConfig, loadTemplatesConfig, loadTieredYaml } from "../src/config/tiered.js";
 import { loadAndValidateAllTieredConfig } from "../src/config/tiered-health.js";
 import {
   createContract, createRun, addSubtask, reportArtifact, recordReview, completeRound, dispatchSubtask, beginSubtask
-} from "../src/storage/orchestration.js";
-import { listSpecialists } from "../src/storage/specialists.js";
-import { getContractTemplate, listContractTemplates } from "../src/storage/contract-templates.js";
-import { requestWrites } from "../src/storage/write-intents.js";
-import { listLedgerEntries } from "../src/storage/ledger.js";
+} from "../src/gate/storage/orchestration.js";
+import { listSpecialists } from "../src/gate/storage/specialists.js";
+import { getContractTemplate, listContractTemplates } from "../src/gate/storage/contract-templates.js";
+import { requestWrites } from "../src/gate/storage/write-intents.js";
+import { listLedgerEntries } from "../src/gate/storage/ledger.js";
 import { StinkyCobblerError } from "../src/errors.js";
 import { approveTaskCapability } from "./helpers/authority.js";
 

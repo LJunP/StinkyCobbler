@@ -6,21 +6,21 @@ import os from "node:os";
 import path from "node:path";
 import { SchemaRegistry } from "../src/contracts/schema-registry.js";
 import { MAX_SUBTASK_ARTIFACTS } from "../src/contracts/orchestration.js";
-import { createTask, saveTask } from "../src/storage/tasks.js";
-import { decideApproval, getApproval, requestApproval } from "../src/storage/approvals.js";
-import { hashTaskAuthority, TASK_AUTHORITY_POLICY_VERSION } from "../src/storage/task-authority.js";
-import { initWorkspace } from "../src/storage/workspace.js";
+import { createTask, saveTask } from "../src/gate/storage/tasks.js";
+import { decideApproval, getApproval, requestApproval } from "../src/gate/storage/approvals.js";
+import { hashTaskAuthority, TASK_AUTHORITY_POLICY_VERSION } from "../src/gate/storage/task-authority.js";
+import { initWorkspace } from "../src/gate/storage/workspace.js";
 import {
   createContract, getContract, injectContractCreationFaultForTesting, injectContractStatusFaultForTesting, listContracts, recommendExecutionMode, createRun, getRun, listRuns,
   addSubtask, getSubtask, dispatchSubtask as dispatchSubtaskStorage, beginSubtask as beginSubtaskStorage,
   reportArtifact as reportArtifactStorage, getArtifact, injectArtifactReportingFaultForTesting,
   recordReview as recordReviewStorage, getReview, completeRound, escalateRun, resumeRun, cancelRun, updateContractStatus, estimateRunCost
-} from "../src/storage/orchestration.js";
-import { getValidatorReceipt } from "../src/storage/orchestration-validator-receipts.js";
-import { getRunCancellationFence } from "../src/storage/orchestration-fence.js";
-import { listLedgerEntries } from "../src/storage/ledger.js";
-import { injectLeaseIssuanceFaultForTesting, listLeases } from "../src/storage/leases.js";
-import { transitionTask } from "../src/storage/task-transitions.js";
+} from "../src/gate/storage/orchestration.js";
+import { getValidatorReceipt } from "../src/gate/storage/orchestration-validator-receipts.js";
+import { getRunCancellationFence } from "../src/gate/storage/orchestration-fence.js";
+import { listLedgerEntries } from "../src/gate/storage/ledger.js";
+import { injectLeaseIssuanceFaultForTesting, listLeases } from "../src/gate/storage/leases.js";
+import { transitionTask } from "../src/gate/storage/task-transitions.js";
 import { approveTaskCapability, approveWriteIntent } from "./helpers/authority.js";
 
 const roots: string[] = [];
@@ -591,7 +591,7 @@ describe("orchestration loop (storage)", () => {
     expect(dispatched.subtask.status).toBe("DISPATCHED");
     expect(dispatched.leases.length).toBe(1);
     // lease is bound to the subtask
-    const leases = await import("../src/storage/leases.js").then((m) => m.listLeases(workspace));
+    const leases = await import("../src/gate/storage/leases.js").then((m) => m.listLeases(workspace));
     expect(leases[0]!.subtaskRef).toBe(subtask.subtaskId);
 
     await beginCurrentAttemptForTest(workspace, run.runId, subtask.subtaskId);
@@ -825,10 +825,10 @@ describe("2.0 gap coverage", () => {
     await writeFile(path.join(root, "docs", "existing.md"), "original\n", "utf8");
     const subtask = await runOneSubtaskFlow(workspace, schemas, run, "Modify docs/existing.md", "");
     // worker applies a controlled write (subtask-mode intent + write lease)
-    const { requestWrites, rollbackWrite } = await import("../src/storage/write-intents.js");
-    const { applyWrite } = await import("../src/storage/writes.js");
-    const { getLease } = await import("../src/storage/leases.js");
-    const leases = await import("../src/storage/leases.js").then((m) => m.listLeases(workspace));
+    const { requestWrites, rollbackWrite } = await import("../src/gate/storage/write-intents.js");
+    const { applyWrite } = await import("../src/gate/storage/writes.js");
+    const { getLease } = await import("../src/gate/storage/leases.js");
+    const leases = await import("../src/gate/storage/leases.js").then((m) => m.listLeases(workspace));
     const writeLease = leases.find((l: any) => l.capability === "repository-write" && l.subtaskRef === subtask.subtaskId);
     expect(writeLease).toBeDefined();
     const intent = await requestWrites(workspace, schemas, "-", "-", [{ target: "docs/existing.md", action: "modify", purpose: "worker change" }], {
@@ -1190,7 +1190,7 @@ describe("2.0.1 orchestration authority and completion gates", () => {
     // Manually stage the crash/legacy shape that the recordReview fence must
     // diagnose: a REVIEWING subtask with a still-unresolved attempt intent.
     await writeFile(subtaskPath, `${JSON.stringify({ ...reviewing, status: "RUNNING" }, null, 2)}\n`, "utf8");
-    const { requestWrites, rejectWrites } = await import("../src/storage/write-intents.js");
+    const { requestWrites, rejectWrites } = await import("../src/gate/storage/write-intents.js");
     const intent = await requestWrites(workspace, schemas, "-", "-", [
       { target: "docs/pending.md", action: "create", purpose: "unresolved completion gate" }
     ], { autoAllow: true, runRef: run.runId, subtaskRef: subtask.subtaskId });
@@ -1262,8 +1262,8 @@ describe("2.0.1 orchestration authority and completion gates", () => {
     });
     const dispatched = await dispatchSubtask(workspace, schemas, run.runId, subtask.subtaskId, "worker-agent");
     await beginCurrentAttemptForTest(workspace, run.runId, subtask.subtaskId);
-    const { requestWrites, getWriteIntent } = await import("../src/storage/write-intents.js");
-    const writeLease = (await import("../src/storage/leases.js").then((module) => module.listLeases(workspace)))
+    const { requestWrites, getWriteIntent } = await import("../src/gate/storage/write-intents.js");
+    const writeLease = (await import("../src/gate/storage/leases.js").then((module) => module.listLeases(workspace)))
       .find((lease) => lease.capability === "repository-write" && lease.subtaskRef === subtask.subtaskId)!;
     const intent = await requestWrites(workspace, schemas, "-", "-", [
       { target: "docs/cancelled.md", action: "create", purpose: "cancellable worker output" }
@@ -1272,10 +1272,10 @@ describe("2.0.1 orchestration authority and completion gates", () => {
 
     const cancelled = await cancelRun(workspace, run.runId);
     expect(cancelled.status).toBe("CANCELLED");
-    const { getLease } = await import("../src/storage/leases.js");
+    const { getLease } = await import("../src/gate/storage/leases.js");
     for (const leaseId of dispatched.leases) expect((await getLease(workspace, leaseId)).status).toBe("revoked");
     expect((await getWriteIntent(workspace, intent.writeIntentId)).status).toBe("REJECTED");
-    const { getRunCancellationFence } = await import("../src/storage/orchestration-fence.js");
+    const { getRunCancellationFence } = await import("../src/gate/storage/orchestration-fence.js");
     expect(await getRunCancellationFence(workspace, run.runId)).toMatchObject({ status: "CANCELLED" });
     await expect(reportCurrentArtifactForTest(workspace, schemas, run.runId, subtask.subtaskId, { path: "docs/cancelled.md", kind: "file" }))
       .rejects.toMatchObject({ code: "RUN_STATE_CONFLICT" });
@@ -1293,7 +1293,7 @@ describe("2.0.1 orchestration authority and completion gates", () => {
     });
     await dispatchSubtask(workspace, schemas, run.runId, subtask.subtaskId, "worker-agent");
     await beginCurrentAttemptForTest(workspace, run.runId, subtask.subtaskId);
-    const { requestWrites, listWriteIntents } = await import("../src/storage/write-intents.js");
+    const { requestWrites, listWriteIntents } = await import("../src/gate/storage/write-intents.js");
     const beforeIntents = await listWriteIntents(workspace);
     const beforeLedger = await listLedgerEntries(workspace);
     await saveTask(workspace, { ...task, constraints: ["authority drift before write request"] });
@@ -1314,7 +1314,7 @@ describe("2.0.1 orchestration authority and completion gates", () => {
     });
     await dispatchSubtask(workspace, schemas, run.runId, subtask.subtaskId, "worker-agent");
     await beginCurrentAttemptForTest(workspace, run.runId, subtask.subtaskId);
-    const { requestWrites, confirmWrites, getWriteIntent } = await import("../src/storage/write-intents.js");
+    const { requestWrites, confirmWrites, getWriteIntent } = await import("../src/gate/storage/write-intents.js");
     const intent = await requestWrites(workspace, schemas, "-", "-", [
       { target: "docs/pending.md", action: "create", purpose: "explicit confirmation" }
     ], { runRef: run.runId, subtaskRef: subtask.subtaskId });

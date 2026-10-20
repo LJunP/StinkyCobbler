@@ -5,16 +5,16 @@ import os from "node:os";
 import path from "node:path";
 import { SchemaRegistry } from "../src/contracts/schema-registry.js";
 import type { TaskCharter } from "../src/contracts/types.js";
-import { decideApproval, getApproval, requestApproval } from "../src/storage/approvals.js";
-import { listLedgerEntries } from "../src/storage/ledger.js";
-import { hashTaskAuthority, TASK_AUTHORITY_POLICY_VERSION } from "../src/storage/task-authority.js";
+import { decideApproval, getApproval, requestApproval } from "../src/gate/storage/approvals.js";
+import { listLedgerEntries } from "../src/gate/storage/ledger.js";
+import { hashTaskAuthority, TASK_AUTHORITY_POLICY_VERSION } from "../src/gate/storage/task-authority.js";
 import {
   injectTaskTransitionFaultForTesting,
   listTaskTransitionTransactions,
   transitionTask
-} from "../src/storage/task-transitions.js";
-import { createTask, getTask } from "../src/storage/tasks.js";
-import { initWorkspace } from "../src/storage/workspace.js";
+} from "../src/gate/storage/task-transitions.js";
+import { createTask, getTask } from "../src/gate/storage/tasks.js";
+import { initWorkspace } from "../src/gate/storage/workspace.js";
 
 const roots: string[] = [];
 const projectRoot = path.resolve(import.meta.dirname, "..");

@@ -2,8 +2,8 @@ import { describe, expect, it, afterEach } from "vitest";
 import { mkdtemp, readdir, readFile, rm, truncate, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { initWorkspace, workspaceFile } from "../src/storage/workspace.js";
-import { createAuditOutbox, findAuditByCallId, getAuditOutbox, injectAuditOutboxCreateFaultForTesting, listAuditOutbox, listPendingAuditOutbox, MAX_AUDIT_OUTBOX_LEGACY_BYTES, MAX_AUDIT_OUTBOX_LEGACY_RECORDS, MAX_AUDIT_OUTBOX_LIST_BATCH, MAX_AUDIT_OUTBOX_PENDING, updateAuditOutbox } from "../src/storage/audit-outbox.js";
+import { initWorkspace, workspaceFile } from "../src/gate/storage/workspace.js";
+import { createAuditOutbox, findAuditByCallId, getAuditOutbox, injectAuditOutboxCreateFaultForTesting, listAuditOutbox, listPendingAuditOutbox, MAX_AUDIT_OUTBOX_LEGACY_BYTES, MAX_AUDIT_OUTBOX_LEGACY_RECORDS, MAX_AUDIT_OUTBOX_LIST_BATCH, MAX_AUDIT_OUTBOX_PENDING, updateAuditOutbox } from "../src/gate/storage/audit-outbox.js";
 
 const roots: string[] = [];
 afterEach(async () => { await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true }))); });

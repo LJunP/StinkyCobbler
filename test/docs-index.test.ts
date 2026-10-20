@@ -2,10 +2,10 @@ import { link, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { buildDocumentationIndex, DOCS_INDEX_BUDGET, readDocumentationIndex } from "../src/mcp/docs-index.js";
-import { listRepositoryDirectory } from "../src/mcp/repo-read.js";
-import { initWorkspace, workspaceFile } from "../src/storage/workspace.js";
-import { loadDocumentationIndex, saveDocumentationIndex } from "../src/storage/docs-index.js";
+import { buildDocumentationIndex, DOCS_INDEX_BUDGET, readDocumentationIndex } from "../src/gate/mcp/docs-index.js";
+import { listRepositoryDirectory } from "../src/gate/mcp/repo-read.js";
+import { initWorkspace, workspaceFile } from "../src/gate/storage/workspace.js";
+import { loadDocumentationIndex, saveDocumentationIndex } from "../src/gate/storage/docs-index.js";
 import { asLegacyLease } from "./helpers/lease.js";
 
 const roots: string[] = [];

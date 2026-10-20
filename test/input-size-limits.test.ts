@@ -4,11 +4,11 @@ import os from "node:os";
 import path from "node:path";
 import { SchemaRegistry } from "../src/contracts/schema-registry.js";
 import type { TaskCharter } from "../src/contracts/types.js";
-import { requestApproval } from "../src/storage/approvals.js";
-import { issueLease } from "../src/storage/leases.js";
-import { recordReceipt } from "../src/storage/receipts.js";
-import { createTask, getTask, saveTask } from "../src/storage/tasks.js";
-import { initWorkspace } from "../src/storage/workspace.js";
+import { requestApproval } from "../src/gate/storage/approvals.js";
+import { issueLease } from "../src/gate/storage/leases.js";
+import { recordReceipt } from "../src/gate/storage/receipts.js";
+import { createTask, getTask, saveTask } from "../src/gate/storage/tasks.js";
+import { initWorkspace } from "../src/gate/storage/workspace.js";
 
 const roots: string[] = [];
 const projectRoot = path.resolve(import.meta.dirname, "..");

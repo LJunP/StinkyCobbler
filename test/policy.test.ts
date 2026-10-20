@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { evaluateLease, evaluateTask } from "../src/policy/evaluate.js";
-import { assertTransition } from "../src/domain/task-state.js";
+import { evaluateLease, evaluateTask } from "../src/gate/policy/evaluate.js";
+import { assertTransition } from "../src/gate/domain/task-state.js";
 import { asLegacyLease } from "./helpers/lease.js";
 
 const task = { id: "task-1", workspaceId: "ws", goal: "Test", requestedOutputs: ["document"], riskLevel: "L0" as const, state: "DRAFT" as const };

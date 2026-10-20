@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 import { afterEach, describe, expect, it } from "vitest";
-import { hashTaskAuthority, TASK_AUTHORITY_POLICY_VERSION } from "../src/storage/task-authority.js";
+import { hashTaskAuthority, TASK_AUTHORITY_POLICY_VERSION } from "../src/gate/storage/task-authority.js";
 import type { TaskCharter } from "../src/contracts/types.js";
 
 const execFileAsync = promisify(execFile);

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { BudgetSupervisor } from "../src/runtime/budget.js";
+import { BudgetSupervisor } from "../src/gate/runtime/budget.js";
 
 afterEach(() => { vi.useRealTimers(); });
 
