@@ -2,6 +2,14 @@
 
 > 只追加，最新在上。每条：日期 / 任务 / 做了什么 / 验证 / 待办与问题。
 
+## 2026-10-20 · M0-T7 2.0.2 候选就绪
+
+- 版本 bump 到 2.0.2（package.json、package-lock.json 两处、`src/version.ts`），`npm run check:version` 通过；CHANGELOG 标题改为 release candidate。
+- 完整 `npm run lint`（typecheck + 测试类型基线 0 + eslint 0 错误/44 警告 + depcruise 基线）通过；全量 `npm test` 71 文件 / 784 项通过；`npm run test:package` 对 `stinky-cobbler-2.0.2.tgz` 通过（298 文件）。
+- `release-gate --expected 2.0.2 --git-ref codex/stinky-cobbler-3.0-m0` 按设计拒绝（`dispatchRefMismatch`：候选分支名不在允许列表）；`--git-ref main` 为 `valid: true`，即合并到 main 后门禁可过。
+- 未做（需要作者凭据或对外发布）：推送分支、合并 main、取得新 SHA 的六矩阵 CI、`git tag v2.0.2`、`npm publish`、GitHub Release、真实宿主冒烟。README 的"发布状态必须实时核验 npm/GitHub"口径不变。
+- 真实双宿主（Codex / ZCode）验收仍是 UNKNOWN / PENDING；2.0.2 是维护补丁，不改变这一状态。
+
 ## 2026-10-20 · M0-T4b 测试类型错误清零
 
 - 新增 `test/helpers/lease.ts` 的 `asLegacyLease()`：6 个测试文件里故意传给纯评估器/只读工具的 2.0 形态 lease 字面量，用它显式声明意图（字节不变，只是类型断言并注明原因）。

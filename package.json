@@ -1,6 +1,6 @@
 {
   "name": "stinky-cobbler",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "description": "Verifiable permission and repository-change gate for local AI coding agents.",
   "type": "module",
   "repository": {

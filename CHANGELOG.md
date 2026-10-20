@@ -2,7 +2,7 @@
 
 > 发布状态是实时事实：请查询官方 npm registry 与 GitHub tags/Releases。下面按版本保留的发布准备状态属于对应日期的历史记录，不能用于判断当前是否已发布或已完成真实宿主验证。
 
-## 2.0.2 (unreleased)
+## 2.0.2 (release candidate; verify npm and GitHub Releases for publication status)
 
 - MCP controlled tools now surface engine error codes (for example `WRITE_PREIMAGE_MISMATCH`, `WRITE_INTENT_NOT_CONFIRMED`) with their messages instead of a blanket `INVOCATION_FAILED`, and mark every denial or failure with MCP `isError: true`. Non-engine exceptions remain opaque.
 - Business-file writes, backups, deletes and rollback restores now fsync the file before its atomic rename and fsync the parent directory afterwards, so a crash can no longer leave an applied target whose backup never reached disk.
