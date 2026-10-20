@@ -2,6 +2,10 @@
 
 > 发布状态是实时事实：请查询官方 npm registry 与 GitHub tags/Releases。下面按版本保留的发布准备状态属于对应日期的历史记录，不能用于判断当前是否已发布或已完成真实宿主验证。
 
+## 2.0.2 (unreleased)
+
+- Keep the rollback backup when a `modify` write applies bytes identical to the current file. Previously both the pre-image and post-image predicates were true, so apply recovery discarded the backup and a later `write rollback` had nothing to restore from.
+
 ## 2.0.1
 
 - Make Git-read test repositories quiescent by disabling their automatic maintenance before fixture commits. Git 2.55 background maintenance can remove `objects/maintenance.lock` during the fail-closed metadata scan; production traversal and its rejection behavior remain unchanged.

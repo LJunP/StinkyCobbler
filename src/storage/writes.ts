@@ -321,7 +321,9 @@ async function completeApplyRecovery(
     if (reachedPostImage && backupHash === null) {
       throw writeError("WRITE_APPLY_RECOVERY_JOURNAL_INVALID", "Applied modify/delete recovery requires its verified private backup.", { writeIntentId: intent.writeIntentId });
     }
-    if (stillAtPreImage && backupHash !== null) await rm(backupFile);
+    // Identical bytes make both predicates true. Only a true pre-image retry
+    // may discard the backup; an applied post-image still needs it for rollback.
+    if (stillAtPreImage && !reachedPostImage && backupHash !== null) await rm(backupFile);
   }
 
   if (stillAtPreImage && !reachedPostImage) {
