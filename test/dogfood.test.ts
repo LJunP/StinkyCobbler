@@ -6,6 +6,7 @@ import { SchemaRegistry } from "../src/contracts/schema-registry.js";
 import { loadRegistries } from "../src/config/registry.js";
 import { recommendTask } from "../src/domain/recommend.js";
 import { evaluateLease } from "../src/policy/evaluate.js";
+import { asLegacyLease } from "./helpers/lease.js";
 
 const projectRoot = path.resolve(import.meta.dirname, "..");
 const paths: string[] = [];
@@ -20,7 +21,7 @@ describe("FrameFlow read-only dogfood", () => {
     const proposal = recommendTask(frameFlowTask, registries.packs);
     expect(proposal.requiresHumanChoice).toBe(true);
     expect(proposal.minimalDag).toContain("sentinel");
-    expect(evaluateLease({ id: "lease", taskId: frameFlowTask.id, agentId: "agent", role: "scout", capability: "repository-read", level: "L0", workspace: "/isolated", readScope: ["."], writeSet: [], issuedAt: "2026-01-01T00:00:00.000Z", expiresAt: "2099-01-01T00:00:00.000Z", maxToolCalls: 1, status: "active" }, { taskId: frameFlowTask.id, role: "scout", workspace: "/isolated", capability: "repository-read" }).allowed).toBe(true);
+    expect(evaluateLease(asLegacyLease({ id: "lease", taskId: frameFlowTask.id, agentId: "agent", role: "scout", capability: "repository-read", level: "L0", workspace: "/isolated", readScope: ["."], writeSet: [], issuedAt: "2026-01-01T00:00:00.000Z", expiresAt: "2099-01-01T00:00:00.000Z", maxToolCalls: 1, status: "active" }), { taskId: frameFlowTask.id, role: "scout", workspace: "/isolated", capability: "repository-read" }).allowed).toBe(true);
   });
 
   it("does not execute source code while preparing an isolated dogfood workspace", async () => {

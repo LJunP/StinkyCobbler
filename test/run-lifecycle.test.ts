@@ -22,7 +22,7 @@ function run(status: AgentRun["status"] = "RUNNING"): AgentRun {
     workspaceId: "workspace-1", leaseId: "lease-1", policyVersion: "1", status, executor: "scripted-readonly",
     budget: { maxToolCalls: 3 }, budgetUsage: { toolCalls: 0 }, toolCalls: [], evidenceRefs: [],
     createdAt: "2026-01-01T00:00:00.000Z", startedAt: "2026-01-01T00:00:00.000Z",
-    ...(status === "RUNNING" ? {} : { finishedAt: "2026-01-01T00:01:00.000Z", errorCode: status === "COMPLETED" ? undefined : "RUNTIME_FAILED", blockedReason: status === "COMPLETED" ? undefined : "not completed" })
+    ...(status === "RUNNING" ? {} : { finishedAt: "2026-01-01T00:01:00.000Z", ...(status === "COMPLETED" ? {} : { errorCode: "RUNTIME_FAILED", blockedReason: "not completed" }) })
   };
 }
 

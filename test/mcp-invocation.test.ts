@@ -136,7 +136,7 @@ describe("controlled MCP invocation", () => {
     );
     expect(result).toMatchObject({ decision: { code: "WORKSPACE_CONFIG_INVALID" } });
     const reason = (result as { decision: { reasons: string[] } }).decision.reasons[0];
-    expect(reason.length).toBeLessThanOrEqual(200);
+    expect(reason!.length).toBeLessThanOrEqual(200);
     expect(reason).not.toMatch(/[\x00-\x1f]/);
     expect(called).toBe(false);
     await expect(getLeaseCallUsage(workspace, "lease")).resolves.toBe(0);

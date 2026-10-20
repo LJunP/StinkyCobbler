@@ -143,7 +143,7 @@ async function createFixture() {
   const packed = JSON.parse(execPortableSync(npmExecutable(), ["pack", "--json", "--ignore-scripts"], {
     cwd: candidatePackage,
     encoding: "utf8"
-  }) as string);
+  }).toString());
   await rename(path.join(candidatePackage, packed[0].filename), tarball);
 
   await cp(candidatePackage, path.join(bundleRoot, "package"), { recursive: true });

@@ -11,6 +11,7 @@ import { issueLease } from "../src/storage/leases.js";
 import { applyWrite } from "../src/storage/writes.js";
 import type { WriteIntentRecord } from "../src/storage/write-intents.js";
 import { approvePlanConfirmation, approveTaskCapability, approveWriteIntent } from "./helpers/authority.js";
+import type { TaskCharter } from "../src/contracts/types.js";
 
 /** Prepares a workspace with a confirmed write intent and an L1 write lease. */
 export async function prepareConfirmedWrite(workspace: LocalWorkspace, schemas: SchemaRegistry, registries: Registries): Promise<{ planId: string; intent: WriteIntentRecord; lease: CapabilityLease }> {
@@ -25,7 +26,7 @@ export async function prepareConfirmedWrite(workspace: LocalWorkspace, schemas: 
     state: "RUNNING",
     scope: ["."],
     writeSet: ["docs/note.md"]
-  } as const;
+  } satisfies TaskCharter;
   await createTask(workspace, task);
   const writeIntentApproval = await approveTaskCapability(workspace, schemas, task, "repository-write", ["docs/note.md"]);
   const plan = await createPlan(workspace, schemas, registries, { taskId: "crash-task", roles: ["builder"] });

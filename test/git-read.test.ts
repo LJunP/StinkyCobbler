@@ -6,6 +6,7 @@ import path from "node:path";
 import { promisify } from "node:util";
 import { runGitRead, assertGitRepoWithinWorkspace } from "../src/mcp/git-read.js";
 import type { ToolAccess } from "../src/mcp/shared.js";
+import { asLegacyLease } from "./helpers/lease.js";
 
 const execFileAsync = promisify(execFile);
 const roots: string[] = [];
@@ -21,7 +22,7 @@ const gitAvailable = (() => {
 })();
 
 function access(workspace: string, readScope = ["."]): ToolAccess {
-  return { lease: { id: "lease", taskId: "task", agentId: "agent", role: "scout", capability: "git-read", level: "L0", workspace, readScope, writeSet: [], issuedAt: "2026-01-01T00:00:00.000Z", expiresAt: "2099-01-01T00:00:00.000Z", maxToolCalls: 2, status: "active" }, taskId: "task", role: "scout", workspace };
+  return { lease: asLegacyLease({ id: "lease", taskId: "task", agentId: "agent", role: "scout", capability: "git-read", level: "L0", workspace, readScope, writeSet: [], issuedAt: "2026-01-01T00:00:00.000Z", expiresAt: "2099-01-01T00:00:00.000Z", maxToolCalls: 2, status: "active" }), taskId: "task", role: "scout", workspace };
 }
 
 async function tmp(): Promise<string> {

@@ -270,7 +270,7 @@ describe("plan scheduling loop", () => {
     await executePlan(workspace, planId);
     const begun = await beginStep(workspace, schemas, planId, "step-1");
     const plan = await getPlan(workspace, planId);
-    await writeWorkspaceJson(workspace, `plans/${planId}.json`, { ...plan, generation: plan.generation + 1 });
+    await writeWorkspaceJson(workspace, `plans/${planId}.json`, { ...plan, generation: plan.generation! + 1 });
 
     const lease = begun.leases[0]!;
     const admission = await admitAndReserveLeaseCall(workspace, lease.id, { taskId: "exec-task", role: lease.role, capability: lease.capability });
@@ -288,7 +288,7 @@ describe("plan scheduling loop", () => {
       capability: "repository-read",
       planRef: planId,
       stepRef: "step-1",
-      planGeneration: executing.generation
+      planGeneration: executing.generation!
     });
 
     const admission = await admitAndReserveLeaseCall(workspace, orphan.id, { taskId: "exec-task", role: "scout", capability: "repository-read" });
@@ -331,7 +331,7 @@ describe("plan scheduling loop", () => {
     const { workspace, schemas, registries } = await setup();
     const planId = await approvedPlan(workspace, schemas, registries, ["planner"]);
     const plan = await getPlan(workspace, planId);
-    expect(plan.steps[0].tools).toEqual(["repository-read"]);
+    expect(plan.steps[0]!.tools).toEqual(["repository-read"]);
     await executePlan(workspace, planId);
     const begun = await beginStep(workspace, schemas, planId, "step-1");
     expect(begun.leases).toHaveLength(1);
@@ -468,7 +468,7 @@ describe("plan scheduling loop", () => {
     const completed = await completeStep(workspace, planId, "step-1", ["receipt-mcp-1", "evidence-run-1"]);
     expect(completed.steps[0]).toMatchObject({ status: "COMPLETED", evidenceRefs: ["receipt-mcp-1", "evidence-run-1"] });
     const stored = await getPlan(workspace, planId);
-    expect(stored.steps[0].evidenceRefs).toEqual(["receipt-mcp-1", "evidence-run-1"]);
+    expect(stored.steps[0]!.evidenceRefs).toEqual(["receipt-mcp-1", "evidence-run-1"]);
   });
 
   it("leaves evidenceRefs undefined when none are reported and rejects invalid references", async () => {
@@ -477,7 +477,7 @@ describe("plan scheduling loop", () => {
     await executePlan(workspace, planId);
     await beginStep(workspace, schemas, planId, "step-1");
     const completed = await completeStep(workspace, planId, "step-1");
-    expect(completed.steps[0].evidenceRefs).toBeUndefined();
+    expect(completed.steps[0]!.evidenceRefs).toBeUndefined();
   });
 
   it("rejects invalid step result references", async () => {
@@ -511,7 +511,7 @@ describe("plan scheduling loop", () => {
     await requestWrites(workspace, schemas, planId, "step-1", [{ target: "docs/note.md", action: "create", purpose: "Draft." }]);
     await expect(completeStep(workspace, planId, "step-1")).rejects.toMatchObject({ code: "PLAN_STEP_PENDING_WRITES" });
     const writes = await listWriteIntents(workspace, planId);
-    await rejectWrites(workspace, planId, "step-1", writes[0].writeIntentId, "Not needed.");
+    await rejectWrites(workspace, planId, "step-1", writes[0]!.writeIntentId, "Not needed.");
     await expect(completeStep(workspace, planId, "step-1")).resolves.toMatchObject({ status: "EXECUTING" });
   });
 });

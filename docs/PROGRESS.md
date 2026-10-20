@@ -2,6 +2,13 @@
 
 > 只追加，最新在上。每条：日期 / 任务 / 做了什么 / 验证 / 待办与问题。
 
+## 2026-10-20 · M0-T4b 测试类型错误清零
+
+- 新增 `test/helpers/lease.ts` 的 `asLegacyLease()`：6 个测试文件里故意传给纯评估器/只读工具的 2.0 形态 lease 字面量，用它显式声明意图（字节不变，只是类型断言并注明原因）。
+- 其余 27 条：`as const` 任务改 `satisfies TaskCharter`；JSON 解析结果补窄类型；可能为 undefined 的夹具字段用 `!`；`run-lifecycle` 夹具改为条件展开而不是把可选字段设成 `undefined`。
+- 恢复 `tsconfig.test.json` 的 `exactOptionalPropertyTypes` 与 `noUncheckedIndexedAccess`（再暴露 20 条，同样修完）。`test/typecheck-baseline.json` 降到 0。
+- 验证：受影响的 12 + 8 个测试文件分别 200/200、118/118 通过；完整 lint 与全量测试见下一条记录。
+
 ## 2026-10-20 · M0-T2 删除旧产物、M0-T5 工具链、依赖安全更新
 
 - 作者确认按推荐执行。删除根目录四个已 ignore 的 2.0.0 旧产物（zip 5.7 MB、孤儿 sha256、旧 SBOM、手册）。

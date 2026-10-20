@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { listRepositoryDirectory, readRepositoryFile } from "../src/mcp/repo-read.js";
 import { readBoundedWorkspaceFile } from "../src/security/workspace-path.js";
+import { asLegacyLease } from "./helpers/lease.js";
 
 const roots: string[] = [];
 
@@ -16,11 +17,11 @@ function access(workspace: string) {
     taskId: "task",
     role: "scout",
     workspace,
-    lease: {
+    lease: asLegacyLease({
       id: "lease", taskId: "task", agentId: "agent", role: "scout", capability: "repository-read", level: "L0" as const,
       workspace, readScope: ["docs"], writeSet: [], issuedAt: "2026-01-01T00:00:00.000Z",
       expiresAt: "2099-01-01T00:00:00.000Z", maxToolCalls: 10, status: "active" as const
-    }
+    })
   };
 }
 

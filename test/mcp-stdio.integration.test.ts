@@ -91,7 +91,7 @@ function docsLease(workspace: string, overrides: Record<string, unknown> = {}) {
 
 async function callJson(client: Client, name: string, args: Record<string, unknown>): Promise<Record<string, any>> {
   const result = await client.callTool({ name, arguments: args });
-  const text = result.content.find((item) => item.type === "text");
+  const text = (result.content as Array<{ type: string; text: string }>).find((item) => item.type === "text");
   expect(text?.type).toBe("text");
   return JSON.parse((text as { text: string }).text) as Record<string, any>;
 }
@@ -152,9 +152,9 @@ describe("MCP stdio black-box", () => {
   it("calls a no-side-effect governance tool over real stdio", async () => {
     const client = await connect();
     const result = await client.callTool({ name: "resolve_config", arguments: {} });
-    const text = result.content.find((item) => item.type === "text");
+    const text = (result.content as Array<{ type: string; text: string }>).find((item) => item.type === "text");
     expect(text?.type).toBe("text");
-    const parsed = JSON.parse((text as { text: string }).text) as { profiles: string[]; packs: string[] };
+    const parsed = JSON.parse((text as { text: string }).text) as { profiles: string[]; packs: string[]; plugins: unknown[]; adapters: unknown[] };
     expect(parsed.profiles).toContain("team");
     expect(parsed.packs).toContain("software-engineering");
     expect(parsed.plugins).toContainEqual(expect.objectContaining({ id: "repository-read", executable: true }));

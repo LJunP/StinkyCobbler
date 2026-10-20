@@ -6,8 +6,6 @@
     "lib": [
       "ES2023"
     ],
-    "exactOptionalPropertyTypes": false,
-    "noUncheckedIndexedAccess": false,
     "allowJs": true,
     "checkJs": false
   },

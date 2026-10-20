@@ -6,6 +6,7 @@ import { buildDocumentationIndex, DOCS_INDEX_BUDGET, readDocumentationIndex } fr
 import { listRepositoryDirectory } from "../src/mcp/repo-read.js";
 import { initWorkspace, workspaceFile } from "../src/storage/workspace.js";
 import { loadDocumentationIndex, saveDocumentationIndex } from "../src/storage/docs-index.js";
+import { asLegacyLease } from "./helpers/lease.js";
 
 const roots: string[] = [];
 
@@ -20,11 +21,11 @@ function access(workspace: string, overrides: Record<string, unknown> = {}) {
     taskId: "task",
     role: "scout",
     workspace,
-    lease: {
+    lease: asLegacyLease({
       id: "lease", taskId: "task", agentId: "agent", role: "scout", capability: "docs-index", level: "L1" as const,
       workspace, readScope: ["docs"], writeSet: [".stinky-cobbler/docs-index.json"], issuedAt: "2026-01-01T00:00:00Z",
       expiresAt: "2099-01-01T00:00:00Z", maxToolCalls: 10, status: "active" as const, ...overrides
-    }
+    })
   };
 }
 

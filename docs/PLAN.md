@@ -10,7 +10,7 @@
 - [x] M0-T4 测试基础设施：集成测试先 build、测试纳入类型检查、CI 去重复 + timeout + concurrency
 - [x] M0-T5 工具链与架构守卫：eslint / prettier / editorconfig / nvmrc / dependency-cruiser / hooks / dependabot；同时 `npm audit fix` 清零 6 条 advisory
 - [x] M0-T6 P0 子集：D-01 MCP 错误映射、D-03 fsync、D-09 preflight 宿主校验、D-20 conflict 退出码、D-08 两个无守卫故障钩子、D-44 锁清理文档（`--host` 必填推迟到 M1-T5，2.x patch 不破坏现有 CLI 调用）
-- [ ] M0-T4b 清零 49 条测试类型错误（legacy lease 字面量改显式夹具），基线降到 0 后把 `tsconfig.test.json` 的两项放宽恢复严格
+- [x] M0-T4b 清零 49 条测试类型错误（legacy lease 字面量改显式夹具 `asLegacyLease`），基线 0，`tsconfig.test.json` 已恢复全严格
 - [ ] M0-T7 发布 2.0.2（tag / publish / Release 单独确认）
 
 ## M1 提取资产（零行为变化）
