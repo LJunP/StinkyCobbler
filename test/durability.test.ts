@@ -1,4 +1,4 @@
-import { mkdtemp, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { chmod, mkdtemp, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -59,6 +59,15 @@ describe("durable business-file publication", () => {
     await copyFileDurably(path.join(root, "source"), path.join(root, "backup"));
     expect(await readFile(path.join(root, "backup"), "utf8")).toBe("bytes\n");
     await expect(copyFileDurably(path.join(root, "source"), path.join(root, "backup"))).rejects.toMatchObject({ code: "EEXIST" });
+  });
+
+  it.runIf(process.platform !== "win32")("copies an owner-read-only source without needing write permission on the copy", async () => {
+    const root = await temporaryRoot();
+    const source = path.join(root, "readonly.md");
+    await writeFile(source, "locked\n");
+    await chmod(source, 0o400);
+    await copyFileDurably(source, path.join(root, "backup"));
+    expect(await readFile(path.join(root, "backup"), "utf8")).toBe("locked\n");
   });
 
   it("removes a file and tolerates an already-missing target", async () => {

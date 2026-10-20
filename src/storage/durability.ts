@@ -19,7 +19,7 @@ export async function syncDirectory(directory: string, platform: NodeJS.Platform
 }
 
 async function syncFile(file: string): Promise<void> {
-  const handle = await open(file, "r+");
+  const handle = await open(file, "r");
   try {
     await handle.sync();
   } finally {
