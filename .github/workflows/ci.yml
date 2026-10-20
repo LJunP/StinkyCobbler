@@ -8,9 +8,14 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   verify:
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -24,10 +29,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run check:version
-      - run: npm run typecheck
+      - run: npm run lint
       - run: npm run build
       - run: npm test
-      - run: npm run test:integration
-      - run: npm test -- --run test/runtime-cli.integration.test.ts
       - run: npm run test:package
       - run: npm audit --audit-level=high

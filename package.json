@@ -48,13 +48,15 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:integration": "npm run build && vitest run test/mcp-stdio.integration.test.ts",
+    "test:integration": "vitest run --project integration",
     "test:package": "npm run build && node scripts/package-smoke.mjs",
-    "lint": "npm run typecheck",
+    "lint": "npm run typecheck && npm run typecheck:tests",
     "check:version": "node scripts/check-version.mjs",
     "prepack": "npm run build && npm run check:version",
     "dev": "tsx src/cli.ts",
-    "dev:mcp": "tsx src/mcp-server.ts"
+    "dev:mcp": "tsx src/mcp-server.ts",
+    "test:unit": "vitest run --project unit",
+    "typecheck:tests": "node scripts/check-test-types.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.1",
