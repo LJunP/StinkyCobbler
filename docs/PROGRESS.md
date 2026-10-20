@@ -4,6 +4,7 @@
 
 ## 2026-10-20 · M0-T7 2.0.2 候选就绪
 
+- 最终 evaluator 复核（372080b、ae8a88e、0fc2b81）**PASS**：自跑 lint / 784 项测试 / package smoke / check:version / release-gate / audit 全部通过；eslint 探针复现；depcruise `core-has-no-io` 探针由我在 372080b 前实跑并记录于 M0-T5 条目。
 - 版本 bump 到 2.0.2（package.json、package-lock.json 两处、`src/version.ts`），`npm run check:version` 通过；CHANGELOG 标题改为 release candidate。
 - 完整 `npm run lint`（typecheck + 测试类型基线 0 + eslint 0 错误/44 警告 + depcruise 基线）通过；全量 `npm test` 71 文件 / 784 项通过；`npm run test:package` 对 `stinky-cobbler-2.0.2.tgz` 通过（298 文件）。
 - `release-gate --expected 2.0.2 --git-ref codex/stinky-cobbler-3.0-m0` 按设计拒绝（`dispatchRefMismatch`：候选分支名不在允许列表）；`--git-ref main` 为 `valid: true`，即合并到 main 后门禁可过。
