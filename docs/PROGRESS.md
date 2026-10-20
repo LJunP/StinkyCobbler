@@ -2,6 +2,18 @@
 
 > 只追加，最新在上。每条：日期 / 任务 / 做了什么 / 验证 / 待办与问题。
 
+## 2026-10-20 · M1-T4 tiered-config 合并策略与 user 层
+
+- 新增 `src/io/tiered-config.ts`。四份旧文件各自声明策略：`orchestration.yaml` 的 `defaults` 用 `record`，`sensitiveExtraPaths` 用 `appendOnly`；`specialists.yaml` 按 `domain` 做 keyed list；`contract-templates.yaml` 按 `name`；`templates.yaml` 用 `record`。
+- D-14：后一层不能删掉前一层已有的 `sensitiveExtraPaths`。空数组表示不再追加，不表示清空。内置文件今天仍是 `[]`，所以旧测试看到的结果不变。
+- 新增 XDG 用户层，文件在 `$XDG_CONFIG_HOME/stinky-cobbler/policies/<file>`。变量未设置或为空时用 `~/.config`。相对路径直接拒绝。该层文件若是符号链接或目录，拒绝读取；文件不存在则跳过。优先级是 builtin，然后 XDG，然后工作区 `.stinky-cobbler/policies/`。
+- 偏差：计划里的层名是 builtin / user / project。返回值里的 `user` / `userPath` 仍是 2.0.1 的工作区覆盖层，避免 `orchestration config show` 的字段改义。XDG 层用 `home` / `homePath`。计划里的策略类型只有三种；同一份文件要同时做 record 和 appendOnly，所以增加了 `{ fields }`。
+- `specialists.ts` 和 `contract-templates.ts` 改为读取已经合并的 `effective`。没有 XDG 文件时，按 domain / name 替换和追加的结果与原来一致。
+- 测试把 `XDG_CONFIG_HOME` 指到空临时目录，避免本机配置改变套件。本机 `~/.config/stinky-cobbler` 不存在。
+- 偏差：`git diff --cached` 为 9 files，665 insertions，168 deletions。新增行数超过每任务 400。合并函数、三层加载，以及「后一层不能删前一层条目」的测试必须一次落地，否则加载路径仍会把数组整体替换掉。
+- 验证：先红（`src/io/tiered-config.ts` 不存在）。`npm run lint` 通过（测试类型基线 0、eslint 0 error / 43 warning、depcruise 97 modules / 600 dependencies，15 条已知循环，条数未增加，没有重生成 baseline）。`npm test` 76 文件 / 805 项通过。原 `test/tiered-config.test.ts` 64 项通过。
+- 未做：推送。`gate/` 总行数守卫仍未加。15 条 storage 循环没有解开。CLI `config show` 没有加 home 字段。
+
 ## 2026-10-20 · M1-T3 managed-file、segment-file、保格式 TOML
 
 - 事实：当前 `smol-toml` 的 `stringify` 会丢掉注释（用一段带 `# keep me` 的 TOML 实测，输出里没有这行注释）。所以 Codex `config.toml` 不再整文件重写，只在原文后面追加新的 `[mcp_servers.<id>]` 表。追加结果若不能再被 parse，安装拒绝，不改写成无注释文本。

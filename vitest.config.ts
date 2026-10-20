@@ -8,6 +8,7 @@ const timeouts = { testTimeout: 30_000, hookTimeout: 30_000 };
 export default defineConfig({
   test: {
     environment: "node",
+    setupFiles: ["test/setup/isolate-xdg.ts"],
     ...timeouts,
     projects: [
       {

@@ -7,18 +7,13 @@ import { ExitCode, StinkyCobblerError } from "../../errors.js";
 import type { LocalWorkspace } from "./workspace.js";
 
 /**
- * Loads the merged specialist registry: builtin <package>/policies/specialists.yaml
- * plus the workspace overlay .stinky-cobbler/policies/specialists.yaml.
- * Merge semantics: a user entry with an EXISTING domain replaces the builtin profile
- * (including its custom title); a NEW domain appends a specialist. The "general"
- * fallback must always exist (builtin provides it; users may rename, never remove).
+ * Loads the merged specialist registry: builtin, then the XDG user layer, then
+ * the workspace overlay. An existing domain is replaced. A new domain is appended.
+ * The "general" fallback stays unless a later layer replaces that same domain.
  */
 export async function loadSpecialistRegistry(workspace: LocalWorkspace | null): Promise<WorkerProfile[]> {
-  const { builtin, user } = await loadSpecialistsPolicy(workspace);
-  const byDomain = new Map<string, WorkerProfile>();
-  for (const profile of builtin.specialists ?? []) byDomain.set(profile.domain, profile);
-  for (const profile of user?.specialists ?? []) byDomain.set(profile.domain, profile);
-  const profiles = [...byDomain.values()];
+  const { effective } = await loadSpecialistsPolicy(workspace);
+  const profiles = effective.specialists ?? [];
   if (!profiles.some((profile) => profile.domain === GENERAL_DOMAIN)) {
     throw new StinkyCobblerError("SPECIALIST_REGISTRY_EMPTY", ExitCode.INTERNAL, "Specialist registry has no general fallback profile.");
   }

@@ -1,24 +1,30 @@
-/** Two-layer tiered YAML config: package-internal builtin defaults + workspace overlay (.stinky-cobbler/policies/). */
+/** Three-layer YAML config: builtin, XDG user, then workspace project overlay. */
 
-import { lstat, readFile } from "node:fs/promises";
+import { lstat } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { parse as parseYaml } from "yaml";
 import { defaultSchemaRegistry } from "../contracts/default-schema-registry.js";
 import type { ContractKind } from "../contracts/schema-registry.js";
 import { ExitCode, StinkyCobblerError } from "../errors.js";
 import { workspaceFile, type LocalWorkspace } from "../gate/storage/workspace.js";
+import { loadTieredDocument, readTieredYamlFile, userPolicyFile, type MergeStrategy, type TieredLayer } from "../io/tiered-config.js";
 import { assertWorkspacePathPolicy, isReservedWorkspacePath, normalizeWorkspaceRelativePath } from "../security/workspace-path.js";
 
 /** Package-internal policies directory (ships with the tool; npm updates replace it — never edit directly). */
 export const PACKAGE_POLICIES_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..", "policies");
 
 export interface TieredLoadResult<T> {
-  /** Merged effective config: user keys override builtin keys (shallow); used by callers. */
+  /** Merged builtin, then XDG user, then workspace project. */
   effective: T;
   builtin: T;
+  /** Workspace project overlay. The 2.0.1 field name remains `user`. */
   user: T | null;
   userPath: string | null;
+  /** `$XDG_CONFIG_HOME/stinky-cobbler/policies`, or `~/.config/...` when unset. */
+  home: T | null;
+  homePath: string | null;
+  layers: readonly TieredLayer<T>[];
+  diagnostics: readonly string[];
 }
 
 export type TieredPolicyFileName = "orchestration.yaml" | "specialists.yaml" | "templates.yaml" | "contract-templates.yaml";
@@ -30,52 +36,75 @@ const POLICY_SCHEMA_KIND_BY_FILE: Record<TieredPolicyFileName, ContractKind> = {
   "contract-templates.yaml": "contract-templates-policy"
 };
 
+export const ORCHESTRATION_MERGE_STRATEGY: MergeStrategy = {
+  fields: { defaults: "record", sensitiveExtraPaths: "appendOnly" }
+};
+export const SPECIALISTS_MERGE_STRATEGY: MergeStrategy = { fields: { specialists: { keyedList: "domain" } } };
+export const TEMPLATES_MERGE_STRATEGY: MergeStrategy = "record";
+export const CONTRACT_TEMPLATES_MERGE_STRATEGY: MergeStrategy = { fields: { templates: { keyedList: "name" } } };
+
+const MERGE_STRATEGY_BY_FILE: Record<TieredPolicyFileName, MergeStrategy> = {
+  "orchestration.yaml": ORCHESTRATION_MERGE_STRATEGY,
+  "specialists.yaml": SPECIALISTS_MERGE_STRATEGY,
+  "templates.yaml": TEMPLATES_MERGE_STRATEGY,
+  "contract-templates.yaml": CONTRACT_TEMPLATES_MERGE_STRATEGY
+};
+
 /**
- * Loads a two-layer YAML config:
- * - builtin: <package>/policies/<fileName> (defaults; updated with the package)
- * - user:   <workspace>/.stinky-cobbler/policies/<fileName> (overlay; survives updates)
- * Merge is shallow (record keys), so a user file only overrides the keys it declares.
- * Malformed YAML or a wrong version fails closed — never silently falls back.
+ * Loads builtin, XDG user, and workspace project YAML.
+ * Each file declares its own merge strategy. Malformed YAML or a wrong version fails closed.
  */
-export async function loadTieredYaml<T extends { version: number }>(workspace: LocalWorkspace | null, fileName: TieredPolicyFileName, expectedVersion: 1): Promise<TieredLoadResult<T>> {
+export async function loadTieredYaml<T extends { version: number }>(
+  workspace: LocalWorkspace | null,
+  fileName: TieredPolicyFileName,
+  expectedVersion: 1
+): Promise<TieredLoadResult<T>> {
   const policyKind = (POLICY_SCHEMA_KIND_BY_FILE as Partial<Record<string, ContractKind>>)[fileName];
   if (policyKind === undefined) {
-    throw tieredError("TIERED_CONFIG_INVALID", `不支持的 tiered policy kind：${String(fileName)}。`,
-      "修复：只允许 orchestration.yaml、specialists.yaml、templates.yaml 或 contract-templates.yaml。");
+    throw tieredError(
+      "TIERED_CONFIG_INVALID",
+      `不支持的 tiered policy kind：${String(fileName)}。`,
+      "修复：只允许 orchestration.yaml、specialists.yaml、templates.yaml 或 contract-templates.yaml。"
+    );
   }
-  let builtin: T;
   const builtinLabel = `policies/${fileName} (builtin)`;
-  try {
-    builtin = await loadYamlFile<T>(path.join(PACKAGE_POLICIES_DIR, fileName), builtinLabel);
-  } catch (error: unknown) {
-    if (isCode(error, "ENOENT")) throw tieredError("TIERED_CONFIG_MISSING", `policies/${fileName} (builtin) 不存在；工具安装不完整。`,
-      `修复：重新安装 stinky-cobbler（npm install -g stinky-cobbler）。`);
-    throw error;
+  const builtin = await readTieredYamlFile<T>(path.join(PACKAGE_POLICIES_DIR, fileName), builtinLabel);
+  if (builtin === null) {
+    throw tieredError(
+      "TIERED_CONFIG_MISSING",
+      `policies/${fileName} (builtin) 不存在；工具安装不完整。`,
+      "修复：重新安装 stinky-cobbler（npm install -g stinky-cobbler）。"
+    );
   }
-  if (builtin.version !== expectedVersion) throw tieredError("TIERED_CONFIG_VERSION", `内置 policies/${fileName} 版本异常（应为 ${expectedVersion}）。`,
-    `修复：重新安装 stinky-cobbler（npm install -g stinky-cobbler）。`);
+  if (builtin.version !== expectedVersion)
+    throw tieredError(
+      "TIERED_CONFIG_VERSION",
+      `内置 policies/${fileName} 版本异常（应为 ${expectedVersion}）。`,
+      `修复：重新安装 stinky-cobbler（npm install -g stinky-cobbler）。`
+    );
   await validatePolicyLayer(fileName, policyKind, builtin, builtinLabel);
-  let user: T | null = null;
-  let userPath: string | null = null;
-  if (workspace !== null) {
-    try {
-      // A workspace overlay is optional. If the control-plane root has not
-      // been initialized, use the validated builtin policy without creating
-      // anything. Once it exists, workspaceFile still enforces canonical
-      // containment and rejects every symlinked component.
-      await lstat(workspace.directory);
-      userPath = await workspaceFile(workspace, `policies/${fileName}`);
-      user = await loadYamlFile<T>(userPath, userPath);
-    } catch (error: unknown) {
-      if (isCode(error, "ENOENT")) { user = null; userPath = null; } else { throw error; }
-    }
-  }
-  if (user !== null && user.version !== expectedVersion) {
-    throw tieredError("TIERED_CONFIG_VERSION", `${userPath} 的 version 必须为 ${expectedVersion}（当前 ${user.version}）。`,
-      `修复：打开 ${userPath}，把第一行改为 version: ${expectedVersion}。正确示例：\nversion: ${expectedVersion}\ndefaults:\n  maxRounds: 10`);
-  }
-  if (user !== null) await validatePolicyLayer(fileName, policyKind, user, userPath ?? `workspace ${fileName}`);
-  return { effective: mergeShallow(builtin, user), builtin, user, userPath };
+  const home = await readHomeLayer<T>(fileName, expectedVersion);
+  if (home.value !== null) await validatePolicyLayer(fileName, policyKind, home.value, home.path ?? fileName);
+  const project = await readProjectLayer<T>(workspace, fileName, expectedVersion);
+  if (project.value !== null) await validatePolicyLayer(fileName, policyKind, project.value, project.path ?? fileName);
+  const document = loadTieredDocument<T>(
+    [
+      { name: "builtin", value: builtin, path: builtinLabel },
+      { name: "user", value: home.value, path: home.path },
+      { name: "project", value: project.value, path: project.path }
+    ],
+    MERGE_STRATEGY_BY_FILE[fileName]
+  );
+  return {
+    effective: document.effective,
+    builtin,
+    user: project.value,
+    userPath: project.path,
+    home: home.value,
+    homePath: home.path,
+    layers: document.layers,
+    diagnostics: document.diagnostics
+  };
 }
 
 async function validatePolicyLayer(fileName: TieredPolicyFileName, policyKind: ContractKind, value: unknown, label: string): Promise<void> {
@@ -83,78 +112,62 @@ async function validatePolicyLayer(fileName: TieredPolicyFileName, policyKind: C
     (await defaultSchemaRegistry()).validate(policyKind, value);
   } catch (error: unknown) {
     if (!(error instanceof StinkyCobblerError) || error.code !== "SCHEMA_INVALID") throw error;
-    const schemaErrors = Array.isArray(error.details?.errors)
-      ? error.details.errors as Array<{ path?: unknown; message?: unknown }>
-      : [];
-    const errors = schemaErrors.length > 0
-      ? schemaErrors.map((entry) => `${String(entry.path ?? "/")} ${String(entry.message ?? "invalid")}`).join("; ")
-      : "unknown schema violation";
-    const fix = fileName === "orchestration.yaml" && schemaErrors.some((entry) => entry.path === "/defaults/oscillationThreshold")
-      ? "修复：改为 1 或 2。正确示例：\ndefaults:\n  oscillationThreshold: 2"
-      : `修复：按 ${fileName} 模板填写受支持的字段与类型，删除未知键。`;
-    throw tieredError("TIERED_CONFIG_INVALID", `${label} 不符合 ${fileName} JSON Schema：${errors}`,
-      fix);
+    const schemaErrors = Array.isArray(error.details?.errors) ? (error.details.errors as Array<{ path?: unknown; message?: unknown }>) : [];
+    const errors =
+      schemaErrors.length > 0
+        ? schemaErrors.map((entry) => `${String(entry.path ?? "/")} ${String(entry.message ?? "invalid")}`).join("; ")
+        : "unknown schema violation";
+    const fix =
+      fileName === "orchestration.yaml" && schemaErrors.some((entry) => entry.path === "/defaults/oscillationThreshold")
+        ? "修复：改为 1 或 2。正确示例：\ndefaults:\n  oscillationThreshold: 2"
+        : `修复：按 ${fileName} 模板填写受支持的字段与类型，删除未知键。`;
+    throw tieredError("TIERED_CONFIG_INVALID", `${label} 不符合 ${fileName} JSON Schema：${errors}`, fix);
   }
-}
-
-/** One-level deep merge: user keys override builtin keys; nested plain objects merge key-wise, arrays are replaced wholesale. */
-function mergeShallow<T>(builtin: T, user: T | null): T {
-  if (user === null) return builtin;
-  if (isPlainObject(builtin) && isPlainObject(user)) {
-    const result: Record<string, unknown> = { ...builtin };
-    for (const [key, value] of Object.entries(user as Record<string, unknown>)) {
-      const existing = (builtin as Record<string, unknown>)[key];
-      if (isPlainObject(existing) && isPlainObject(value)) {
-        result[key] = { ...existing, ...value };
-      } else {
-        result[key] = value;
-      }
-    }
-    return result as T;
-  }
-  return user;
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-async function loadYamlFile<T>(file: string, label: string): Promise<T> {
-  let text: string;
-  try {
-    text = await readFile(file, "utf8");
-  } catch (error: unknown) {
-    // Native ENOENT propagates untouched so callers can distinguish a missing user overlay (skip) from a missing builtin (fail).
-    throw error;
-  }
-  let value: unknown;
-  try {
-    value = parseYaml(text);
-  } catch (error: unknown) {
-    throw tieredError("TIERED_CONFIG_INVALID", `${label} 不是有效的 YAML: ${error instanceof Error ? error.message : String(error)}`,
-      `修复：检查 ${label} 的缩进与冒号——每个键一行「键: 值」，# 开头的是注释。正确示例：\nversion: 1\ndefaults:\n  maxRounds: 10`);
-  }
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    throw tieredError("TIERED_CONFIG_INVALID", `${label} 必须是一个 YAML 对象（顶层不能是数组或纯文本）。`,
-      `修复：文件顶部保留 version: 1，其余键按模板格式写在下方。`);
-  }
-  assertNoPrototypeKeys(value, label);
-  return value as T;
+async function readHomeLayer<T extends { version: number }>(
+  fileName: TieredPolicyFileName,
+  expectedVersion: 1
+): Promise<{ value: T | null; path: string | null }> {
+  const file = userPolicyFile(fileName);
+  const value = await readTieredYamlFile<T>(file, file);
+  if (value === null) return { value: null, path: null };
+  if (value.version !== expectedVersion) throw overlayVersionError(file, value.version, expectedVersion);
+  return { value, path: file };
 }
 
-function assertNoPrototypeKeys(value: unknown, label: string, seen = new WeakSet<object>()): void {
-  if (typeof value !== "object" || value === null || seen.has(value)) return;
-  seen.add(value);
-  if (Array.isArray(value)) {
-    for (const entry of value) assertNoPrototypeKeys(entry, label, seen);
-    return;
+async function readProjectLayer<T extends { version: number }>(
+  workspace: LocalWorkspace | null,
+  fileName: TieredPolicyFileName,
+  expectedVersion: 1
+): Promise<{ value: T | null; path: string | null }> {
+  if (workspace === null) return { value: null, path: null };
+  try {
+    // A workspace overlay is optional. If the control-plane root has not
+    // been initialized, use the lower layers without creating anything.
+    // workspaceFile still rejects every symlinked component.
+    await lstat(workspace.directory);
+    const file = await workspaceFile(workspace, `policies/${fileName}`);
+    const value = await readTieredYamlFile<T>(file, file);
+    if (value === null) return { value: null, path: null };
+    if (value.version !== expectedVersion) throw overlayVersionError(file, value.version, expectedVersion);
+    return { value, path: file };
+  } catch (error: unknown) {
+    if (isCode(error, "ENOENT")) return { value: null, path: null };
+    throw error;
   }
-  for (const [key, entry] of Object.entries(value)) {
-    if (key === "__proto__" || key === "prototype" || key === "constructor") {
-      throw tieredError("TIERED_CONFIG_INVALID", `${label} 含有禁止的对象键 ${key}。`, "修复：删除该键并使用模板声明的配置项。");
-    }
-    assertNoPrototypeKeys(entry, label, seen);
-  }
+}
+
+function overlayVersionError(file: string, actual: number, expected: number): StinkyCobblerError {
+  return tieredError(
+    "TIERED_CONFIG_VERSION",
+    `${file} 的 version 必须为 ${expected}（当前 ${actual}）。`,
+    `修复：打开 ${file}，把第一行改为 version: ${expected}。正确示例：\nversion: ${expected}\ndefaults:\n  maxRounds: 10`
+  );
 }
 
 function tieredError(code: string, message: string, fix?: string): StinkyCobblerError {
@@ -214,9 +227,9 @@ const HARD_MAX_WRITE_CONTENT_BYTES = 16 * 1024 * 1024;
 export async function loadOrchestrationConfig(workspace: LocalWorkspace | null): Promise<OrchestrationConfig> {
   const loaded = await loadTieredYaml<OrchestrationConfig>(workspace, "orchestration.yaml", 1);
   assertOrchestrationConfigKeys(loaded.builtin, "policies/orchestration.yaml (内置)");
-  if (loaded.user !== null) assertOrchestrationConfigKeys(loaded.user, loaded.userPath ?? "workspace orchestration.yaml");
-  const { effective, userPath } = loaded;
-  const source = userPath ?? "policies/orchestration.yaml (内置)";
+  for (const overlay of overlayEntries(loaded)) assertOrchestrationConfigKeys(overlay.value, overlay.path);
+  const { effective } = loaded;
+  const source = effectiveSource(loaded, "policies/orchestration.yaml (内置)");
   if (effective.defaults !== undefined && !isPlainObject(effective.defaults)) {
     throw invalidOrchestrationConfig(source, "defaults 必须是 YAML 对象。");
   }
@@ -227,41 +240,80 @@ export async function loadOrchestrationConfig(workspace: LocalWorkspace | null):
   }
   if (d.oscillationThreshold !== undefined) {
     if (!Number.isInteger(d.oscillationThreshold) || d.oscillationThreshold < 1) {
-      throw tieredError("TIERED_CONFIG_INVALID", `${source} 中 defaults.oscillationThreshold 必须是正整数。`,
-        `修复：改为 1 或 2。正确示例：\ndefaults:\n  oscillationThreshold: 2`);
+      throw tieredError(
+        "TIERED_CONFIG_INVALID",
+        `${source} 中 defaults.oscillationThreshold 必须是正整数。`,
+        `修复：改为 1 或 2。正确示例：\ndefaults:\n  oscillationThreshold: 2`
+      );
     }
     if (d.oscillationThreshold > OSCILLATION_TIGHTEN_MAX) {
-      throw tieredError("TIERED_CONFIG_INVALID", `${source} 中 defaults.oscillationThreshold 只能收紧：最大 ${OSCILLATION_TIGHTEN_MAX}（放宽防打磨护栏不被允许）。`,
-        `修复：改为 1 或 2。正确示例：\ndefaults:\n  oscillationThreshold: 2`);
+      throw tieredError(
+        "TIERED_CONFIG_INVALID",
+        `${source} 中 defaults.oscillationThreshold 只能收紧：最大 ${OSCILLATION_TIGHTEN_MAX}（放宽防打磨护栏不被允许）。`,
+        `修复：改为 1 或 2。正确示例：\ndefaults:\n  oscillationThreshold: 2`
+      );
     }
   }
-  if (d.autoRejectScoreThreshold !== undefined && (!Number.isSafeInteger(d.autoRejectScoreThreshold) || d.autoRejectScoreThreshold < 0 || d.autoRejectScoreThreshold > 100)) {
-    throw tieredError("TIERED_CONFIG_INVALID", `${source} 中 defaults.autoRejectScoreThreshold 必须是 0-100（0 关闭）。`,
-      `修复：改为 0-100 的整数，如 60。正确示例：\ndefaults:\n  autoRejectScoreThreshold: 60`);
+  if (
+    d.autoRejectScoreThreshold !== undefined &&
+    (!Number.isSafeInteger(d.autoRejectScoreThreshold) || d.autoRejectScoreThreshold < 0 || d.autoRejectScoreThreshold > 100)
+  ) {
+    throw tieredError(
+      "TIERED_CONFIG_INVALID",
+      `${source} 中 defaults.autoRejectScoreThreshold 必须是 0-100（0 关闭）。`,
+      `修复：改为 0-100 的整数，如 60。正确示例：\ndefaults:\n  autoRejectScoreThreshold: 60`
+    );
   }
   if (d.maxRounds !== undefined && d.maxRounds > HARD_MAX_ROUNDS) {
-    throw tieredError("TIERED_CONFIG_INVALID", `${source} 中 defaults.maxRounds 必须是 1-${HARD_MAX_ROUNDS}。`,
-      `修复：改为 1-${HARD_MAX_ROUNDS} 的整数，如 10。正确示例：\ndefaults:\n  maxRounds: 10`);
+    throw tieredError(
+      "TIERED_CONFIG_INVALID",
+      `${source} 中 defaults.maxRounds 必须是 1-${HARD_MAX_ROUNDS}。`,
+      `修复：改为 1-${HARD_MAX_ROUNDS} 的整数，如 10。正确示例：\ndefaults:\n  maxRounds: 10`
+    );
   }
-  if (d.maxRetriesPerSubtask !== undefined && (!Number.isSafeInteger(d.maxRetriesPerSubtask) || d.maxRetriesPerSubtask < 0 || d.maxRetriesPerSubtask > HARD_MAX_RETRIES)) {
-    throw tieredError("TIERED_CONFIG_INVALID", `${source} 中 defaults.maxRetriesPerSubtask 必须是 0-${HARD_MAX_RETRIES}。`,
-      `修复：改为 0-${HARD_MAX_RETRIES} 的整数。正确示例：\ndefaults:\n  maxRetriesPerSubtask: 3`);
+  if (
+    d.maxRetriesPerSubtask !== undefined &&
+    (!Number.isSafeInteger(d.maxRetriesPerSubtask) || d.maxRetriesPerSubtask < 0 || d.maxRetriesPerSubtask > HARD_MAX_RETRIES)
+  ) {
+    throw tieredError(
+      "TIERED_CONFIG_INVALID",
+      `${source} 中 defaults.maxRetriesPerSubtask 必须是 0-${HARD_MAX_RETRIES}。`,
+      `修复：改为 0-${HARD_MAX_RETRIES} 的整数。正确示例：\ndefaults:\n  maxRetriesPerSubtask: 3`
+    );
   }
-  if (d.maxContractCriteria !== undefined && (!Number.isInteger(d.maxContractCriteria) || d.maxContractCriteria < 1 || d.maxContractCriteria > HARD_MAX_CONTRACT_CRITERIA)) {
-    throw tieredError("TIERED_CONFIG_INVALID", `${source} 中 defaults.maxContractCriteria 必须是 1-${HARD_MAX_CONTRACT_CRITERIA}。`,
-      `修复：该值不能超过契约 schema 上限 ${HARD_MAX_CONTRACT_CRITERIA}。`);
+  if (
+    d.maxContractCriteria !== undefined &&
+    (!Number.isInteger(d.maxContractCriteria) || d.maxContractCriteria < 1 || d.maxContractCriteria > HARD_MAX_CONTRACT_CRITERIA)
+  ) {
+    throw tieredError(
+      "TIERED_CONFIG_INVALID",
+      `${source} 中 defaults.maxContractCriteria 必须是 1-${HARD_MAX_CONTRACT_CRITERIA}。`,
+      `修复：该值不能超过契约 schema 上限 ${HARD_MAX_CONTRACT_CRITERIA}。`
+    );
   }
-  if (d.maxSubtaskCriteria !== undefined && (!Number.isInteger(d.maxSubtaskCriteria) || d.maxSubtaskCriteria < 1 || d.maxSubtaskCriteria > HARD_MAX_SUBTASK_CRITERIA)) {
-    throw tieredError("TIERED_CONFIG_INVALID", `${source} 中 defaults.maxSubtaskCriteria 必须是 1-${HARD_MAX_SUBTASK_CRITERIA}。`,
-      `修复：该值不能超过子任务 schema 上限 ${HARD_MAX_SUBTASK_CRITERIA}。`);
+  if (
+    d.maxSubtaskCriteria !== undefined &&
+    (!Number.isInteger(d.maxSubtaskCriteria) || d.maxSubtaskCriteria < 1 || d.maxSubtaskCriteria > HARD_MAX_SUBTASK_CRITERIA)
+  ) {
+    throw tieredError(
+      "TIERED_CONFIG_INVALID",
+      `${source} 中 defaults.maxSubtaskCriteria 必须是 1-${HARD_MAX_SUBTASK_CRITERIA}。`,
+      `修复：该值不能超过子任务 schema 上限 ${HARD_MAX_SUBTASK_CRITERIA}。`
+    );
   }
   if (d.maxSubtaskTokens !== undefined && (d.maxSubtaskTokens < 1000 || d.maxSubtaskTokens > 10_000_000)) {
-    throw tieredError("TIERED_CONFIG_INVALID", `${source} 中 defaults.maxSubtaskTokens 必须是 1000-10000000。`,
-      `修复：改为 1000-10000000 的整数。正确示例：\ndefaults:\n  maxSubtaskTokens: 400000`);
+    throw tieredError(
+      "TIERED_CONFIG_INVALID",
+      `${source} 中 defaults.maxSubtaskTokens 必须是 1000-10000000。`,
+      `修复：改为 1000-10000000 的整数。正确示例：\ndefaults:\n  maxSubtaskTokens: 400000`
+    );
   }
   if (d.leaseGraceMinutes !== undefined && d.leaseGraceMinutes !== 15) {
-    throw tieredError("TIERED_CONFIG_INVALID", `${source} 中 defaults.leaseGraceMinutes 当前必须固定为 15。`,
-      `修复：改为 15；2.0.1 的 Lease 宽限期尚不支持工作区级覆盖。正确示例：\ndefaults:\n  leaseGraceMinutes: 15`);
+    throw tieredError(
+      "TIERED_CONFIG_INVALID",
+      `${source} 中 defaults.leaseGraceMinutes 当前必须固定为 15。`,
+      `修复：改为 15；2.0.1 的 Lease 宽限期尚不支持工作区级覆盖。正确示例：\ndefaults:\n  leaseGraceMinutes: 15`
+    );
   }
   assertUpperBound(d.maxDefects, 20, source, "maxDefects");
   assertUpperBound(d.maxInputArtifacts, 20, source, "maxInputArtifacts");
@@ -287,17 +339,34 @@ export async function loadOrchestrationConfig(workspace: LocalWorkspace | null):
 }
 
 const POSITIVE_INTEGER_DEFAULTS = [
-  "maxRounds", "maxSubtaskTokens", "costTokensPerSubtaskRound", "orchestrateTokenThreshold",
-  "maxContractCriteria", "maxSubtaskCriteria", "maxDefects", "maxInputArtifacts",
-  "maxContractScopeItems", "maxSubtaskScopeItems", "maxDomainLength", "maxDomainInstructions",
-  "maxWriteContentBytes", "maxSteps",
-  "leaseDefaultToolCalls", "leaseMaxToolCallsCap", "leaseDefaultMinutes", "leaseMaxMinutes", "leaseGraceMinutes"
+  "maxRounds",
+  "maxSubtaskTokens",
+  "costTokensPerSubtaskRound",
+  "orchestrateTokenThreshold",
+  "maxContractCriteria",
+  "maxSubtaskCriteria",
+  "maxDefects",
+  "maxInputArtifacts",
+  "maxContractScopeItems",
+  "maxSubtaskScopeItems",
+  "maxDomainLength",
+  "maxDomainInstructions",
+  "maxWriteContentBytes",
+  "maxSteps",
+  "leaseDefaultToolCalls",
+  "leaseMaxToolCallsCap",
+  "leaseDefaultMinutes",
+  "leaseMaxMinutes",
+  "leaseGraceMinutes"
 ] as const;
 
 const ORCHESTRATION_TOP_LEVEL_KEYS = new Set(["version", "defaults", "sensitiveExtraPaths"]);
 const ORCHESTRATION_DEFAULT_KEYS = new Set<string>([
   ...POSITIVE_INTEGER_DEFAULTS,
-  "maxRetriesPerSubtask", "oscillationThreshold", "autoRejectScoreThreshold", "autoEscalateOnConsistencyFail"
+  "maxRetriesPerSubtask",
+  "oscillationThreshold",
+  "autoRejectScoreThreshold",
+  "autoEscalateOnConsistencyFail"
 ]);
 
 function assertOrchestrationConfigKeys(config: OrchestrationConfig, source: string): void {
@@ -336,8 +405,11 @@ function normalizeSensitiveExtraPaths(value: unknown, source: string): string[] 
   const seen = new Set<string>();
   for (const entry of value as string[]) {
     let candidate: string;
-    try { candidate = normalizeWorkspaceRelativePath(entry).replace(/\/+$/, "").normalize("NFC"); }
-    catch { throw invalidOrchestrationConfig(source, "sensitiveExtraPaths 只能包含规范的 workspace 相对路径。"); }
+    try {
+      candidate = normalizeWorkspaceRelativePath(entry).replace(/\/+$/, "").normalize("NFC");
+    } catch {
+      throw invalidOrchestrationConfig(source, "sensitiveExtraPaths 只能包含规范的 workspace 相对路径。");
+    }
     if (candidate === "." || isReservedWorkspacePath(candidate)) {
       throw invalidOrchestrationConfig(source, "sensitiveExtraPaths 不能是 workspace 根或控制面保留目录。");
     }
@@ -351,8 +423,7 @@ function normalizeSensitiveExtraPaths(value: unknown, source: string): string[] 
 }
 
 function invalidOrchestrationConfig(source: string, message: string): StinkyCobblerError {
-  return tieredError("TIERED_CONFIG_INVALID", `${source} 中 ${message}`,
-    "修复：按 orchestration.yaml 模板使用正确类型、范围和 workspace 相对路径。");
+  return tieredError("TIERED_CONFIG_INVALID", `${source} 中 ${message}`, "修复：按 orchestration.yaml 模板使用正确类型、范围和 workspace 相对路径。");
 }
 
 /* ------------------------------------------------------------------ */
@@ -413,33 +484,45 @@ const INSTRUCTIONS_LANGUAGE_KEYS = new Set(["default", "options", "note"]);
 const SUGGESTED_CAPABILITIES = new Set(["repository-read", "git-read", "docs-index", "repository-write"]);
 const INSTRUCTION_LANGUAGES = new Set(["zh", "en"]);
 
-/** Loads and validates both specialist policy layers before registry merge-by-domain. */
+/** Loads and validates specialist layers. Effective specialists are already merged by domain. */
 export async function loadSpecialistsPolicy(workspace: LocalWorkspace | null): Promise<TieredLoadResult<SpecialistsFile>> {
   const loaded = await loadTieredYaml<SpecialistsFile>(workspace, "specialists.yaml", 1);
   assertSpecialistsFile(loaded.builtin, "policies/specialists.yaml (内置)", true);
-  if (loaded.user !== null) assertSpecialistsFile(loaded.user, loaded.userPath ?? "workspace specialists.yaml", false);
+  for (const overlay of overlayEntries(loaded)) assertSpecialistsFile(overlay.value, overlay.path, false);
   return loaded;
 }
 
-/** Loads and validates both contract-template layers before merge-by-name. */
+/** Loads and validates contract-template layers. Effective templates are already merged by name. */
 export async function loadContractTemplatesPolicy(workspace: LocalWorkspace | null): Promise<TieredLoadResult<ContractTemplatesFile>> {
   const loaded = await loadTieredYaml<ContractTemplatesFile>(workspace, "contract-templates.yaml", 1);
   assertContractTemplatesFile(loaded.builtin, "policies/contract-templates.yaml (内置)", true);
-  if (loaded.user !== null) assertContractTemplatesFile(loaded.user, loaded.userPath ?? "workspace contract-templates.yaml", false);
+  for (const overlay of overlayEntries(loaded)) assertContractTemplatesFile(overlay.value, overlay.path, false);
   return loaded;
 }
 
 /** Loads the effective interaction-template dictionary and validates every key and value fail-closed. */
 export async function loadTemplatesConfig(workspace: LocalWorkspace | null): Promise<EffectiveTemplatesConfig> {
   const loaded = await loadTieredYaml<TemplatesFile>(workspace, "templates.yaml", 1);
+  const source = effectiveSource(loaded, "policies/templates.yaml (内置)");
   assertTemplatesFile(loaded.builtin, "policies/templates.yaml (内置)", true);
-  if (loaded.user !== null) assertTemplatesFile(loaded.user, loaded.userPath ?? "workspace templates.yaml", false);
-  assertTemplatesFile(loaded.effective, loaded.userPath ?? "policies/templates.yaml (内置)", true);
+  for (const overlay of overlayEntries(loaded)) assertTemplatesFile(overlay.value, overlay.path, false);
+  assertTemplatesFile(loaded.effective, source, true);
   const effective = loaded.effective as EffectiveTemplatesConfig;
   if (!effective.instructionsLanguage.options.includes(effective.instructionsLanguage.default)) {
-    throw invalidTieredPolicy(loaded.userPath ?? "policies/templates.yaml (内置)", "instructionsLanguage.default 必须出现在 options 中。", "templates.yaml");
+    throw invalidTieredPolicy(source, "instructionsLanguage.default 必须出现在 options 中。", "templates.yaml");
   }
   return effective;
+}
+
+function overlayEntries<T>(loaded: TieredLoadResult<T>): Array<{ value: T; path: string }> {
+  const entries: Array<{ value: T; path: string }> = [];
+  if (loaded.home !== null) entries.push({ value: loaded.home, path: loaded.homePath ?? "user layer" });
+  if (loaded.user !== null) entries.push({ value: loaded.user, path: loaded.userPath ?? "workspace layer" });
+  return entries;
+}
+
+function effectiveSource(loaded: { userPath: string | null; homePath: string | null }, builtinLabel: string): string {
+  return loaded.userPath ?? loaded.homePath ?? builtinLabel;
 }
 
 function assertSpecialistsFile(config: SpecialistsFile, source: string, requireCollection: boolean): void {
@@ -494,8 +577,11 @@ function assertContractTemplatesFile(config: ContractTemplatesFile, source: stri
     assertTextArray(value.criteria, source, `${label}.criteria`, 1, HARD_MAX_CONTRACT_CRITERIA);
     assertTextArray(value.scope, source, `${label}.scope`, 1, 50);
     for (const scope of value.scope as string[]) {
-      try { assertWorkspacePathPolicy(scope); }
-      catch { throw invalidTieredPolicy(source, `${label}.scope 只能包含非敏感、非保留的 workspace 相对路径。`, "contract-templates.yaml"); }
+      try {
+        assertWorkspacePathPolicy(scope);
+      } catch {
+        throw invalidTieredPolicy(source, `${label}.scope 只能包含非敏感、非保留的 workspace 相对路径。`, "contract-templates.yaml");
+      }
     }
     const nameKey = String(value.name).normalize("NFC").toLocaleLowerCase("en-US");
     if (names.has(nameKey)) throw invalidTieredPolicy(source, `${label}.name 与同文件中的其他模板重复。`, "contract-templates.yaml");
@@ -573,6 +659,5 @@ function assertTextArray(value: unknown, source: string, label: string, minimum:
 }
 
 function invalidTieredPolicy(source: string, message: string, fileName = "policy YAML"): StinkyCobblerError {
-  return tieredError("TIERED_CONFIG_INVALID", `${source} 中 ${message}`,
-    `修复：按 ${fileName} 模板填写完整字段，删除未知键，并使用受支持的非空值。`);
+  return tieredError("TIERED_CONFIG_INVALID", `${source} 中 ${message}`, `修复：按 ${fileName} 模板填写完整字段，删除未知键，并使用受支持的非空值。`);
 }

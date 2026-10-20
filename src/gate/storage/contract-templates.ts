@@ -13,13 +13,10 @@ export interface ContractTemplate {
   scope: string[];
 }
 
-/** Loads the merged template library: builtin + workspace overlay (same name replaces, new name appends). */
+/** Loads builtin, XDG user, and workspace templates. The same name replaces; a new name appends. */
 export async function listContractTemplates(workspace: LocalWorkspace | null): Promise<ContractTemplate[]> {
-  const { builtin, user } = await loadContractTemplatesPolicy(workspace);
-  const byName = new Map<string, ContractTemplate>();
-  for (const template of builtin.templates ?? []) byName.set(template.name, template);
-  for (const template of user?.templates ?? []) byName.set(template.name, template);
-  return [...byName.values()];
+  const { effective } = await loadContractTemplatesPolicy(workspace);
+  return effective.templates ?? [];
 }
 
 export async function getContractTemplate(workspace: LocalWorkspace | null, name: string): Promise<ContractTemplate> {

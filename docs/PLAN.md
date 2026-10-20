@@ -18,7 +18,7 @@
 - [x] M1-T1 治理内核搬入 `src/gate/`
 - [x] M1-T2 `io/fs-boundary` + 有界写（修 D-02）
 - [x] M1-T3 `io/managed-file` + `segment-file` + 保格式 TOML（修 D-10）
-- [ ] M1-T4 `io/tiered-config` 按文件合并策略 + user 层（修 D-14）
+- [x] M1-T4 `io/tiered-config` 按文件合并策略 + user 层（修 D-14）
 - [ ] M1-T5 `hosts/HostAdapter` + codex / claude-code / cursor / zcode + conformance；`entry install-host` / `mcp-config` 的 `--host` 改为必填（从 M0-T6 推迟）
 - [ ] M1-T6 CLI 命令注册化 + Presenter
 - [ ] M1-T7 删除死配置与假 affordance（删除清单待确认）
