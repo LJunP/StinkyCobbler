@@ -98,23 +98,36 @@ async function buildPlan(scopeFlag?: string): Promise<ToolkitPlan> {
 
 async function planLoaded(loaded: LoadedToolkit, sources?: PlanSources): Promise<ToolkitPlan> {
   const observations = await observe(observationInput(loaded));
-  return plan(loaded.spec, observations, { support: kindSupport(), sources: sources ?? (await planSources(loaded)) });
+  const lock = await readLockIfPresent(loaded.specPath);
+  return plan(loaded.spec, observations, {
+    support: kindSupport(),
+    sources: sources ?? (await overlayLockedSources(loaded, lock)),
+    resolvedIds: resolvedLockIds(lock)
+  });
 }
 
-async function planSources(loaded: LoadedToolkit): Promise<PlanSources> {
-  const live = await sourceBodies(loaded.spec);
-  const file = path.join(path.dirname(loaded.specPath), "toolkit.lock");
-  let lock: ToolkitLock;
+async function readLockIfPresent(specPath: string): Promise<ToolkitLock | undefined> {
   try {
-    lock = parseToolkitLock(JSON.parse(await readFile(file, "utf8")) as unknown);
+    return parseToolkitLock(JSON.parse(await readFile(path.join(path.dirname(specPath), "toolkit.lock"), "utf8")) as unknown);
   } catch (error: unknown) {
-    if (isCode(error, "ENOENT")) return live;
+    if (isCode(error, "ENOENT")) return undefined;
     throw error;
   }
+}
+
+function resolvedLockIds(lock: ToolkitLock | undefined): string[] {
+  if (lock === undefined) return [];
+  return lock.entries.filter((entry) => entry.resolved === "local" || entry.resolved === "fetched").map((entry) => entry.id);
+}
+
+async function overlayLockedSources(loaded: LoadedToolkit, lock: ToolkitLock | undefined): Promise<PlanSources> {
+  const live = await sourceBodies(loaded.spec);
+  if (lock === undefined) return live;
   const locked = await sourcesFromLock(blobDirectory(loaded.specPath), loaded.spec, lock);
   const skills = live.skills ?? {};
   for (const skill of loaded.spec.skills) {
-    const body = skill.source.startsWith("git+") || skill.source.startsWith("npm:") ? locked.skills?.[skill.id] : undefined;
+    const remote = skill.source.startsWith("git+") || skill.source.startsWith("npm:");
+    const body = remote ? locked.skills?.[skill.id] : undefined;
     if (body !== undefined) skills[skill.id] = body;
   }
   return { ...live, skills };

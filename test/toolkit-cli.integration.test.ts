@@ -394,6 +394,48 @@ describe("toolkit cli", () => {
     expect(await readFile(path.join(home, ".codex", "skills", "review", "SKILL.md"), "utf8")).toBe(body);
     await expect(readFile(marker, "utf8")).rejects.toThrow();
   });
+
+  it("expands a bundle only for includes already resolved in the lock", async () => {
+    const home = await tempDir("stinky-toolkit-bundle-home-");
+    const xdg = await tempDir("stinky-toolkit-bundle-xdg-");
+    const source = await tempDir("stinky-toolkit-bundle-source-");
+    const body = "bundled review\n";
+    await writeFile(path.join(source, "SKILL.md"), body);
+    const env = childEnv(home, xdg);
+    await run(env, "toolkit", "init", "--json");
+    await writeFile(path.join(xdg, "stinky-cobbler", "toolkit.yaml"), [
+      "version: 1",
+      "scope: user",
+      "hosts:",
+      "  - codex",
+      "skills:",
+      "  - id: review",
+      `    source: ${JSON.stringify(source)}`,
+      "  - id: remote-skill",
+      "    source: skills.sh:example",
+      "mcpServers: []",
+      "instructions: []",
+      "bundles:",
+      "  - id: kit",
+      "    includes: [review, remote-skill]",
+      ""
+    ].join("\n"));
+    await run(env, "toolkit", "lock", "--json");
+    const planned = JSON.parse((await run(env, "toolkit", "plan", "--json")).stdout) as {
+      ops: Array<{ id: string }>;
+      skipped: Array<{ kind: string; id: string; reason: string }>;
+    };
+    expect(planned.ops.map((op) => op.id)).toEqual(["review"]);
+    expect(planned.skipped).toEqual(expect.arrayContaining([
+      expect.objectContaining({ kind: "bundle", id: "kit", reason: "Include review is expanded from the lock." }),
+      expect.objectContaining({ kind: "bundle", id: "kit", reason: "Include remote-skill is not resolved in the lock." })
+    ]));
+    expect(JSON.stringify(planned.skipped)).not.toContain("Bundle expansion is not applied");
+    const applied = JSON.parse((await run(env, "toolkit", "apply", "--yes", "--json")).stdout) as { stopped: boolean };
+    expect(applied.stopped).toBe(false);
+    expect(await readFile(path.join(home, ".codex", "skills", "review", "SKILL.md"), "utf8")).toBe(body);
+    await expect(readFile(path.join(home, ".codex", "skills", "remote-skill", "SKILL.md"), "utf8")).rejects.toThrow();
+  });
 });
 
 async function commitSkillRepo(repo: string, body: string, marker: string): Promise<void> {

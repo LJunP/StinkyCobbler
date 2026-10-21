@@ -2,6 +2,14 @@
 
 > 只追加，最新在上。每条：日期 / 任务 / 做了什么 / 验证 / 待办与问题。
 
+## 2026-10-21 · M3-T5 bundle 只展开已解析的 include
+
+- bundle 的每个 include 单独记一条结果。lock 里是 `local` 或 `fetched` 的 include 记为从 lock 展开。没有 hash 的 include 记为未解析，不因此去抓取，也不安装。
+- 已经在规格顶层的 skill 仍按自己的正文生成 op。`skills.sh:` 没有正文，所以不会变成 op。
+- 偏差：展开不复制出第二份安装动作。没有 lock 时，所有 include 都算未解析。
+- 验证：先红（bundle 仍写着 “Bundle expansion is not applied”）。然后只安装已锁定的 `review`，不安装 `remote-skill`。`npm run lint` 通过（测试类型基线 0、eslint 0 error / 42 warning、depcruise 120 modules / 717 dependencies，15 条已知循环）。`npm test` 88 文件 / 839 项通过。插入 83 行。
+- 未做：推送。版本仍是 2.0.2。
+
 ## 2026-10-21 · M3-T4 npm 来源
 
 - `npm:` 的本地包目录只读取 `package.json` 和 `SKILL.md`，不调用 `npm pack` 或 `npm install`。npm 10.9.8 在给本地目录执行 `npm pack --ignore-scripts` 时仍会跑 `prepare`，所以这条路不能用。

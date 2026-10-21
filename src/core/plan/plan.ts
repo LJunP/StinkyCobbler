@@ -28,6 +28,7 @@ export interface PlanSources {
 export interface PlanOptions {
   support?: readonly KindSupport[];
   sources?: PlanSources;
+  resolvedIds?: readonly string[];
 }
 
 export interface FileOp {
@@ -85,7 +86,7 @@ export function plan(spec: ToolkitSpec, observations: readonly PlanObservation[]
     conflicts: [],
     skipped: []
   };
-  for (const bundle of spec.bundles) draft.skipped.push(bundleSkip(spec, bundle.id));
+  expandBundles(draft, new Set(options.resolvedIds ?? []));
   for (const skill of spec.skills) planSkill(draft, skill);
   for (const server of spec.mcpServers) planMcp(draft, server);
   for (const item of spec.instructions) planInstruction(draft, item);
@@ -196,8 +197,14 @@ function selectedHosts(spec: ToolkitSpec): string[] {
   return [...(spec.hosts ?? HOST_IDS)];
 }
 
-function bundleSkip(spec: ToolkitSpec, id: string): PlanSkip {
-  return { host: selectedHosts(spec)[0] ?? HOST_IDS[0], kind: "bundle", id, reason: "Bundle expansion is not applied by the pure planner." };
+function expandBundles(draft: Draft, resolved: ReadonlySet<string>): void {
+  const host = selectedHosts(draft.spec)[0] ?? HOST_IDS[0];
+  for (const bundle of draft.spec.bundles) {
+    for (const include of bundle.includes) {
+      const reason = resolved.has(include) ? `Include ${include} is expanded from the lock.` : `Include ${include} is not resolved in the lock.`;
+      draft.skipped.push({ host, kind: "bundle", id: bundle.id, reason });
+    }
+  }
 }
 
 function key(host: string, kind: string, id: string): string {

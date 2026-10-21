@@ -27,6 +27,6 @@ node dist/cli.js toolkit doctor --json
 
 有 skill 或指令时，`toolkit apply` 先要有这份 lock。它安装的是 blob 里的字节。源文件在 lock 之后改过，也不会被重新读取。blob 缺失时命令失败，不会退回去读源文件。`plan` 对本地文件仍预览当前源文件，所以它和 apply 可能不同。
 
-`git+file:` 和 `git+https:` 的 skill 在 `toolkit lock` 时用 bare clone 放进规格旁边的 `sources/`。只读取 `SKILL.md`（`#subdir` 是仓库内的目录）。不 checkout，不运行仓库里的脚本或 hook。`plan` 展示这份锁定正文的 diff。没有 `--yes` 时 `apply` 不安装。`npm:` 的本地包目录只读取 `SKILL.md`，不执行 `prepare` 或其他脚本。`npm:name@version` 只下载已发布的 tarball 并取出 `SKILL.md`，不安装。`skills.sh:` 仍然不抓取。
+`git+file:` 和 `git+https:` 的 skill 在 `toolkit lock` 时用 bare clone 放进规格旁边的 `sources/`。只读取 `SKILL.md`（`#subdir` 是仓库内的目录）。不 checkout，不运行仓库里的脚本或 hook。`plan` 展示这份锁定正文的 diff。没有 `--yes` 时 `apply` 不安装。`npm:` 的本地包目录只读取 `SKILL.md`，不执行 `prepare` 或其他脚本。`npm:name@version` 只下载已发布的 tarball 并取出 `SKILL.md`，不安装。`skills.sh:` 仍然不抓取。bundle 只展开 lock 里已经解析的 include。没有 hash 的 include 不会被安装，也不会因此去抓取。
 
 `gate` 命令组仍可用，已 deprecated，不再扩展。
