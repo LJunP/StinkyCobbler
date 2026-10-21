@@ -2,6 +2,13 @@
 
 > 只追加，最新在上。每条：日期 / 任务 / 做了什么 / 验证 / 待办与问题。
 
+## 2026-10-22 · M3-T6 toolkit search 失败关闭
+
+- `toolkit search <query>` 返回 `TOOLKIT_SEARCH_UNVERIFIED`，退出码 2。查询词被丢弃。不访问网络，不写 HOME，不写 XDG。
+- 没有发明 skills.sh 的地址，也没有目录客户端。
+- 验证：先红（未知命令退出码 1）。然后 HOME 与 XDG 的目录哈希不变，stderr 是 `TOOLKIT_SEARCH_UNVERIFIED`，输出不含 `skills.sh`。`npm run lint` 通过（测试类型基线 0、eslint 0 error / 42 warning、depcruise 120 modules / 717 dependencies，15 条已知循环）。`npm test` 88 文件 / 840 项通过。插入 42 行。
+- 未做：推送。版本仍是 2.0.2。M3-T7 未做。
+
 ## 2026-10-21 · M3-T5 bundle 只展开已解析的 include
 
 - bundle 的每个 include 单独记一条结果。lock 里是 `local` 或 `fetched` 的 include 记为从 lock 展开。没有 hash 的 include 记为未解析，不因此去抓取，也不安装。

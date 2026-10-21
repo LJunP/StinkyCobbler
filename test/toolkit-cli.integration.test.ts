@@ -436,6 +436,21 @@ describe("toolkit cli", () => {
     expect(await readFile(path.join(home, ".codex", "skills", "review", "SKILL.md"), "utf8")).toBe(body);
     await expect(readFile(path.join(home, ".codex", "skills", "remote-skill", "SKILL.md"), "utf8")).rejects.toThrow();
   });
+
+  it("fails closed on toolkit search and writes nothing", async () => {
+    const home = await tempDir("stinky-toolkit-search-home-");
+    const xdg = await tempDir("stinky-toolkit-search-xdg-");
+    const env = childEnv(home, xdg);
+    const homeBefore = await treeHash(home);
+    const xdgBefore = await treeHash(xdg);
+    const failure = await fail(env, "toolkit", "search", "review", "--json");
+    expect(failure.code).toBe(2);
+    expect(JSON.parse(failure.stderr ?? "{}")).toMatchObject({ error: "TOOLKIT_SEARCH_UNVERIFIED" });
+    expect(`${failure.stdout ?? ""}\n${failure.stderr ?? ""}`).not.toContain("skills.sh");
+    expect(await treeHash(home)).toBe(homeBefore);
+    expect(await treeHash(xdg)).toBe(xdgBefore);
+    await expect(readFile(path.join(home, ".codex", "skills", "remote-skill", "SKILL.md"), "utf8")).rejects.toThrow();
+  });
 });
 
 async function commitSkillRepo(repo: string, body: string, marker: string): Promise<void> {

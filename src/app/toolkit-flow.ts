@@ -86,6 +86,12 @@ export async function lockToolkit(scopeFlag?: string): Promise<ToolkitLock> {
   return lock;
 }
 
+export function searchToolkit(query: string): never {
+  // The directory API is unverified, so the query is discarded and nothing is fetched.
+  void query;
+  throw toolkitError("TOOLKIT_SEARCH_UNVERIFIED", "The skills directory API is not verified. Search writes nothing.");
+}
+
 export async function rollbackToolkit(options: { last?: boolean | undefined; to?: string | undefined }): Promise<RollbackReport> {
   if (options.last !== true && options.to === undefined) throw toolkitError("TOOLKIT_ROLLBACK_TARGET", "Pass --last or --to <applyId>.");
   if (options.to !== undefined) await assertLastApply(options.to);
