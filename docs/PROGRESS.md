@@ -2,6 +2,15 @@
 
 > 只追加，最新在上。每条：日期 / 任务 / 做了什么 / 验证 / 待办与问题。
 
+## 2026-10-21 · M1-T8 SKILL 模板单源
+
+- 新增 `templates/skill-core.md`、`templates/hosts/codex.md`、`templates/hosts/zcode.md`、`scripts/render-skills.mjs`。核心模板不含 Codex 或 ZCode。两份已提交的 SKILL.md 由同一核心加宿主片段生成，重新生成不改变这两个文件。
+- `.zcode/commands/stinky-cobbler.md` 没有对应的 Codex 命令文件，所以不从这套模板生成。
+- 两份 SKILL 的措辞断言收成共享不变量：Never auto-approve、输出四段（结果 / 证据 / 边界 / 下一步）、Cooperative Mode、UNKNOWN/PENDING、expectedPreimageHash、Delete is never auto-allowed、TaskAuthority，以及不出现“数据全部留在本地”“不依赖任何云服务”“零配置直接用”。ZCode 仍要求 via 选择不得代选。README、SECURITY 和变更记录的断言留在同一测试里，它们不是两份 skill 的重复散文。
+- 没有改 CI 工作流。现有 `npm test` 会执行 `scripts/render-skills.mjs --check`。
+- 验证：先让渲染结果与现有 SKILL 字节相同，再改测试。`npm run lint` 通过（测试类型基线 0、eslint 0 error / 42 warning、depcruise 106 modules / 633 dependencies，15 条已知循环）。`npm test` 82 文件 / 811 项通过。
+- 未做：推送。`src/` 顶层仍有 config、entry、security、contracts，M1 出口的目录收敛还没做。
+
 ## 2026-10-21 · M1-T7 删除未执行的配置
 
 - 删了 `policies/default-approvals.yaml`、`policies/default-data-classification.yaml`、`policies/templates.yaml`、`schemas/templates-policy.schema.json`、`src/gate/mcp/test-run.ts`。`plugins/builtin.yaml` 只保留 repository-read、git-read、docs-index、internal 的 test-run。账本事件名 `test-run` 还在。

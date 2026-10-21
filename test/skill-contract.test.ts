@@ -1,52 +1,53 @@
+import { execFile } from "node:child_process";
 import { describe, expect, it } from "vitest";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { promisify } from "node:util";
+import { parseSlots, renderSkill } from "../scripts/render-skills.mjs";
+
+const execFileAsync = promisify(execFile);
+const projectRoot = path.resolve(import.meta.dirname, "..");
 
 async function readRepoFile(relativePath: string): Promise<string> {
-  return readFile(path.resolve(import.meta.dirname, "..", relativePath), "utf8");
+  return readFile(path.resolve(projectRoot, relativePath), "utf8");
 }
 
 describe("host skill documentation contract", () => {
-  it("keeps ZCode mode selection explicit and preserves evidence classifications", async () => {
-    const [skill, command] = await Promise.all([
-      readRepoFile(".zcode/skills/stinky-cobbler/SKILL.md"),
-      readRepoFile(".zcode/commands/stinky-cobbler.md"),
-    ]);
-
-    expect(skill).toContain("never make the choice");
-    expect(skill).toContain("never silently default");
-    expect(command).toContain("不得静默使用默认值");
-    for (const classification of ["FACT", "DECISION", "PROPOSAL", "UNKNOWN"]) {
-      expect(skill).toContain(classification);
-    }
+  it("regenerates Codex and ZCode skills from one core plus host fragments", async () => {
+    const check = await execFileAsync(process.execPath, ["scripts/render-skills.mjs", "--check"], { cwd: projectRoot });
+    expect(check.stderr).toBe("");
+    const core = await readRepoFile("templates/skill-core.md");
+    expect(core).not.toMatch(/Codex|ZCode/);
+    const codex = renderSkill(core, parseSlots(await readRepoFile("templates/hosts/codex.md")));
+    const zcode = renderSkill(core, parseSlots(await readRepoFile("templates/hosts/zcode.md")));
+    expect(codex).toBe(await readRepoFile(".codex/skills/stinky-cobbler/SKILL.md"));
+    expect(zcode).toBe(await readRepoFile(".zcode/skills/stinky-cobbler/SKILL.md"));
+    expect(codex).not.toBe(zcode);
   });
 
-  it("contracts both host skills to a candidate repository permission/change gate", async () => {
-    const documents = await Promise.all([
-      readRepoFile(".zcode/skills/stinky-cobbler/SKILL.md"),
+  it("keeps eight shared skill invariants and the ZCode via choice", async () => {
+    const [codex, zcode, command] = await Promise.all([
       readRepoFile(".codex/skills/stinky-cobbler/SKILL.md"),
-      readRepoFile(".zcode/commands/stinky-cobbler.md"),
+      readRepoFile(".zcode/skills/stinky-cobbler/SKILL.md"),
+      readRepoFile(".zcode/commands/stinky-cobbler.md")
     ]);
-
-    for (const document of documents) {
-      expect(document).toMatch(/source candidate|源码候选|candidate bytes|候选 bytes/iu);
-      expect(document).toMatch(/UNKNOWN\/?PENDING|UNKNOWN\s*\/\s*PENDING/iu);
-      expect(document).toContain("Cooperative Mode");
-      expect(document).toContain("本地仓库");
-      expect(document).toContain("TaskAuthority");
-      expect(document).toContain("expectedPreimageHash");
-      expect(document).toContain("write-confirm");
-      expect(document).toMatch(/auto-allow.*(?:只|only).*write-confirm/isu);
-      expect(document).toMatch(/delete.*(?:never|永不).*auto-allow/isu);
-      expect(document).toMatch(/AbortSignal/iu);
-      expect(document).toMatch(/(?:不是|not).*?(?:硬中断|(?:hard\s+)?[^.\n]*kill)/isu);
-      expect(document).toMatch(/sameSourceReview|same-source review/iu);
-      expect(document).toMatch(/(?:没有|no).*?(?:CAS|Context\/Memory)/isu);
-      expect(document).not.toContain("零配置直接用");
-      expect(document).not.toContain("数据全部留在本地");
-      expect(document).not.toContain("不依赖任何云服务");
-      expect(document).not.toContain("结构化上下文/记忆留待 2.1");
+    for (const skill of [codex, zcode]) {
+      expect(skill).toContain("Never auto-approve");
+      expect(skill).toContain("结果：");
+      expect(skill).toContain("证据：");
+      expect(skill).toContain("边界：");
+      expect(skill).toContain("下一步：");
+      expect(skill).toContain("Cooperative Mode");
+      expect(skill).toContain("UNKNOWN/PENDING");
+      expect(skill).toContain("expectedPreimageHash");
+      expect(skill).toContain("Delete is never auto-allowed");
+      expect(skill).toContain("TaskAuthority");
+      expect(skill).not.toContain("数据全部留在本地");
+      expect(skill).not.toContain("不依赖任何云服务");
+      expect(skill).not.toContain("零配置直接用");
     }
+    expect(zcode).toContain("never make the choice");
+    expect(command).toContain("不得静默使用默认值");
   });
 
   it("documents the exact TaskAuthority, Approval, and preimage boundaries", async () => {
