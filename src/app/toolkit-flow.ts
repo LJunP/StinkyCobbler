@@ -6,7 +6,7 @@ import process from "node:process";
 import { parse as parseYaml } from "yaml";
 import { plan, type FileOp, type KindSupport, type PlanSources, type ToolkitPlan } from "../core/plan/plan.js";
 import { ARTIFACT_KINDS, type ArtifactKind } from "../core/toolkit/kinds.js";
-import { buildToolkitLock, isRemoteToolkitSource, type LockBodies, type ToolkitLock } from "../core/toolkit/lock.js";
+import { buildToolkitLock, isRemoteToolkitSource, parseToolkitLock, type LockBodies, type ToolkitLock } from "../core/toolkit/lock.js";
 import { parseToolkitSpec, type ToolkitSpec } from "../core/toolkit/spec.js";
 import { ExitCode, StinkyCobblerError } from "../errors.js";
 import type { DocumentedEnvExpansion, HostScope } from "../hosts/host-adapter.js";
@@ -14,6 +14,7 @@ import { hostAdapters } from "../hosts/registry.js";
 import { readToolkitEvents } from "../io/ledger.js";
 import { resolveConfigHome } from "../io/tiered-config.js";
 import { apply, type ApplyReport } from "./apply.js";
+import { blobDirectory, sourcesFromLock, writeLockedBlobs } from "./toolkit-blobs.js";
 import { observe, type HostObservation } from "./observe.js";
 import { rollbackLast, type RollbackReport } from "./rollback.js";
 
@@ -51,7 +52,8 @@ export async function planToolkit(scopeFlag?: string): Promise<ToolkitPlan & { d
 }
 
 export async function applyToolkit(options: { scope?: string | undefined; yes?: boolean | undefined }): Promise<ApplyReport> {
-  const toolkitPlan = await buildPlan(options.scope);
+  const loaded = await loadToolkit(options.scope);
+  const toolkitPlan = await planLoaded(loaded, await applySources(loaded));
   refuseUnsafeApply(toolkitPlan, options.yes === true);
   return apply(toolkitPlan);
 }
@@ -72,7 +74,9 @@ export async function listToolkit(scopeFlag?: string): Promise<HostObservation[]
 
 export async function lockToolkit(scopeFlag?: string): Promise<ToolkitLock> {
   const loaded = await loadToolkit(scopeFlag);
-  const lock = buildToolkitLock(loaded.spec, await lockBodies(loaded.spec));
+  const bodies = await lockBodies(loaded.spec);
+  const lock = buildToolkitLock(loaded.spec, bodies);
+  await writeLockedBlobs(blobDirectory(loaded.specPath), lock, bodies);
   await writeFile(path.join(path.dirname(loaded.specPath), "toolkit.lock"), `${JSON.stringify(lock, null, 2)}\n`, { mode: 0o600 });
   return lock;
 }
@@ -87,9 +91,23 @@ async function buildPlan(scopeFlag?: string): Promise<ToolkitPlan> {
   return planLoaded(await loadToolkit(scopeFlag));
 }
 
-async function planLoaded(loaded: LoadedToolkit): Promise<ToolkitPlan> {
+async function planLoaded(loaded: LoadedToolkit, sources?: PlanSources): Promise<ToolkitPlan> {
   const observations = await observe(observationInput(loaded));
-  return plan(loaded.spec, observations, { support: kindSupport(), sources: await sourceBodies(loaded.spec) });
+  return plan(loaded.spec, observations, { support: kindSupport(), sources: sources ?? (await sourceBodies(loaded.spec)) });
+}
+
+async function applySources(loaded: LoadedToolkit): Promise<PlanSources> {
+  if (loaded.spec.skills.length === 0 && loaded.spec.instructions.length === 0) return {};
+  return sourcesFromLock(blobDirectory(loaded.specPath), loaded.spec, await readToolkitLock(loaded.specPath));
+}
+
+async function readToolkitLock(specPath: string): Promise<ToolkitLock> {
+  try {
+    return parseToolkitLock(JSON.parse(await readFile(path.join(path.dirname(specPath), "toolkit.lock"), "utf8")) as unknown);
+  } catch (error: unknown) {
+    if (isCode(error, "ENOENT")) throw toolkitError("TOOLKIT_LOCK_REQUIRED", "Run toolkit lock before apply.");
+    throw error;
+  }
 }
 
 function observationInput(loaded: LoadedToolkit): Parameters<typeof observe>[0] {

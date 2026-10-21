@@ -139,6 +139,7 @@ describe("toolkit cli", () => {
     expect(planned.diffs).toHaveLength(2);
     expect(plannedText).not.toContain(secret);
     expect(await treeHash(home)).toBe(before);
+    await run(env, "toolkit", "lock", "--json");
 
     const refused = await fail(env, "toolkit", "apply", "--json");
     expect(refused.code).toBe(2);
@@ -244,5 +245,68 @@ describe("toolkit cli", () => {
     const written = JSON.parse(await readFile(path.join(xdg, "stinky-cobbler", "toolkit.lock"), "utf8")) as { entries: unknown[] };
     expect(written.entries).toEqual(lock.entries);
     expect(await treeHash(home)).toBe(before);
+  });
+
+  it("applies the locked skill bytes after the source file changes", async () => {
+    const home = await tempDir("stinky-toolkit-apply-lock-home-");
+    const xdg = await tempDir("stinky-toolkit-apply-lock-xdg-");
+    const source = await tempDir("stinky-toolkit-apply-lock-source-");
+    const env = childEnv(home, xdg);
+    const locked = "locked body\n";
+    const skillFile = path.join(source, "SKILL.md");
+    await writeFile(skillFile, locked);
+    await run(env, "toolkit", "init", "--json");
+    await writeFile(path.join(xdg, "stinky-cobbler", "toolkit.yaml"), [
+      "version: 1",
+      "scope: user",
+      "hosts:",
+      "  - codex",
+      "skills:",
+      "  - id: review",
+      `    source: ${JSON.stringify(source)}`,
+      "mcpServers: []",
+      "instructions: []",
+      "bundles: []",
+      ""
+    ].join("\n"));
+    await run(env, "toolkit", "lock", "--json");
+    await writeFile(skillFile, "refetched body\n");
+    const applied = JSON.parse((await run(env, "toolkit", "apply", "--yes", "--json")).stdout) as { stopped: boolean };
+    expect(applied.stopped).toBe(false);
+    expect(await readFile(path.join(home, ".codex", "skills", "review", "SKILL.md"), "utf8")).toBe(locked);
+    expect(await readFile(skillFile, "utf8")).toBe("refetched body\n");
+  });
+
+  it("does not read the source when the locked blob is missing", async () => {
+    const home = await tempDir("stinky-toolkit-blob-home-");
+    const xdg = await tempDir("stinky-toolkit-blob-xdg-");
+    const source = await tempDir("stinky-toolkit-blob-source-");
+    const env = childEnv(home, xdg);
+    const locked = "locked body\n";
+    const skillFile = path.join(source, "SKILL.md");
+    await writeFile(skillFile, locked);
+    await run(env, "toolkit", "init", "--json");
+    await writeFile(path.join(xdg, "stinky-cobbler", "toolkit.yaml"), [
+      "version: 1",
+      "scope: user",
+      "hosts:",
+      "  - codex",
+      "skills:",
+      "  - id: review",
+      `    source: ${JSON.stringify(source)}`,
+      "mcpServers: []",
+      "instructions: []",
+      "bundles: []",
+      ""
+    ].join("\n"));
+    await run(env, "toolkit", "lock", "--json");
+    await writeFile(skillFile, "refetched body\n");
+    const digest = createHash("sha256").update(locked).digest("hex");
+    await rm(path.join(xdg, "stinky-cobbler", "blobs", digest));
+    const failure = await fail(env, "toolkit", "apply", "--yes", "--json");
+    expect(failure.code).toBe(2);
+    expect(JSON.parse(failure.stderr ?? "{}")).toMatchObject({ error: "TOOLKIT_LOCK_BLOB_MISSING" });
+    await expect(readFile(path.join(home, ".codex", "skills", "review", "SKILL.md"), "utf8")).rejects.toThrow();
+    expect(await readFile(skillFile, "utf8")).toBe("refetched body\n");
   });
 });

@@ -2,6 +2,14 @@
 
 > 只追加，最新在上。每条：日期 / 任务 / 做了什么 / 验证 / 待办与问题。
 
+## 2026-10-21 · M3-T2 apply 使用锁定字节
+
+- `toolkit lock` 把本地正文写到规格旁边的 `blobs/<sha256>`。`toolkit apply` 在有 skill 或指令时必须先有 `toolkit.lock`，安装的是 blob 里的字节。
+- 源文件在 lock 之后被改掉，apply 仍然安装锁定时的正文。blob 缺失时返回 `TOOLKIT_LOCK_BLOB_MISSING`，不退回去读源文件。规格和 lock 对不上时返回 `TOOLKIT_LOCK_STALE`。没有 skill 和指令的空规格仍然可以直接 apply。
+- 偏差：`toolkit plan` 仍预览当前源文件，所以它可能和 apply 不同。远程来源继续是 `not-fetched`，这次不下载。
+- 验证：先红（改源文件后 apply 装上了新正文）。然后锁定正文被安装，源文件保持被改过的内容。`npm run lint` 通过（测试类型基线 0、eslint 0 error / 42 warning、depcruise 118 modules / 701 dependencies，15 条已知循环）。`npm test` 88 文件 / 836 项通过。插入 182 行。
+- 未做：推送。版本仍是 2.0.2。
+
 ## 2026-10-21 · M3-T1 toolkit.lock
 
 - 新增 `src/core/toolkit/lock.ts` 和 `toolkit lock`。锁文件写在规格旁边，JSON，版本 1。本地 skill 哈希的是 `SKILL.md` 正文，本地指令哈希的是来源文件正文。

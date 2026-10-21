@@ -46,6 +46,10 @@ export function isRemoteToolkitSource(source: string): boolean {
   return source.startsWith("git+") || source.startsWith("npm:") || source.startsWith("skills.sh:");
 }
 
+export function toolkitContentHash(body: string): string {
+  return createHash("sha256").update(body).digest("hex");
+}
+
 export function buildToolkitLock(spec: ToolkitSpec, bodies: LockBodies): ToolkitLock {
   return {
     version: 1,
@@ -65,7 +69,7 @@ export function parseToolkitLock(input: unknown): ToolkitLock {
 function lockEntry(kind: LockEntry["kind"], id: string, source: string, body: string | undefined): LockEntry {
   if (isRemoteToolkitSource(source)) return { kind, id, source, resolved: "not-fetched" };
   if (body === undefined) return { kind, id, source, resolved: "absent" };
-  return { kind, id, source, resolved: "local", sha256: createHash("sha256").update(body).digest("hex") };
+  return { kind, id, source, resolved: "local", sha256: toolkitContentHash(body) };
 }
 
 function cleanEntry(entry: z.infer<typeof lockEntrySchema>): LockEntry {
