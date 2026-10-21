@@ -19,4 +19,4 @@ The skills document also lists `.agents/skills/`, `~/.agents/skills/`, and the C
 
 Checked 2026-10-21 at https://cursor.com/docs/mcp, section "Config interpolation".
 
-Cursor documents `${env:NAME}` in `command`, `args`, `env`, `url`, and `headers`. The same section also documents `${userHome}`, `${workspaceFolder}`, `${workspaceFolderBasename}`, `${pathSeparator}`, and `${/}`. `${env:NAME}` matches the toolkit secret reference. No `cursor` binary was on PATH, so this was not executed. `capabilities.envExpansion` is not set until doctor can tell this syntax from the others.
+Cursor documents `${env:NAME}` in `command`, `args`, `env`, `url`, and `headers`. The same section also documents `${userHome}`, `${workspaceFolder}`, `${workspaceFolderBasename}`, `${pathSeparator}`, and `${/}`. `${env:NAME}` matches the toolkit secret reference. No `cursor` binary was on PATH, so this was not executed. `capabilities.envExpansion` is not set. `toolkit doctor` does not emit `SECRET_NEEDS_SHELL_ENV` for this syntax.

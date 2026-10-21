@@ -88,8 +88,9 @@ describe("toolkit cli", () => {
     const applied = JSON.parse((await run(env, "toolkit", "apply", "--json")).stdout) as { stopped: boolean; completed: unknown[] };
     expect(applied.stopped).toBe(false);
     expect(applied.completed).toEqual([]);
-    const doctor = JSON.parse((await run(env, "toolkit", "doctor", "--json")).stdout) as { drift: unknown[] };
+    const doctor = JSON.parse((await run(env, "toolkit", "doctor", "--json")).stdout) as { drift: unknown[]; secrets: unknown[] };
     expect(doctor.drift).toEqual([]);
+    expect(doctor.secrets).toEqual([]);
     expect(Array.isArray(JSON.parse((await run(env, "toolkit", "list", "--json")).stdout))).toBe(true);
     expect(await treeHash(home)).toBe(before);
 
@@ -154,10 +155,14 @@ describe("toolkit cli", () => {
     expect(await readFile(toml, "utf8")).not.toContain(secret);
 
     const doctorText = (await run(env, "toolkit", "doctor", "--json")).stdout;
-    const doctor = JSON.parse(doctorText) as { drift: unknown[]; env: unknown[]; commands: unknown[] };
+    const doctor = JSON.parse(doctorText) as { drift: unknown[]; env: unknown[]; commands: unknown[]; secrets: Array<{ code: string; hint: string }> };
     expect(doctor.drift).toEqual([]);
     expect(doctor.env).toEqual([{ name: "STINKY_TEST_FS_TOKEN", present: true }]);
     expect(doctor.commands).toEqual([{ command: "stinky-cobbler-missing-cmd", present: false }]);
+    expect(doctor.secrets).toEqual([
+      expect.objectContaining({ code: "SECRET_NEEDS_SHELL_ENV", host: "codex", name: "STINKY_TEST_FS_TOKEN" })
+    ]);
+    expect(doctor.secrets[0]?.hint).toContain("wrapper");
     expect(doctorText).not.toContain(secret);
 
     const rolled = JSON.parse((await run(env, "toolkit", "rollback", "--last", "--json")).stdout) as { restored: string[]; conflict?: unknown };
@@ -165,5 +170,41 @@ describe("toolkit cli", () => {
     expect(rolled.restored).toEqual([toml, skillFile]);
     await expect(readFile(skillFile, "utf8")).rejects.toThrow();
     await expect(readFile(toml, "utf8")).rejects.toThrow();
+  });
+
+  it("uses documented host syntax for secret hints and does not invent a ZCode result", async () => {
+    const home = await tempDir("stinky-toolkit-secret-home-");
+    const xdg = await tempDir("stinky-toolkit-secret-xdg-");
+    const env = childEnv(home, xdg, { STINKY_TEST_FS_TOKEN: secret });
+    await run(env, "toolkit", "init", "--json");
+    await writeFile(path.join(xdg, "stinky-cobbler", "toolkit.yaml"), [
+      "version: 1",
+      "scope: user",
+      "hosts:",
+      "  - zcode",
+      "  - codex",
+      "  - claude-code",
+      "  - cursor",
+      "skills: []",
+      "mcpServers:",
+      "  - id: filesystem",
+      "    transport: stdio",
+      "    command: stinky-cobbler-missing-cmd",
+      "    env:",
+      '      FS_TOKEN: "${env:STINKY_TEST_FS_TOKEN}"',
+      "instructions: []",
+      "bundles: []",
+      ""
+    ].join("\n"));
+    const text = (await run(env, "toolkit", "doctor", "--json")).stdout;
+    const doctor = JSON.parse(text) as { secrets: Array<{ code: string; host: string; name: string; hint: string }> };
+    expect(doctor.secrets.map((item) => [item.code, item.host, item.name])).toEqual([
+      ["SECRET_EXPANSION_UNKNOWN", "zcode", "STINKY_TEST_FS_TOKEN"],
+      ["SECRET_NEEDS_SHELL_ENV", "codex", "STINKY_TEST_FS_TOKEN"],
+      ["SECRET_NEEDS_SHELL_ENV", "claude-code", "STINKY_TEST_FS_TOKEN"]
+    ]);
+    expect(doctor.secrets.filter((item) => item.code === "SECRET_NEEDS_SHELL_ENV").every((item) => item.hint.includes("wrapper"))).toBe(true);
+    expect(doctor.secrets.some((item) => item.host === "cursor")).toBe(false);
+    expect(text).not.toContain(secret);
   });
 });

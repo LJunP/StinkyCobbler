@@ -21,4 +21,4 @@ Checked 2026-10-21 at https://code.claude.com/docs/en/mcp, section "Environment 
 
 The documented syntax is `${VAR}` and `${VAR:-default}` in `command`, `args`, `env`, `url`, and `headers`. An unset variable without a default stays as the literal `${VAR}` and Claude Code warns. This is not the toolkit reference `${env:NAME}`.
 
-`claude` on PATH was `/Users/lijunpeng/.local/bin/claude`, version `2.1.296 (Claude Code)`. That binary was not asked to expand a variable. `capabilities.envExpansion` is not set, because a boolean would hide this syntax.
+`claude` on PATH was `/Users/lijunpeng/.local/bin/claude`, version `2.1.296 (Claude Code)`. That binary was not asked to expand a variable. `capabilities.envExpansion` is not set, because a boolean would hide this syntax. `toolkit doctor` emits `SECRET_NEEDS_SHELL_ENV` for a toolkit `${env:NAME}` and suggests a wrapper script.

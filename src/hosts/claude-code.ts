@@ -13,6 +13,7 @@ const SERVERS = ["mcpServers"] as const;
 export const claudeCodeHost = {
   id: "claude-code",
   presenceDirectory: ".claude",
+  documentedEnvExpansion: "dollar-var",
   detect: (home) => directoryExists(path.join(home, ".claude")),
   supports: () => true,
   locate: (kind, scope, roots) => locateClaude(kind, scope, roots),

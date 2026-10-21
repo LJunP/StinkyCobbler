@@ -2,6 +2,14 @@
 
 > 只追加，最新在上。每条：日期 / 任务 / 做了什么 / 验证 / 待办与问题。
 
+## 2026-10-21 · M2-T6 doctor 密钥提示
+
+- 四个 adapter 增加 `documentedEnvExpansion`，不增加布尔 `capabilities.envExpansion`。Claude 是 `dollar-var`，Cursor 是 `dollar-env`，Codex 是 `name-forwarding`，ZCode 是 `unknown`。这些值来自上一提交核对过的官方页，不是本机展开实验。
+- `toolkit doctor` 在规格含 `${env:NAME}` 时：Claude 和 Codex 给出 `SECRET_NEEDS_SHELL_ENV`，并建议 wrapper 脚本先导出该变量名。Cursor 的文档语法与工具包一致，不给这条提示。ZCode 给出 `SECRET_EXPANSION_UNKNOWN`，不把它说成已证实的不支持。提示里只有变量名，没有变量值。
+- 偏差：计划里的布尔值会把三种已核实写法和一种未知压扁，所以没有写。没有宿主二进制参与展开。`claude` 2.1.296 只用来看版本；`codex`、`cursor`、`zcode` 不在 PATH 上。
+- 验证：先红（doctor JSON 没有 `secrets`）。然后三条 CLI 测试通过，包括空规格 `secrets: []`、只选 Codex 的 wrapper 提示、四宿主矩阵里 Cursor 不出现且 ZCode 不是 `SECRET_NEEDS_SHELL_ENV`。`npm run lint` 通过（测试类型基线 0、eslint 0 error / 42 warning、depcruise 116 modules / 689 dependencies，15 条已知循环）。`npm test` 87 文件 / 830 项通过。插入 105 行。
+- 未做：推送。版本仍是 2.0.2。M2-T8 未做，M2 总项不勾。
+
 ## 2026-10-21 · M2-T6 宿主 MCP 环境变量展开（文档，未勾完）
 
 - 只改了 `docs/hosts/*.md`。没有给 adapter 加 `capabilities.envExpansion`。一个布尔值分不清三种已核实的写法，也会把未核实的 ZCode 说成不支持。

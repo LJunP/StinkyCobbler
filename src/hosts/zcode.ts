@@ -9,6 +9,7 @@ const SERVERS = ["mcp", "servers"] as const;
 export const zcodeHost = {
   id: "zcode",
   presenceDirectory: ".zcode",
+  documentedEnvExpansion: "unknown",
   bundledSkillTemplate: path.join(".zcode", "skills", "stinky-cobbler", "SKILL.md"),
   bundledCommandTemplate: path.join(".zcode", "commands", "stinky-cobbler.md"),
   detect: (home) => directoryExists(path.join(home, ".zcode")),

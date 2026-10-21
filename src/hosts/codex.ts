@@ -9,6 +9,7 @@ const UNSUPPORTED_KIND = new Set<ArtifactKind>(["instructions", "command"]);
 export const codexHost = {
   id: "codex",
   presenceDirectory: ".codex",
+  documentedEnvExpansion: "name-forwarding",
   bundledSkillTemplate: path.join(".codex", "skills", "stinky-cobbler", "SKILL.md"),
   detect: (home) => directoryExists(path.join(home, ".codex")),
   supports: (kind) => !UNSUPPORTED_KIND.has(kind),

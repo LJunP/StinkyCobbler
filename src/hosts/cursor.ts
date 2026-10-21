@@ -13,6 +13,7 @@ const SERVERS = ["mcpServers"] as const;
 export const cursorHost = {
   id: "cursor",
   presenceDirectory: ".cursor",
+  documentedEnvExpansion: "dollar-env",
   detect: (home) => directoryExists(path.join(home, ".cursor")),
   supports: (kind) => kind === "skill" || kind === "mcp-server" || kind === "instructions",
   locate: (kind, scope, roots) => locateCursor(kind, scope, roots),

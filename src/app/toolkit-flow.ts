@@ -8,7 +8,7 @@ import { plan, type FileOp, type KindSupport, type PlanSources, type ToolkitPlan
 import { ARTIFACT_KINDS, type ArtifactKind } from "../core/toolkit/kinds.js";
 import { parseToolkitSpec, type ToolkitSpec } from "../core/toolkit/spec.js";
 import { ExitCode, StinkyCobblerError } from "../errors.js";
-import type { HostScope } from "../hosts/host-adapter.js";
+import type { DocumentedEnvExpansion, HostScope } from "../hosts/host-adapter.js";
 import { hostAdapters } from "../hosts/registry.js";
 import { readToolkitEvents } from "../io/ledger.js";
 import { resolveConfigHome } from "../io/tiered-config.js";
@@ -16,10 +16,18 @@ import { apply, type ApplyReport } from "./apply.js";
 import { observe, type HostObservation } from "./observe.js";
 import { rollbackLast, type RollbackReport } from "./rollback.js";
 
+export interface SecretHint {
+  code: "SECRET_NEEDS_SHELL_ENV" | "SECRET_EXPANSION_UNKNOWN";
+  host: string;
+  name: string;
+  hint: string;
+}
+
 export interface ToolkitDoctorReport {
   drift: ToolkitPlan["conflicts"];
   env: Array<{ name: string; present: boolean }>;
   commands: Array<{ command: string; present: boolean }>;
+  secrets: SecretHint[];
 }
 
 interface LoadedToolkit {
@@ -48,7 +56,12 @@ export async function applyToolkit(options: { scope?: string | undefined; yes?: 
 
 export async function doctorToolkit(scopeFlag?: string): Promise<ToolkitDoctorReport> {
   const loaded = await loadToolkit(scopeFlag);
-  return { drift: (await planLoaded(loaded)).conflicts, env: envPresence(loaded.spec), commands: await commandPresence(loaded.spec) };
+  return {
+    drift: (await planLoaded(loaded)).conflicts,
+    env: envPresence(loaded.spec),
+    commands: await commandPresence(loaded.spec),
+    secrets: secretHints(loaded.spec)
+  };
 }
 
 export async function listToolkit(scopeFlag?: string): Promise<HostObservation[]> {
@@ -191,6 +204,33 @@ function refuseUnsafeApply(toolkitPlan: ToolkitPlan, yes: boolean): void {
     });
   }
   if (toolkitPlan.ops.length > 0 && !yes) throw toolkitError("TOOLKIT_CONFIRM_REQUIRED", "Pass --yes to apply a non-empty toolkit plan.");
+}
+
+function secretHints(spec: ToolkitSpec): SecretHint[] {
+  const names = envPresence(spec).map((item) => item.name);
+  if (names.length === 0) return [];
+  const hosts = spec.hosts ?? hostAdapters.map((adapter) => adapter.id);
+  const hints: SecretHint[] = [];
+  for (const host of hosts) {
+    const syntax = hostAdapters.find((adapter) => adapter.id === host)?.documentedEnvExpansion;
+    for (const name of names) {
+      const hint = syntax === undefined ? undefined : secretHint(host, syntax, name);
+      if (hint !== undefined) hints.push(hint);
+    }
+  }
+  return hints;
+}
+
+function secretHint(host: string, syntax: DocumentedEnvExpansion, name: string): SecretHint | undefined {
+  if (syntax === "dollar-env") return undefined;
+  if (syntax === "unknown")
+    return { code: "SECRET_EXPANSION_UNKNOWN", host, name, hint: `${host} MCP env expansion is not documented. Do not assume \${env:NAME} is expanded.` };
+  return { code: "SECRET_NEEDS_SHELL_ENV", host, name, hint: wrapperHint(host, syntax, name) };
+}
+
+function wrapperHint(host: string, syntax: "dollar-var" | "name-forwarding", name: string): string {
+  const reason = syntax === "dollar-var" ? `${host} expands \${VAR}, not \${env:NAME}.` : `${host} stores literal env values and forwards variables by name.`;
+  return `${reason} Use a wrapper script that exports ${name} before the server starts.`;
 }
 
 function envPresence(spec: ToolkitSpec): ToolkitDoctorReport["env"] {
