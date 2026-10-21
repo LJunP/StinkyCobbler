@@ -1,5 +1,5 @@
 import type { Command } from "commander";
-import { applyToolkit, doctorToolkit, initToolkit, listToolkit, planToolkit, rollbackToolkit } from "./toolkit-flow.js";
+import { applyToolkit, doctorToolkit, initToolkit, listToolkit, lockToolkit, planToolkit, rollbackToolkit } from "./toolkit-flow.js";
 
 interface ToolkitOptions {
   json?: boolean;
@@ -17,6 +17,7 @@ export function registerToolkitCommands(program: Command): void {
   bind(toolkit, "rollback", ["--last", "--to <applyId>"], (options) => rollbackToolkit({ last: options.last, to: options.to }));
   bind(toolkit, "doctor", ["--scope <scope>"], (options) => doctorToolkit(options.scope));
   bind(toolkit, "list", ["--scope <scope>"], (options) => listToolkit(options.scope));
+  bind(toolkit, "lock", ["--scope <scope>"], (options) => lockToolkit(options.scope));
 }
 
 function bind(toolkit: Command, name: string, flags: readonly string[], run: (options: ToolkitOptions) => Promise<unknown>): void {

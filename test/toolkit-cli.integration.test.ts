@@ -207,4 +207,42 @@ describe("toolkit cli", () => {
     expect(doctor.secrets.some((item) => item.host === "cursor")).toBe(false);
     expect(text).not.toContain(secret);
   });
+
+  it("writes a local content hash and does not fetch a remote source", async () => {
+    const home = await tempDir("stinky-toolkit-lock-home-");
+    const xdg = await tempDir("stinky-toolkit-lock-xdg-");
+    const source = await tempDir("stinky-toolkit-lock-source-");
+    const env = childEnv(home, xdg);
+    const body = "review the diff\n";
+    await writeFile(path.join(source, "SKILL.md"), body);
+    await run(env, "toolkit", "init", "--json");
+    await writeFile(path.join(xdg, "stinky-cobbler", "toolkit.yaml"), [
+      "version: 1",
+      "scope: user",
+      "skills:",
+      "  - id: review",
+      `    source: ${JSON.stringify(source)}`,
+      "  - id: remote-skill",
+      "    source: git+https://example.invalid/skills.git",
+      "mcpServers: []",
+      "instructions:",
+      "  - id: missing-notes",
+      `    source: ${JSON.stringify(path.join(source, "missing.md"))}`,
+      "bundles: []",
+      ""
+    ].join("\n"));
+    const before = await treeHash(home);
+    const text = (await run(env, "toolkit", "lock", "--json")).stdout;
+    const lock = JSON.parse(text) as { entries: Array<{ kind: string; id: string; resolved: string; sha256?: string }> };
+    expect(lock.entries.map((entry) => [entry.kind, entry.id, entry.resolved, entry.sha256])).toEqual([
+      ["skill", "review", "local", createHash("sha256").update(body).digest("hex")],
+      ["skill", "remote-skill", "not-fetched", undefined],
+      ["instructions", "missing-notes", "absent", undefined]
+    ]);
+    expect(lock.entries[1]).not.toHaveProperty("sha256");
+    expect(text).not.toContain("should-not-be-hashed");
+    const written = JSON.parse(await readFile(path.join(xdg, "stinky-cobbler", "toolkit.lock"), "utf8")) as { entries: unknown[] };
+    expect(written.entries).toEqual(lock.entries);
+    expect(await treeHash(home)).toBe(before);
+  });
 });

@@ -6,6 +6,7 @@ import process from "node:process";
 import { parse as parseYaml } from "yaml";
 import { plan, type FileOp, type KindSupport, type PlanSources, type ToolkitPlan } from "../core/plan/plan.js";
 import { ARTIFACT_KINDS, type ArtifactKind } from "../core/toolkit/kinds.js";
+import { buildToolkitLock, isRemoteToolkitSource, type LockBodies, type ToolkitLock } from "../core/toolkit/lock.js";
 import { parseToolkitSpec, type ToolkitSpec } from "../core/toolkit/spec.js";
 import { ExitCode, StinkyCobblerError } from "../errors.js";
 import type { DocumentedEnvExpansion, HostScope } from "../hosts/host-adapter.js";
@@ -33,6 +34,7 @@ export interface ToolkitDoctorReport {
 interface LoadedToolkit {
   spec: ToolkitSpec;
   scope: HostScope;
+  specPath: string;
 }
 
 export async function initToolkit(scopeFlag?: string): Promise<{ path: string; scope: HostScope; detectedHosts: string[] }> {
@@ -68,6 +70,13 @@ export async function listToolkit(scopeFlag?: string): Promise<HostObservation[]
   return observe(observationInput(await loadToolkit(scopeFlag)));
 }
 
+export async function lockToolkit(scopeFlag?: string): Promise<ToolkitLock> {
+  const loaded = await loadToolkit(scopeFlag);
+  const lock = buildToolkitLock(loaded.spec, await lockBodies(loaded.spec));
+  await writeFile(path.join(path.dirname(loaded.specPath), "toolkit.lock"), `${JSON.stringify(lock, null, 2)}\n`, { mode: 0o600 });
+  return lock;
+}
+
 export async function rollbackToolkit(options: { last?: boolean | undefined; to?: string | undefined }): Promise<RollbackReport> {
   if (options.last !== true && options.to === undefined) throw toolkitError("TOOLKIT_ROLLBACK_TARGET", "Pass --last or --to <applyId>.");
   if (options.to !== undefined) await assertLastApply(options.to);
@@ -89,8 +98,9 @@ function observationInput(loaded: LoadedToolkit): Parameters<typeof observe>[0] 
 
 async function loadToolkit(scopeFlag?: string): Promise<LoadedToolkit> {
   const requested = parseScope(scopeFlag) ?? "user";
-  const spec = parseToolkitSpec(parseDocument(await readSpec(specFile(requested))));
-  return { spec, scope: spec.scope ?? requested };
+  const specPath = specFile(requested);
+  const spec = parseToolkitSpec(parseDocument(await readSpec(specPath)));
+  return { spec, scope: spec.scope ?? requested, specPath };
 }
 
 function specFile(scope: HostScope): string {
@@ -161,6 +171,19 @@ function kindSupport(): KindSupport[] {
 function supportRow(host: string, kind: ArtifactKind, supported: boolean): KindSupport {
   if (supported) return { host, kind, supported };
   return { host, kind, supported, reason: `${host} does not support ${kind}.` };
+}
+
+async function lockBodies(spec: ToolkitSpec): Promise<LockBodies> {
+  const skills: Record<string, string | undefined> = {};
+  const instructions: Record<string, string | undefined> = {};
+  for (const skill of spec.skills) skills[skill.id] = await localBody(skill.source, true);
+  for (const item of spec.instructions) instructions[item.id] = await localBody(item.source, false);
+  return { skills, instructions };
+}
+
+async function localBody(source: string, skill: boolean): Promise<string | undefined> {
+  if (isRemoteToolkitSource(source)) return undefined;
+  return readIfFile(skill ? localSkillFile(source) : localTextFile(source));
 }
 
 async function sourceBodies(spec: ToolkitSpec): Promise<PlanSources> {

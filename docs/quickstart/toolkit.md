@@ -23,4 +23,6 @@ node dist/cli.js toolkit doctor --json
 
 `toolkit list --json` 列出已观察的 skill 和 MCP。instructions 和 command 还没有观察。
 
+`toolkit lock` 在规格旁边写 `toolkit.lock`。本地 skill 或指令文件记录正文的 sha256。`git+`、`npm:` 和 `skills.sh:` 记为未抓取，没有 hash。找不到的本地文件记为 `absent`。这个命令不下载，也不改宿主目录。`apply` 还没有改用这份 lock。
+
 `gate` 命令组仍可用，已 deprecated，不再扩展。

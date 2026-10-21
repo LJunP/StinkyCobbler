@@ -2,6 +2,14 @@
 
 > 只追加，最新在上。每条：日期 / 任务 / 做了什么 / 验证 / 待办与问题。
 
+## 2026-10-21 · M3-T1 toolkit.lock
+
+- 新增 `src/core/toolkit/lock.ts` 和 `toolkit lock`。锁文件写在规格旁边，JSON，版本 1。本地 skill 哈希的是 `SKILL.md` 正文，本地指令哈希的是来源文件正文。
+- `git+`、`npm:`、`skills.sh:` 记为 `not-fetched`，即使调用方塞了正文也不写 hash。找不到的本地文件记为 `absent`，也不写 hash。`parseToolkitLock` 拒绝给未抓取或缺失来源带 hash。
+- 偏差：这次不锁 MCP `sources` 和 bundle，那两项分别留给 M4 和 M3-T5。`apply` 还不用这份 lock，那是 M3-T2。没有访问网络。
+- 验证：先红（`src/core/toolkit/lock.ts` 不存在）。然后本地哈希与独立 sha256 一致，远程条目没有 `sha256`，HOME 目录哈希不变。`npm run lint` 通过（测试类型基线 0、eslint 0 error / 42 warning、depcruise 117 modules / 694 dependencies，15 条已知循环）。`npm test` 88 文件 / 834 项通过。插入 204 行。
+- 未做：推送。版本仍是 2.0.2。
+
 ## 2026-10-21 · M3 任务拆分
 
 - 按架构评审 §3.5 把 M3 拆成 M3-T1 到 M3-T7，写进 `docs/PLAN.md`。还没有实现。

@@ -39,7 +39,7 @@
 
 只做架构评审 §3.5 点名的范围。`skills.sh` 的 API 还没核实，`toolkit search` 在核实前必须失败关闭。
 
-- [ ] M3-T1 `toolkit.lock` 记录来源解析结果和内容 hash，不访问网络
+- [x] M3-T1 `toolkit.lock` 记录来源解析结果和内容 hash，不访问网络
 - [ ] M3-T2 本地来源的 apply 使用 lock 里的字节，不重新读取已锁定正文
 - [ ] M3-T3 `git+` 来源下载到隔离目录；plan 展示 diff，确认后才应用；不执行来源内脚本
 - [ ] M3-T4 `npm:` 来源同样只使用已锁定内容，不执行脚本
