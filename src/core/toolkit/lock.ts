@@ -70,7 +70,7 @@ export function parseToolkitLock(input: unknown): ToolkitLock {
 }
 
 function lockEntry(kind: LockEntry["kind"], id: string, source: string, body: string | undefined, fetched: string | undefined): LockEntry {
-  if (source.startsWith("git+")) {
+  if (source.startsWith("git+") || source.startsWith("npm:")) {
     if (fetched === undefined) return { kind, id, source, resolved: "not-fetched" };
     return { kind, id, source, resolved: "fetched", sha256: toolkitContentHash(fetched) };
   }

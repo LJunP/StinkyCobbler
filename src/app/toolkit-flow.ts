@@ -15,6 +15,7 @@ import { readToolkitEvents } from "../io/ledger.js";
 import { resolveConfigHome } from "../io/tiered-config.js";
 import { apply, type ApplyReport } from "./apply.js";
 import { fetchGitSkills } from "./git-source.js";
+import { fetchNpmSkills } from "./npm-source.js";
 import { blobDirectory, sourcesFromLock, writeLockedBlobs } from "./toolkit-blobs.js";
 import { observe, type HostObservation } from "./observe.js";
 import { rollbackLast, type RollbackReport } from "./rollback.js";
@@ -76,7 +77,8 @@ export async function listToolkit(scopeFlag?: string): Promise<HostObservation[]
 export async function lockToolkit(scopeFlag?: string): Promise<ToolkitLock> {
   const loaded = await loadToolkit(scopeFlag);
   const bodies = await lockBodies(loaded.spec);
-  const fetchedSkills = await fetchGitSkills(loaded.spec, path.join(path.dirname(loaded.specPath), "sources"));
+  const sourceRoot = path.join(path.dirname(loaded.specPath), "sources");
+  const fetchedSkills = { ...(await fetchGitSkills(loaded.spec, sourceRoot)), ...(await fetchNpmSkills(loaded.spec, sourceRoot)) };
   const lockBodiesWithFetch = { ...bodies, fetchedSkills };
   const lock = buildToolkitLock(loaded.spec, lockBodiesWithFetch);
   await writeLockedBlobs(blobDirectory(loaded.specPath), lock, lockBodiesWithFetch);
@@ -112,7 +114,7 @@ async function planSources(loaded: LoadedToolkit): Promise<PlanSources> {
   const locked = await sourcesFromLock(blobDirectory(loaded.specPath), loaded.spec, lock);
   const skills = live.skills ?? {};
   for (const skill of loaded.spec.skills) {
-    const body = skill.source.startsWith("git+") ? locked.skills?.[skill.id] : undefined;
+    const body = skill.source.startsWith("git+") || skill.source.startsWith("npm:") ? locked.skills?.[skill.id] : undefined;
     if (body !== undefined) skills[skill.id] = body;
   }
   return { ...live, skills };

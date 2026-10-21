@@ -2,6 +2,14 @@
 
 > 只追加，最新在上。每条：日期 / 任务 / 做了什么 / 验证 / 待办与问题。
 
+## 2026-10-21 · M3-T4 npm 来源
+
+- `npm:` 的本地包目录只读取 `package.json` 和 `SKILL.md`，不调用 `npm pack` 或 `npm install`。npm 10.9.8 在给本地目录执行 `npm pack --ignore-scripts` 时仍会跑 `prepare`，所以这条路不能用。
+- `npm:name@version` 用 `npm view` 取 tarball 地址，再只抽出 `package/SKILL.md`。不安装，不执行包脚本。这次测试没有走这条网络路径。
+- 锁定后的正文写入 blob。源文件之后改掉，`apply --yes` 仍安装锁定字节。没有 `--yes` 不安装。包里的 `prepare` 没有写出标记文件。`skills.sh:` 仍然不抓取。
+- 验证：先红（`npm:` 仍是 `not-fetched`）。然后哈希与独立 sha256 一致，脚本没有运行。`npm run lint` 通过（测试类型基线 0、eslint 0 error / 42 warning、depcruise 120 modules / 717 dependencies，15 条已知循环）。`npm test` 88 文件 / 838 项通过。插入 153 行。
+- 未做：推送。版本仍是 2.0.2。
+
 ## 2026-10-21 · M3-T3 git+ 来源
 
 - `toolkit lock` 对 `git+file:` 和 `git+https:` 的 skill 做 bare clone，目录在规格旁边的 `sources/`。只读 `SKILL.md`（`#subdir` 是仓库内目录）。不 checkout。hook、attributes 和模板都被关掉，所以仓库里的脚本不会跑。
