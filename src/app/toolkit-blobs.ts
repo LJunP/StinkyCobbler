@@ -12,8 +12,8 @@ export function blobDirectory(specPath: string): string {
 export async function writeLockedBlobs(directory: string, lock: ToolkitLock, bodies: LockBodies): Promise<void> {
   await mkdir(directory, { recursive: true, mode: 0o700 });
   for (const entry of lock.entries) {
-    if (entry.resolved !== "local" || entry.sha256 === undefined) continue;
-    const body = entry.kind === "skill" ? bodies.skills[entry.id] : bodies.instructions[entry.id];
+    if (!storesBytes(entry) || entry.sha256 === undefined) continue;
+    const body = lockedText(entry, bodies);
     if (body === undefined || toolkitContentHash(body) !== entry.sha256) {
       throw blobError("TOOLKIT_LOCK_DRIFT", "Locked body does not match its content hash.");
     }
@@ -48,8 +48,17 @@ async function writeBlob(directory: string, digest: string, body: string): Promi
 async function lockedBody(directory: string, lock: ToolkitLock, kind: LockEntry["kind"], id: string, source: string): Promise<string | undefined> {
   const entry = lock.entries.find((item) => item.kind === kind && item.id === id);
   if (entry === undefined || entry.source !== source) throw blobError("TOOLKIT_LOCK_STALE", "Run toolkit lock again before apply.");
-  if (entry.resolved !== "local" || entry.sha256 === undefined) return undefined;
+  if (!storesBytes(entry) || entry.sha256 === undefined) return undefined;
   return readBlob(directory, entry.sha256);
+}
+
+function storesBytes(entry: LockEntry): boolean {
+  return entry.resolved === "local" || entry.resolved === "fetched";
+}
+
+function lockedText(entry: LockEntry, bodies: LockBodies): string | undefined {
+  if (entry.kind === "skill") return entry.resolved === "fetched" ? bodies.fetchedSkills?.[entry.id] : bodies.skills[entry.id];
+  return entry.resolved === "fetched" ? bodies.fetchedInstructions?.[entry.id] : bodies.instructions[entry.id];
 }
 
 async function readBlob(directory: string, digest: string): Promise<string> {

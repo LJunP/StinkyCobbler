@@ -14,6 +14,7 @@ import { hostAdapters } from "../hosts/registry.js";
 import { readToolkitEvents } from "../io/ledger.js";
 import { resolveConfigHome } from "../io/tiered-config.js";
 import { apply, type ApplyReport } from "./apply.js";
+import { fetchGitSkills } from "./git-source.js";
 import { blobDirectory, sourcesFromLock, writeLockedBlobs } from "./toolkit-blobs.js";
 import { observe, type HostObservation } from "./observe.js";
 import { rollbackLast, type RollbackReport } from "./rollback.js";
@@ -75,8 +76,10 @@ export async function listToolkit(scopeFlag?: string): Promise<HostObservation[]
 export async function lockToolkit(scopeFlag?: string): Promise<ToolkitLock> {
   const loaded = await loadToolkit(scopeFlag);
   const bodies = await lockBodies(loaded.spec);
-  const lock = buildToolkitLock(loaded.spec, bodies);
-  await writeLockedBlobs(blobDirectory(loaded.specPath), lock, bodies);
+  const fetchedSkills = await fetchGitSkills(loaded.spec, path.join(path.dirname(loaded.specPath), "sources"));
+  const lockBodiesWithFetch = { ...bodies, fetchedSkills };
+  const lock = buildToolkitLock(loaded.spec, lockBodiesWithFetch);
+  await writeLockedBlobs(blobDirectory(loaded.specPath), lock, lockBodiesWithFetch);
   await writeFile(path.join(path.dirname(loaded.specPath), "toolkit.lock"), `${JSON.stringify(lock, null, 2)}\n`, { mode: 0o600 });
   return lock;
 }
@@ -93,7 +96,26 @@ async function buildPlan(scopeFlag?: string): Promise<ToolkitPlan> {
 
 async function planLoaded(loaded: LoadedToolkit, sources?: PlanSources): Promise<ToolkitPlan> {
   const observations = await observe(observationInput(loaded));
-  return plan(loaded.spec, observations, { support: kindSupport(), sources: sources ?? (await sourceBodies(loaded.spec)) });
+  return plan(loaded.spec, observations, { support: kindSupport(), sources: sources ?? (await planSources(loaded)) });
+}
+
+async function planSources(loaded: LoadedToolkit): Promise<PlanSources> {
+  const live = await sourceBodies(loaded.spec);
+  const file = path.join(path.dirname(loaded.specPath), "toolkit.lock");
+  let lock: ToolkitLock;
+  try {
+    lock = parseToolkitLock(JSON.parse(await readFile(file, "utf8")) as unknown);
+  } catch (error: unknown) {
+    if (isCode(error, "ENOENT")) return live;
+    throw error;
+  }
+  const locked = await sourcesFromLock(blobDirectory(loaded.specPath), loaded.spec, lock);
+  const skills = live.skills ?? {};
+  for (const skill of loaded.spec.skills) {
+    const body = skill.source.startsWith("git+") ? locked.skills?.[skill.id] : undefined;
+    if (body !== undefined) skills[skill.id] = body;
+  }
+  return { ...live, skills };
 }
 
 async function applySources(loaded: LoadedToolkit): Promise<PlanSources> {

@@ -25,6 +25,8 @@ node dist/cli.js toolkit doctor --json
 
 `toolkit lock` 在规格旁边写 `toolkit.lock`，并把本地正文存进 `blobs/<sha256>`。本地 skill 或指令文件记录正文的 sha256。`git+`、`npm:` 和 `skills.sh:` 记为未抓取，没有 hash。找不到的本地文件记为 `absent`。这个命令不下载，也不改宿主目录。
 
-有 skill 或指令时，`toolkit apply` 先要有这份 lock。它安装的是 blob 里的字节。源文件在 lock 之后改过，也不会被重新读取。blob 缺失时命令失败，不会退回去读源文件。`plan` 仍然预览当前源文件，所以它和 apply 可能不同。
+有 skill 或指令时，`toolkit apply` 先要有这份 lock。它安装的是 blob 里的字节。源文件在 lock 之后改过，也不会被重新读取。blob 缺失时命令失败，不会退回去读源文件。`plan` 对本地文件仍预览当前源文件，所以它和 apply 可能不同。
+
+`git+file:` 和 `git+https:` 的 skill 在 `toolkit lock` 时用 bare clone 放进规格旁边的 `sources/`。只读取 `SKILL.md`（`#subdir` 是仓库内的目录）。不 checkout，不运行仓库里的脚本或 hook。`plan` 展示这份锁定正文的 diff。没有 `--yes` 时 `apply` 不安装。`npm:` 和 `skills.sh:` 仍然不抓取。
 
 `gate` 命令组仍可用，已 deprecated，不再扩展。

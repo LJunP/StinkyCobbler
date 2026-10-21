@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { execFile } from "node:child_process";
-import { mkdtemp, readFile, readdir, realpath, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, readdir, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
@@ -224,7 +224,7 @@ describe("toolkit cli", () => {
       "  - id: review",
       `    source: ${JSON.stringify(source)}`,
       "  - id: remote-skill",
-      "    source: git+https://example.invalid/skills.git",
+      "    source: npm:example@1.0.0",
       "mcpServers: []",
       "instructions:",
       "  - id: missing-notes",
@@ -309,4 +309,55 @@ describe("toolkit cli", () => {
     await expect(readFile(path.join(home, ".codex", "skills", "review", "SKILL.md"), "utf8")).rejects.toThrow();
     expect(await readFile(skillFile, "utf8")).toBe("refetched body\n");
   });
+
+  it("fetches a git source into an isolated directory and applies it only after confirmation", async () => {
+    const home = await tempDir("stinky-toolkit-git-home-");
+    const xdg = await tempDir("stinky-toolkit-git-xdg-");
+    const repo = await tempDir("stinky-toolkit-git-repo-");
+    const marker = path.join(repo, "pwned.txt");
+    const body = "from git\n";
+    await commitSkillRepo(repo, body, marker);
+    const env = childEnv(home, xdg);
+    const source = `git+file://${repo}#skills/review`;
+    await run(env, "toolkit", "init", "--json");
+    await writeFile(path.join(xdg, "stinky-cobbler", "toolkit.yaml"), [
+      "version: 1",
+      "scope: user",
+      "hosts:",
+      "  - codex",
+      "skills:",
+      "  - id: review",
+      `    source: ${JSON.stringify(source)}`,
+      "mcpServers: []",
+      "instructions: []",
+      "bundles: []",
+      ""
+    ].join("\n"));
+    const locked = JSON.parse((await run(env, "toolkit", "lock", "--json")).stdout) as { entries: Array<{ resolved: string; sha256?: string }> };
+    expect(locked.entries).toEqual([
+      expect.objectContaining({ id: "review", resolved: "fetched", sha256: createHash("sha256").update(body).digest("hex") })
+    ]);
+    const before = await treeHash(home);
+    const planned = (await run(env, "toolkit", "plan", "--json")).stdout;
+    expect(planned).toContain("from git");
+    expect(await treeHash(home)).toBe(before);
+    const refused = await fail(env, "toolkit", "apply", "--json");
+    expect(refused.code).toBe(2);
+    expect(JSON.parse(refused.stderr ?? "{}")).toMatchObject({ error: "TOOLKIT_CONFIRM_REQUIRED" });
+    expect(await treeHash(home)).toBe(before);
+    const applied = JSON.parse((await run(env, "toolkit", "apply", "--yes", "--json")).stdout) as { stopped: boolean };
+    expect(applied.stopped).toBe(false);
+    expect(await readFile(path.join(home, ".codex", "skills", "review", "SKILL.md"), "utf8")).toBe(body);
+    await expect(readFile(marker, "utf8")).rejects.toThrow();
+  });
 });
+
+async function commitSkillRepo(repo: string, body: string, marker: string): Promise<void> {
+  const env = { ...process.env, GIT_AUTHOR_NAME: "Test", GIT_AUTHOR_EMAIL: "test@example.com", GIT_COMMITTER_NAME: "Test", GIT_COMMITTER_EMAIL: "test@example.com" };
+  await execFileAsync("git", ["init", repo], { env });
+  await mkdir(path.join(repo, "skills", "review"), { recursive: true });
+  await writeFile(path.join(repo, "skills", "review", "SKILL.md"), body);
+  await writeFile(path.join(repo, "skills", "review", "evil.sh"), `#!/bin/sh\necho pwned > ${JSON.stringify(marker)}\n`);
+  await execFileAsync("git", ["-C", repo, "add", "."], { env });
+  await execFileAsync("git", ["-C", repo, "commit", "-m", "skill"], { env });
+}

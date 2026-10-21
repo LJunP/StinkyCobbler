@@ -2,6 +2,14 @@
 
 > 只追加，最新在上。每条：日期 / 任务 / 做了什么 / 验证 / 待办与问题。
 
+## 2026-10-21 · M3-T3 git+ 来源
+
+- `toolkit lock` 对 `git+file:` 和 `git+https:` 的 skill 做 bare clone，目录在规格旁边的 `sources/`。只读 `SKILL.md`（`#subdir` 是仓库内目录）。不 checkout。hook、attributes 和模板都被关掉，所以仓库里的脚本不会跑。
+- 抓到的正文记为 `fetched` 并写入 blob。`plan` 展示这份正文的 diff，但不安装。没有 `--yes` 时 `apply` 不写宿主。`--yes` 之后安装的是锁定字节。
+- 偏差：这次只抓 skill，不抓 `git+` 指令。`npm:` 和 `skills.sh:` 仍然不抓取。测试用的是本地 `file:` 仓库，没有访问外网。
+- 验证：先红（`git+` 仍是 `not-fetched`）。然后本地仓库的正文被安装，仓库里的 `evil.sh` 没有写出标记文件。`npm run lint` 通过（测试类型基线 0、eslint 0 error / 42 warning、depcruise 119 modules / 709 dependencies，15 条已知循环）。`npm test` 88 文件 / 837 项通过。插入 209 行。
+- 未做：推送。版本仍是 2.0.2。
+
 ## 2026-10-21 · M3-T2 apply 使用锁定字节
 
 - `toolkit lock` 把本地正文写到规格旁边的 `blobs/<sha256>`。`toolkit apply` 在有 skill 或指令时必须先有 `toolkit.lock`，安装的是 blob 里的字节。
