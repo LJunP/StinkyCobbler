@@ -35,6 +35,16 @@
 - [ ] M2-T7 MCP 自省工具（可选）
 - [x] M2-T8 文档与 alpha 发布
 
-## M3 插件包与来源 → 3.0.0-beta.1（待拆任务）
+## M3 插件包与来源 → 3.0.0-beta.1
+
+只做架构评审 §3.5 点名的范围。`skills.sh` 的 API 还没核实，`toolkit search` 在核实前必须失败关闭。
+
+- [ ] M3-T1 `toolkit.lock` 记录来源解析结果和内容 hash，不访问网络
+- [ ] M3-T2 本地来源的 apply 使用 lock 里的字节，不重新读取已锁定正文
+- [ ] M3-T3 `git+` 来源下载到隔离目录；plan 展示 diff，确认后才应用；不执行来源内脚本
+- [ ] M3-T4 `npm:` 来源同样只使用已锁定内容，不执行脚本
+- [ ] M3-T5 bundle 只展开 lock 里已经解析的 includes
+- [ ] M3-T6 `toolkit search` 在目录 API 未核实前失败关闭，并且不写盘
+- [ ] M3-T7 `toolkit update` 重新解析来源并产出 plan diff，不直接写宿主
 
 ## M4 知识与记忆 → 3.0.0-rc.1（待拆任务）

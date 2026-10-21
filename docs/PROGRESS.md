@@ -2,6 +2,12 @@
 
 > 只追加，最新在上。每条：日期 / 任务 / 做了什么 / 验证 / 待办与问题。
 
+## 2026-10-21 · M3 任务拆分
+
+- 按架构评审 §3.5 把 M3 拆成 M3-T1 到 M3-T7，写进 `docs/PLAN.md`。还没有实现。
+- `toolkit search` 在目录 API 核实前失败关闭。不发明 skills.sh 的地址。
+- 未做：推送。M4 仍待拆。
+
 ## 2026-10-21 · M2-T8 alpha 文档
 
 - README 开头改成工具箱包管理器。新增 `docs/quickstart/toolkit.md` 和 `docs/migration/2.x-to-3.x.md`。CHANGELOG 增加 `3.0.0-alpha.1` 源码候选条目。
