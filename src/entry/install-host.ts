@@ -20,7 +20,8 @@ import {
 import { appendTomlDocument } from "../io/toml-edit.js";
 import { STINKY_COBBLER_VERSION } from "../version.js";
 import { MCP_SERVER_COMMAND, HOST_CONFIG_FILE, hostConfigHasMcpServer } from "./preflight.js";
-import { resolveHostSpec, type HostId, type HostSpec } from "./host-spec.js";
+import type { HostAdapter } from "../hosts/host-adapter.js";
+import { hostById, type HostId } from "../hosts/registry.js";
 
 export type HostScope = "user" | "workspace";
 export const COMMAND_FILE_NAME = "stinky-cobbler.md";
@@ -86,18 +87,21 @@ const KNOWN_BUNDLED_VERSIONS = new Map<string, ReadonlyMap<string, string>>([
  * `skipped`.
  */
 export async function installHost(options: InstallHostOptions = {}): Promise<InstallHostResult> {
-  const host = resolveHostSpec(options.host) ?? resolveHostSpec("zcode") as HostSpec;
+  const requestedHost = options.host ?? "zcode";
+  const host = resolveInstallAdapter(requestedHost);
   const dryRun = options.dryRun === true;
-  const paths = resolveHostPaths(host, options);
-  const command: HostFileAction = host.supportsCommandFile
-      ? await installBundledFile(host, paths.commandFile ?? "", "command file", {
+  const scope = options.scope ?? "user";
+  const roots = { home: options.homeDir ?? homedir(), cwd: options.cwd ?? process.cwd() };
+  const paths = resolveHostPaths(host, scope, roots);
+  const command: HostFileAction = paths.commandFile !== undefined
+      ? await installBundledFile(host, paths.commandFile, "command file", {
         dryRun,
         rollback: options.rollback === true,
         ...(options.commandTemplatePath === undefined ? {} : { templatePath: options.commandTemplatePath })
       })
     : {
         action: "skipped",
-        target: relativeHostPath(path.join(baseFor(host, options), "commands", COMMAND_FILE_NAME)),
+        target: relativeHostPath(path.join(scope === "user" ? roots.home : roots.cwd, host.presenceDirectory, "commands", COMMAND_FILE_NAME)),
         detail: "This host has no custom slash command mechanism; the skill and MCP entry apply."
       };
   const skill = await installBundledFile(host, paths.skillFile, "skill file", {
@@ -106,10 +110,11 @@ export async function installHost(options: InstallHostOptions = {}): Promise<Ins
     ...(options.skillTemplatePath === undefined ? {} : { templatePath: options.skillTemplatePath })
   });
   const installMcp = options.installMcp === true;
+  const mcpFormat = host.locate("mcp-server", scope === "workspace" ? "project" : "user", roots).format;
   const mcp = installMcp
     ? options.rollback === true
       ? await rollbackManagedFile(paths.configFile, "host MCP config", dryRun)
-      : await installMcpConfigFor(host, paths.configFile, {
+      : await installMcpConfigFor(mcpFormat, paths.configFile, {
           dryRun,
           mcpCommand: resolveMcpServerCommand(),
           ...(paths.legacyConfigFile === undefined ? {} : { legacyConfigFile: paths.legacyConfigFile })
@@ -118,7 +123,7 @@ export async function installHost(options: InstallHostOptions = {}): Promise<Ins
   return {
     version: 1,
     dryRun,
-    host: host.id,
+    host: requestedHost,
     command,
     skill,
     ...(mcp === undefined ? {} : { mcp })
@@ -158,27 +163,35 @@ interface HostPaths {
   legacyConfigFile?: string;
 }
 
-function baseFor(host: HostSpec, options: InstallHostOptions): string {
-  const scope = options.scope ?? "user";
-  return scope === "user"
-    ? path.join(options.homeDir ?? homedir(), host.userDir)
-    : path.join(options.cwd ?? process.cwd(), host.userDir);
+function resolveInstallAdapter(id: HostId): HostAdapter {
+  const adapter = hostById(id);
+  if (adapter === undefined || !hasBundledSkill(adapter)) {
+    throw new StinkyCobblerError("ENTRY_HOST_UNSUPPORTED", ExitCode.VALIDATION, "Bundled entry install is not available for this host.", { host: id });
+  }
+  return adapter;
 }
 
-function resolveHostPaths(host: HostSpec, options: InstallHostOptions): HostPaths {
-  const scope = options.scope ?? "user";
-  const base = baseFor(host, options);
+function hasBundledSkill(adapter: object): adapter is HostAdapter & { bundledSkillTemplate: string } {
+  return "bundledSkillTemplate" in adapter && typeof adapter.bundledSkillTemplate === "string";
+}
+
+function resolveHostPaths(host: HostAdapter, scope: HostScope, roots: { home: string; cwd: string }): HostPaths {
+  const adapterScope = scope === "workspace" ? "project" : "user";
+  const skill = host.locate("skill", adapterScope, roots);
+  const command = host.locate("command", adapterScope, roots);
+  const mcp = host.locate("mcp-server", adapterScope, roots);
+  if (skill.unsupported !== undefined || mcp.unsupported !== undefined) {
+    throw new StinkyCobblerError("ENTRY_HOST_UNSUPPORTED", ExitCode.VALIDATION, "This host has no bundled skill or MCP location.", { host: host.id });
+  }
   return {
-    ...(host.supportsCommandFile ? { commandFile: path.join(base, "commands", COMMAND_FILE_NAME) } : {}),
-    skillFile: path.join(base, host.skillHostRelative),
-    configFile: scope === "user"
-      ? path.join(base, host.mcpConfigUserRelative)
-      : path.join(options.cwd ?? process.cwd(), host.mcpConfigWorkspaceRelative),
-    ...(scope === "user" && host.id === "zcode" ? { legacyConfigFile: path.join(base, LEGACY_HOST_CONFIG_RELATIVE) } : {})
+    ...(command.unsupported === undefined ? { commandFile: path.join(command.path, COMMAND_FILE_NAME) } : {}),
+    skillFile: path.join(skill.path, "stinky-cobbler", "SKILL.md"),
+    configFile: mcp.path,
+    ...(scope === "user" && host.legacyMcpFile !== undefined ? { legacyConfigFile: host.legacyMcpFile(roots) } : {})
   };
 }
 
-async function installBundledFile(host: HostSpec, target: string, kind: string, options: { dryRun: boolean; rollback: boolean; templatePath?: string }): Promise<HostFileAction> {
+async function installBundledFile(host: HostAdapter, target: string, kind: string, options: { dryRun: boolean; rollback: boolean; templatePath?: string }): Promise<HostFileAction> {
   if (options.rollback) return rollbackManagedFile(target, kind, options.dryRun);
   const templatePath = options.templatePath ?? defaultTemplatePath(host, kind);
   const label = `${kind.charAt(0).toUpperCase()}${kind.slice(1)}`;
@@ -263,7 +276,7 @@ async function installBundledFile(host: HostSpec, target: string, kind: string, 
 }
 
 async function previewManagedUpgrade(
-  host: HostSpec,
+  host: HostAdapter,
   target: string,
   kind: string,
   label: string,
@@ -298,7 +311,7 @@ function unmanagedConflict(target: string, label: string, existing: string, curr
   };
 }
 
-async function trustedManagedVersion(host: HostSpec, target: string, kind: string, existing: string, currentHash: string): Promise<string | undefined> {
+async function trustedManagedVersion(host: HostAdapter, target: string, kind: string, existing: string, currentHash: string): Promise<string | undefined> {
   const metadata = await readManagedMetadata(target);
   if (metadata?.installedSha256 === currentHash) return metadata.productVersion;
   const known = KNOWN_BUNDLED_VERSIONS.get(`${host.id}:${kind}`)?.get(currentHash);
@@ -424,10 +437,8 @@ function detectTemplateVersion(contents: string): string | undefined {
 }
 
 
-async function installMcpConfigFor(host: HostSpec, configFile: string, options: { dryRun: boolean; mcpCommand: string; legacyConfigFile?: string }): Promise<HostFileAction> {
-  if (host.mcpConfigFormat === "toml") {
-    return installMcpConfigToml(configFile, { dryRun: options.dryRun, mcpCommand: options.mcpCommand });
-  }
+async function installMcpConfigFor(format: string, configFile: string, options: { dryRun: boolean; mcpCommand: string; legacyConfigFile?: string }): Promise<HostFileAction> {
+  if (format === "toml-mcp") return installMcpConfigToml(configFile, { dryRun: options.dryRun, mcpCommand: options.mcpCommand });
   return installMcpConfigJson(configFile, options);
 }
 
@@ -556,10 +567,11 @@ function isExactMcpServer(value: unknown, expectedCommand: string): boolean {
   return record.command === expectedCommand && Array.isArray(record.args) && record.args.length === 0;
 }
 
-function defaultTemplatePath(host: HostSpec, kind: string): string {
-  const relative = kind === "skill file"
-    ? host.skillTemplateRelative
-    : (host.commandTemplateRelative ?? path.join(host.userDir, "commands", COMMAND_FILE_NAME));
+function defaultTemplatePath(host: HostAdapter, kind: string): string {
+  const relative = kind === "skill file" ? host.bundledSkillTemplate : host.bundledCommandTemplate;
+  if (relative === undefined) {
+    throw new StinkyCobblerError("ENTRY_TEMPLATE_MISSING", ExitCode.VALIDATION, `The bundled ${kind} template is not available for this host.`, { host: host.id });
+  }
   return path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..", relative);
 }
 

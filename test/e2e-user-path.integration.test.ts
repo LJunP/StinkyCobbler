@@ -35,7 +35,7 @@ describe("end-to-end user path (temporary HOME)", () => {
     await writeFile(path.join(root, "README.md"), "original readme\n", "utf8");
 
     // 1. Installation into the temporary host.
-    await cli(home, "entry", "install-host", "--scope", "user", "--json");
+    await cli(home, "entry", "install-host", "--host", "zcode", "--scope", "user", "--json");
     const commandFile = await readFile(path.join(home, ".zcode", "commands", "stinky-cobbler.md"), "utf8");
     expect(commandFile).toContain("/stinky-cobbler");
     const skillFile = await readFile(path.join(home, ".zcode", "skills", "stinky-cobbler", "SKILL.md"), "utf8");

@@ -2,6 +2,16 @@
 
 > 只追加，最新在上。每条：日期 / 任务 / 做了什么 / 验证 / 待办与问题。
 
+## 2026-10-21 · M1-T5 HostAdapter 四宿主
+
+- 新增 `src/hosts/`。`hostAdapters` 是宿主 id 的唯一枚举。`entry/host-spec.ts` 已删除。`preflight` 和 `install-host` 改向 adapter 要路径。
+- `entry install-host` 和 `entry mcp-config` 的 `--host` 改为必填，省略时退出码 2、`ENTRY_HOST_INVALID`。`src/cli.ts` 里不再有 `"zcode"` 或 `"codex"` 字符串。库函数 `installHost()` 在没传 host 时仍默认 zcode，所以原来的单元测试不用改调用。
+- Codex 与 ZCode 的安装路径保持 2.0.1。Claude Code 与 Cursor 的路径写在 `docs/hosts/`，来源是 2026-10-21 核对过的官方文档。这两个宿主还没有内置安装模板，`installHost({ host: "claude-code" | "cursor" })` 抛 `ENTRY_HOST_UNSUPPORTED`，不写猜测路径。
+- 偏差：CLI 的 scope 仍是 `user | workspace`，adapter 的 scope 是 `user | project`。架构草稿没有 slash command 的 format，所以加了 `command-md`。Cursor 还会读 `.agents/skills` 和 Claude/Codex 的 skill 目录；adapter 只把 `.cursor/skills` 当作自己的托管路径。`CLAUDE_CONFIG_DIR` 没有接入。不带 `--host` 的 preflight 现在也会查看 Claude Code 和 Cursor 的 MCP 文件。
+- 偏差：`git diff --cached` 为 25 files，591 insertions，114 deletions。新增行数超过每任务 400。四个 adapter、conformance 和路径文档必须一次落地，否则 `host-spec` 删除后安装路径没有来源。
+- 验证：`npm run lint` 通过（测试类型基线 0、eslint 0 error / 43 warning、depcruise 106 modules / 630 dependencies，15 条已知循环，条数未增加）。`npm test` 79 文件 / 813 项通过。四个 adapter 的 conformance 通过。
+- 未做：推送。`gate/` 总行数守卫仍未加。Claude Code 与 Cursor 的真实宿主冒烟仍是未知。没有给这两个宿主做 bundled install。
+
 ## 2026-10-20 · M1-T4 tiered-config 合并策略与 user 层
 
 - 新增 `src/io/tiered-config.ts`。四份旧文件各自声明策略：`orchestration.yaml` 的 `defaults` 用 `record`，`sensitiveExtraPaths` 用 `appendOnly`；`specialists.yaml` 按 `domain` 做 keyed list；`contract-templates.yaml` 按 `name`；`templates.yaml` 用 `record`。

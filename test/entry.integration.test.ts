@@ -47,7 +47,7 @@ describe("entry CLI black-box", () => {
     const home = await realpath(await mkdtemp(path.join(tmpdir(), "stinky-entry-home-")));
     roots.push(home);
     const env = fakeHomeEnv(home);
-    const preview = JSON.parse((await cli(env, "entry", "install-host", "--scope", "user", "--dry-run", "--json")).stdout) as { command: { action: string }; skill: { action: string } };
+    const preview = JSON.parse((await cli(env, "entry", "install-host", "--host", "zcode", "--scope", "user", "--dry-run", "--json")).stdout) as { command: { action: string }; skill: { action: string } };
     expect(preview.command.action).toBe("preview");
     expect(preview.skill.action).toBe("preview");
     await expect(access(path.join(home, ".zcode", "commands", "stinky-cobbler.md"))).rejects.toBeTruthy();
@@ -58,10 +58,10 @@ describe("entry CLI black-box", () => {
     const home = await realpath(await mkdtemp(path.join(tmpdir(), "stinky-entry-install-")));
     roots.push(home);
     const env = fakeHomeEnv(home);
-    const first = JSON.parse((await cli(env, "entry", "install-host", "--scope", "user", "--json")).stdout) as { command: { action: string }; skill: { action: string } };
+    const first = JSON.parse((await cli(env, "entry", "install-host", "--host", "zcode", "--scope", "user", "--json")).stdout) as { command: { action: string }; skill: { action: string } };
     expect(first.command.action).toBe("installed");
     expect(first.skill.action).toBe("installed");
-    const second = JSON.parse((await cli(env, "entry", "install-host", "--scope", "user", "--json")).stdout) as { command: { action: string }; skill: { action: string } };
+    const second = JSON.parse((await cli(env, "entry", "install-host", "--host", "zcode", "--scope", "user", "--json")).stdout) as { command: { action: string }; skill: { action: string } };
     expect(second.command.action).toBe("ready");
     expect(second.skill.action).toBe("ready");
     await access(path.join(home, ".zcode", "commands", "stinky-cobbler.md"));
@@ -88,7 +88,7 @@ describe("entry CLI black-box", () => {
 
   it("prints a stable MCP registration template", async () => {
     const env = { ...process.env };
-    const output = JSON.parse((await cli(env, "entry", "mcp-config", "--json")).stdout) as { mcp: { servers: Record<string, { command: string; args: string[] }> } };
+    const output = JSON.parse((await cli(env, "entry", "mcp-config", "--host", "zcode", "--json")).stdout) as { mcp: { servers: Record<string, { command: string; args: string[] }> } };
     expect(output.mcp.servers["stinky-cobbler-local"]).toMatchObject({ command: expect.stringContaining("stinky-cobbler-mcp"), args: [] });
   });
 
@@ -109,6 +109,16 @@ describe("entry CLI black-box", () => {
     expect(again.skill.action).toBe("ready");
     expect(again.mcp.action).toBe("ready");
   });
+  it("rejects install-host and mcp-config when --host is omitted", async () => {
+    const env = { ...process.env };
+    const install = await cli(env, "entry", "install-host", "--scope", "user", "--json").then(() => null, (error: unknown) => error as { code: number; stderr: string });
+    const config = await cli(env, "entry", "mcp-config", "--json").then(() => null, (error: unknown) => error as { code: number; stderr: string });
+    expect(install?.code).toBe(2);
+    expect(JSON.parse(install?.stderr ?? "{}")).toMatchObject({ error: "ENTRY_HOST_INVALID" });
+    expect(config?.code).toBe(2);
+    expect(JSON.parse(config?.stderr ?? "{}")).toMatchObject({ error: "ENTRY_HOST_INVALID" });
+  });
+
   it("rejects an unknown --host on preflight with a validation exit code", async () => {
     const env = { ...process.env };
     const failure = await cli(env, "entry", "preflight", "--host", "nope", "--json").then(() => null, (error: unknown) => error as { code: number; stderr: string });

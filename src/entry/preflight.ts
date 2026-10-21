@@ -3,7 +3,7 @@ import { homedir } from "node:os";
 import path from "node:path";
 import { parse as parseToml } from "smol-toml";
 import { parseVia, type EntryVia } from "./via.js";
-import { HOST_IDS, HOST_SPECS, type HostId } from "./host-spec.js";
+import { hostAdapters, knownHost, type HostId } from "../hosts/registry.js";
 
 export const MCP_SERVER_COMMAND = "stinky-cobbler-mcp";
 export const HOST_CONFIG_FILE = "config.json";
@@ -103,21 +103,18 @@ export async function detectInitializedWorkspace(root: string): Promise<{ initia
 export async function detectMcpServer(options: { homeDir?: string; workspaceDir?: string; host?: HostId }): Promise<{ configured: boolean; locations: string[] }> {
   const homeDir = options.homeDir ?? homedir();
   const workspaceDir = options.workspaceDir;
-  const hosts = options.host === undefined ? HOST_IDS : [options.host];
+  const selected = options.host === undefined ? hostAdapters : [knownHost(options.host)].filter((adapter) => adapter !== undefined);
+  const roots = { home: homeDir, cwd: workspaceDir ?? homeDir };
   const candidates: string[] = [];
-  for (const id of hosts) {
-    const spec = HOST_SPECS[id];
-    candidates.push(path.join(homeDir, spec.userDir, spec.mcpConfigUserRelative));
+  for (const adapter of selected) {
+    const userMcp = adapter.locate("mcp-server", "user", roots);
+    if (userMcp.unsupported === undefined) candidates.push(userMcp.path);
   }
-  // ZCode extras: legacy install location and the `.agents/mcp.json` fallback.
-  if (options.host === undefined || options.host === "zcode") {
-    candidates.push(path.join(homeDir, ".zcode", HOST_CONFIG_FILE));
-    candidates.push(path.join(homeDir, USER_AGENTS_MCP_FILE));
-  }
+  for (const adapter of selected) candidates.push(...adapter.extraMcpFiles(roots));
   if (workspaceDir !== undefined) {
-    for (const id of hosts) {
-      const spec = HOST_SPECS[id];
-      candidates.push(path.join(workspaceDir, spec.mcpConfigWorkspaceRelative));
+    for (const adapter of selected) {
+      const projectMcp = adapter.locate("mcp-server", "project", roots);
+      if (projectMcp.unsupported === undefined) candidates.push(projectMcp.path);
     }
   }
   const locations: string[] = [];
