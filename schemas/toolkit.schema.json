@@ -1,0 +1,185 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "version": {
+      "type": "number",
+      "const": 1
+    },
+    "hosts": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "zcode",
+          "codex",
+          "claude-code",
+          "cursor"
+        ]
+      }
+    },
+    "scope": {
+      "type": "string",
+      "enum": [
+        "user",
+        "project"
+      ]
+    },
+    "skills": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+          },
+          "source": {
+            "type": "string",
+            "minLength": 1
+          },
+          "hosts": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "zcode",
+                "codex",
+                "claude-code",
+                "cursor"
+              ]
+            }
+          }
+        },
+        "required": [
+          "id",
+          "source"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "mcpServers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+          },
+          "transport": {
+            "type": "string",
+            "enum": [
+              "stdio",
+              "http"
+            ]
+          },
+          "command": {
+            "type": "string",
+            "minLength": 1
+          },
+          "args": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "env": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string",
+              "pattern": "^[A-Z][A-Z0-9_]*$"
+            },
+            "additionalProperties": {
+              "type": "string",
+              "pattern": "^\\$\\{(env|file):[A-Z0-9_./-]+\\}$"
+            }
+          },
+          "role": {
+            "type": "string",
+            "const": "knowledge"
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "required": [
+          "id",
+          "transport",
+          "command"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "instructions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+          },
+          "source": {
+            "type": "string",
+            "minLength": 1
+          },
+          "render": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string",
+              "enum": [
+                "zcode",
+                "codex",
+                "claude-code",
+                "cursor"
+              ]
+            },
+            "additionalProperties": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "required": [
+          "id",
+          "source"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "bundles": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+          },
+          "includes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "includes"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "version"
+  ],
+  "additionalProperties": false,
+  "$id": "https://stinkycobbler.dev/schemas/toolkit.schema.json"
+}

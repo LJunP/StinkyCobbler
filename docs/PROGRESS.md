@@ -2,6 +2,15 @@
 
 > 只追加，最新在上。每条：日期 / 任务 / 做了什么 / 验证 / 待办与问题。
 
+## 2026-10-21 · M2-T1 toolkit 规格
+
+- 新增 `src/core/toolkit/kinds.ts`、`src/core/toolkit/spec.ts`、`schemas/toolkit.schema.json`。`parseToolkitSpec` 用已经在依赖树里的 zod 4。明文 `env` 值报 `SECRET_LITERAL_FORBIDDEN`。重复 id 报 `TOOLKIT_DUPLICATE_ID`。未知宿主报 `TOOLKIT_HOST_UNKNOWN`，消息里列出合法宿主。
+- `HOST_IDS` 写在 core 里，顺序与 `hostAdapters` 相同。core 不能 import `src/hosts`（依赖规则 A9），所以测试锁定 `hostIds()` 与 `HOST_IDS` 相等，`ARTIFACT_KINDS` 从 core 再导出给 host adapter。
+- JSON Schema 用 zod 4 的 `toJSONSchema` 生成，没有新增 `zod-to-json-schema`。已提交的 `schemas/toolkit.schema.json` 必须与这个函数的输出相等。
+- id 在 skills、mcpServers、instructions、bundles 之间也不能重复。`role: knowledge` 和 `sources` 可以出现在规格里，但还没有 M4 的 doctor 行为。密钥引用字符集按计划是 `[A-Z0-9_./-]`。
+- 验证：先红（模块不存在）。`npm run lint` 通过（测试类型基线 0、eslint 0 error / 42 warning、depcruise 108 modules / 637 dependencies，15 条已知循环）。`npm test` 83 文件 / 816 项通过。
+- 未做：推送。版本仍是 2.0.2。
+
 ## 2026-10-21 · M1-T8 SKILL 模板单源
 
 - 新增 `templates/skill-core.md`、`templates/hosts/codex.md`、`templates/hosts/zcode.md`、`scripts/render-skills.mjs`。核心模板不含 Codex 或 ZCode。两份已提交的 SKILL.md 由同一核心加宿主片段生成，重新生成不改变这两个文件。

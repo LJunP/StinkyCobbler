@@ -1,6 +1,6 @@
-export const ARTIFACT_KINDS = ["skill", "mcp-server", "instructions", "command"] as const;
+import { ARTIFACT_KINDS, type ArtifactKind } from "../core/toolkit/kinds.js";
 
-export type ArtifactKind = (typeof ARTIFACT_KINDS)[number];
+export { ARTIFACT_KINDS, type ArtifactKind };
 export type HostScope = "user" | "project";
 /** `command-md` is a slash-command markdown file. The architecture sketch had no format for it. */
 export type ArtifactFormat = "skill-dir" | "md-segment" | "json-mcp" | "toml-mcp" | "mdc-rule" | "command-md";
