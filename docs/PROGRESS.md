@@ -2,6 +2,15 @@
 
 > 只追加，最新在上。每条：日期 / 任务 / 做了什么 / 验证 / 待办与问题。
 
+## 2026-10-21 · M2-T6 宿主 MCP 环境变量展开（文档，未勾完）
+
+- 只改了 `docs/hosts/*.md`。没有给 adapter 加 `capabilities.envExpansion`。一个布尔值分不清三种已核实的写法，也会把未核实的 ZCode 说成不支持。
+- Claude Code：官方页写明展开 `${VAR}` 和 `${VAR:-default}`，字段是 command、args、env、url、headers。这不是工具包的 `${env:NAME}`。本机 `claude` 是 2.1.296，没有拿它做展开实验。
+- Cursor：官方页写明展开 `${env:NAME}`，另外还有 `${userHome}`、`${workspaceFolder}` 等。本机 PATH 上没有 `cursor`。
+- Codex：官方页写的是字面量 `env`、按名字转发的 `env_vars`，以及 `bearer_token_env_var`。该页没有 `${VAR}` 展开。本机 PATH 上没有 `codex`。
+- ZCode：官方页只展示 `env` 对象，没有展开语法。结论是未知。本机 PATH 上没有 `zcode`。
+- 未做：doctor 的 `SECRET_NEEDS_SHELL_ENV`。M2-T6 不勾。没有推送。
+
 ## 2026-10-21 · M2-T5 toolkit 命令组
 
 - 新增 `src/app/toolkit-commands.ts` 和 `src/app/toolkit-flow.ts`。`registerCommands` 只多一次注册。六条命令：`init`、`plan`、`apply`、`rollback`、`doctor`、`list`。

@@ -10,3 +10,7 @@ Verified by the 2.0.1 installer and the entry tests. Checked again on 2026-10-21
 | instructions | unsupported | unsupported |
 
 Preflight still also reads the legacy `~/.zcode/config.json` and `~/.agents/mcp.json`. The legacy file is not the install target.
+
+## MCP env expansion
+
+Checked 2026-10-21 at https://zcode.z.ai/en/docs/mcp-services. The page shows `env` as an object on `mcp.servers` and tells the user to type environment values into the settings form. It does not document `${VAR}` or `${env:NAME}` expansion. No `zcode` binary was on PATH. Expansion is **unknown**. `capabilities.envExpansion` is not set.
