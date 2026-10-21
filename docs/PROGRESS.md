@@ -2,6 +2,18 @@
 
 > 只追加，最新在上。每条：日期 / 任务 / 做了什么 / 验证 / 待办与问题。
 
+## 2026-10-21 · M2-T5 toolkit 命令组
+
+- 新增 `src/app/toolkit-commands.ts` 和 `src/app/toolkit-flow.ts`。`registerCommands` 只多一次注册。六条命令：`init`、`plan`、`apply`、`rollback`、`doctor`、`list`。
+- `init` 用 `wx` 写带注释的 `toolkit.yaml`，已存在就 `TOOLKIT_EXISTS`，不覆盖。用户范围在 `$XDG_CONFIG_HOME/stinky-cobbler/toolkit.yaml`。同时用各宿主 `detect` 报告已安装宿主，不要求四家都在。
+- `plan` 只读。加载规格，观察宿主，本地有 `SKILL.md` 或指令文件才把正文交给纯计划器。`--json` 含 ops、conflicts、skipped，以及按计划正文合成的 diff。空 HOME 上 plan 前后目录 hash 不变。
+- `apply` 看到冲突就不写。有 op 且没有 `--yes` 时返回 `TOOLKIT_CONFIRM_REQUIRED`。空计划可以直接 apply。真正写入仍走已有的 `apply`。
+- `rollback --last` 调用 `rollbackLast`。`--to` 只能是最后一次 applyId，否则 `TOOLKIT_ROLLBACK_NOT_LAST`。空账本是 `TOOLKIT_LEDGER_EMPTY`。
+- `doctor` 的 drift 就是计划冲突。每个 MCP `${env:NAME}` 只报名字和当前进程里在不在，不打印值。`command` 只查 PATH 上能否执行，不运行它。`list` 返回观察结果。
+- 偏差：命令落在两个模块，不是 `src/app/commands/toolkit/*.ts`。diff 不是 Myers，也没有新的 `io/diff` 依赖。instructions 和 command 仍然不观察。前向 remove 仍然不执行。这次不能拆成仍能单独验收的提交，插入 468 行。
+- 验证：先红（`unknown command 'toolkit'`）。空 HOME 从 init 到 doctor 目录 hash 不变，drift 为空，第二次 init 不覆盖，空账本 rollback 退出 2。非空计划没有 `--yes` 不写盘；`--yes` 之后 drift 为空；输出不含密钥值；rollback 删掉新建文件。`npm run lint` 通过（测试类型基线 0、eslint 0 error / 42 warning、depcruise 116 modules / 689 dependencies，15 条已知循环）。`npm test` 87 文件 / 829 项通过。
+- 未做：推送。版本仍是 2.0.2。M2-T6 和 M2-T8 未做，M2 总项不勾。
+
 ## 2026-10-21 · M2-T4 apply 与 hash 回滚
 
 - 新增 `src/app/apply.ts`、`src/app/rollback.ts`、`src/io/ledger.ts`。apply 按 op 调用 `installManagedBytes`、`upsertSegment` 和宿主 `mergeMcp`。每个成功的 op 追加 `toolkit-op-applied` 到 `$XDG_CONFIG_HOME/stinky-cobbler/ledger.jsonl`。某一步失败就停，不自动回滚，报告里提示 `toolkit rollback --last`。

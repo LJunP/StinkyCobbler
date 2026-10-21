@@ -1,0 +1,254 @@
+import { constants } from "node:fs";
+import { access, mkdir, readFile, writeFile } from "node:fs/promises";
+import { homedir } from "node:os";
+import path from "node:path";
+import process from "node:process";
+import { parse as parseYaml } from "yaml";
+import { plan, type FileOp, type KindSupport, type PlanSources, type ToolkitPlan } from "../core/plan/plan.js";
+import { ARTIFACT_KINDS, type ArtifactKind } from "../core/toolkit/kinds.js";
+import { parseToolkitSpec, type ToolkitSpec } from "../core/toolkit/spec.js";
+import { ExitCode, StinkyCobblerError } from "../errors.js";
+import type { HostScope } from "../hosts/host-adapter.js";
+import { hostAdapters } from "../hosts/registry.js";
+import { readToolkitEvents } from "../io/ledger.js";
+import { resolveConfigHome } from "../io/tiered-config.js";
+import { apply, type ApplyReport } from "./apply.js";
+import { observe, type HostObservation } from "./observe.js";
+import { rollbackLast, type RollbackReport } from "./rollback.js";
+
+export interface ToolkitDoctorReport {
+  drift: ToolkitPlan["conflicts"];
+  env: Array<{ name: string; present: boolean }>;
+  commands: Array<{ command: string; present: boolean }>;
+}
+
+interface LoadedToolkit {
+  spec: ToolkitSpec;
+  scope: HostScope;
+}
+
+export async function initToolkit(scopeFlag?: string): Promise<{ path: string; scope: HostScope; detectedHosts: string[] }> {
+  const scope = parseScope(scopeFlag) ?? "user";
+  const file = specFile(scope);
+  await mkdir(path.dirname(file), { recursive: true, mode: 0o700 });
+  await writeScaffold(file, scope);
+  return { path: file, scope, detectedHosts: await detectedHosts() };
+}
+
+export async function planToolkit(scopeFlag?: string): Promise<ToolkitPlan & { diffs: string[] }> {
+  const toolkitPlan = await buildPlan(scopeFlag);
+  return { ...toolkitPlan, diffs: diffsFor(toolkitPlan) };
+}
+
+export async function applyToolkit(options: { scope?: string | undefined; yes?: boolean | undefined }): Promise<ApplyReport> {
+  const toolkitPlan = await buildPlan(options.scope);
+  refuseUnsafeApply(toolkitPlan, options.yes === true);
+  return apply(toolkitPlan);
+}
+
+export async function doctorToolkit(scopeFlag?: string): Promise<ToolkitDoctorReport> {
+  const loaded = await loadToolkit(scopeFlag);
+  return { drift: (await planLoaded(loaded)).conflicts, env: envPresence(loaded.spec), commands: await commandPresence(loaded.spec) };
+}
+
+export async function listToolkit(scopeFlag?: string): Promise<HostObservation[]> {
+  return observe(observationInput(await loadToolkit(scopeFlag)));
+}
+
+export async function rollbackToolkit(options: { last?: boolean | undefined; to?: string | undefined }): Promise<RollbackReport> {
+  if (options.last !== true && options.to === undefined) throw toolkitError("TOOLKIT_ROLLBACK_TARGET", "Pass --last or --to <applyId>.");
+  if (options.to !== undefined) await assertLastApply(options.to);
+  return rollbackLast();
+}
+
+async function buildPlan(scopeFlag?: string): Promise<ToolkitPlan> {
+  return planLoaded(await loadToolkit(scopeFlag));
+}
+
+async function planLoaded(loaded: LoadedToolkit): Promise<ToolkitPlan> {
+  const observations = await observe(observationInput(loaded));
+  return plan(loaded.spec, observations, { support: kindSupport(), sources: await sourceBodies(loaded.spec) });
+}
+
+function observationInput(loaded: LoadedToolkit): Parameters<typeof observe>[0] {
+  return { adapters: hostAdapters, spec: loaded.spec, scope: loaded.scope, roots: { home: homedir(), cwd: process.cwd() } };
+}
+
+async function loadToolkit(scopeFlag?: string): Promise<LoadedToolkit> {
+  const requested = parseScope(scopeFlag) ?? "user";
+  const spec = parseToolkitSpec(parseDocument(await readSpec(specFile(requested))));
+  return { spec, scope: spec.scope ?? requested };
+}
+
+function specFile(scope: HostScope): string {
+  if (scope === "project") return path.join(process.cwd(), ".stinky-cobbler", "toolkit.yaml");
+  return path.join(resolveConfigHome(process.env, homedir()), "stinky-cobbler", "toolkit.yaml");
+}
+
+function parseScope(flag: string | undefined): HostScope | undefined {
+  if (flag === undefined) return undefined;
+  if (flag === "user" || flag === "project") return flag;
+  throw toolkitError("TOOLKIT_SCOPE_INVALID", "Scope must be user or project.");
+}
+
+function scaffoldText(scope: HostScope): string {
+  return `# Stinky Cobbler toolkit. Secrets must be \${env:NAME} or \${file:PATH}.
+version: 1
+scope: ${scope}
+skills: []
+mcpServers: []
+instructions: []
+bundles: []
+`;
+}
+
+async function writeScaffold(file: string, scope: HostScope): Promise<void> {
+  try {
+    await writeFile(file, scaffoldText(scope), { flag: "wx", mode: 0o600 });
+  } catch (error: unknown) {
+    if (!isCode(error, "EEXIST")) throw error;
+    throw new StinkyCobblerError("TOOLKIT_EXISTS", ExitCode.CONFLICT, "Toolkit spec already exists.", { path: file });
+  }
+}
+
+async function detectedHosts(): Promise<string[]> {
+  const home = homedir();
+  const found: string[] = [];
+  for (const adapter of hostAdapters) {
+    if (await adapter.detect(home)) found.push(adapter.id);
+  }
+  return found;
+}
+
+async function readSpec(file: string): Promise<string> {
+  try {
+    return await readFile(file, "utf8");
+  } catch (error: unknown) {
+    if (isCode(error, "ENOENT")) throw toolkitError("TOOLKIT_SPEC_MISSING", "Toolkit spec does not exist. Run toolkit init.");
+    throw error;
+  }
+}
+
+function parseDocument(text: string): unknown {
+  try {
+    return parseYaml(text);
+  } catch (error: unknown) {
+    throw toolkitError("TOOLKIT_SPEC_INVALID", error instanceof Error ? error.message : "Toolkit YAML is invalid.");
+  }
+}
+
+function kindSupport(): KindSupport[] {
+  const rows: KindSupport[] = [];
+  for (const adapter of hostAdapters) {
+    for (const kind of ARTIFACT_KINDS) rows.push(supportRow(adapter.id, kind, adapter.supports(kind)));
+  }
+  return rows;
+}
+
+function supportRow(host: string, kind: ArtifactKind, supported: boolean): KindSupport {
+  if (supported) return { host, kind, supported };
+  return { host, kind, supported, reason: `${host} does not support ${kind}.` };
+}
+
+async function sourceBodies(spec: ToolkitSpec): Promise<PlanSources> {
+  const skills: Record<string, string> = {};
+  const instructions: Record<string, string> = {};
+  for (const skill of spec.skills) {
+    const body = await readIfFile(localSkillFile(skill.source));
+    if (body !== undefined) skills[skill.id] = body;
+  }
+  for (const item of spec.instructions) {
+    const body = await readIfFile(localTextFile(item.source));
+    if (body !== undefined) instructions[item.id] = body;
+  }
+  return { skills, instructions };
+}
+
+function localSkillFile(source: string): string | undefined {
+  if (source.startsWith("git+") || source.startsWith("npm:")) return undefined;
+  return path.resolve(source.endsWith("/SKILL.md") ? source : path.join(source, "SKILL.md"));
+}
+
+function localTextFile(source: string): string | undefined {
+  if (source.startsWith("git+") || source.startsWith("npm:")) return undefined;
+  return path.resolve(source);
+}
+
+async function readIfFile(file: string | undefined): Promise<string | undefined> {
+  if (file === undefined) return undefined;
+  try {
+    return await readFile(file, "utf8");
+  } catch (error: unknown) {
+    if (isCode(error, "ENOENT")) return undefined;
+    throw error;
+  }
+}
+
+function refuseUnsafeApply(toolkitPlan: ToolkitPlan, yes: boolean): void {
+  if (toolkitPlan.conflicts.length > 0) {
+    throw new StinkyCobblerError("TOOLKIT_CONFLICT", ExitCode.CONFLICT, "Toolkit plan has conflicts. Nothing was written.", {
+      conflicts: toolkitPlan.conflicts
+    });
+  }
+  if (toolkitPlan.ops.length > 0 && !yes) throw toolkitError("TOOLKIT_CONFIRM_REQUIRED", "Pass --yes to apply a non-empty toolkit plan.");
+}
+
+function envPresence(spec: ToolkitSpec): ToolkitDoctorReport["env"] {
+  const reports: ToolkitDoctorReport["env"] = [];
+  for (const server of spec.mcpServers) {
+    for (const value of Object.values(server.env ?? {})) {
+      const name = /^\$\{env:([A-Z][A-Z0-9_]*)\}$/.exec(value)?.[1];
+      if (name !== undefined) reports.push({ name, present: process.env[name] !== undefined });
+    }
+  }
+  return reports;
+}
+
+async function commandPresence(spec: ToolkitSpec): Promise<ToolkitDoctorReport["commands"]> {
+  const reports: ToolkitDoctorReport["commands"] = [];
+  for (const server of spec.mcpServers) reports.push({ command: server.command, present: await commandPresent(server.command) });
+  return reports;
+}
+
+async function commandPresent(command: string): Promise<boolean> {
+  if (command.includes("/") || command.includes("\\")) return executable(command);
+  for (const dir of (process.env.PATH ?? "").split(path.delimiter)) {
+    if (dir !== "" && (await executable(path.join(dir, command)))) return true;
+  }
+  return false;
+}
+
+async function executable(file: string): Promise<boolean> {
+  try {
+    await access(file, constants.X_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function diffsFor(toolkitPlan: ToolkitPlan): string[] {
+  return toolkitPlan.ops.map((op) => formatDiff(op));
+}
+
+function formatDiff(op: FileOp): string {
+  const next = op.bytes ?? op.segment ?? JSON.stringify(op.mcpEntry ?? {});
+  return `--- ${op.path}\n+++ ${op.path}\n${next
+    .split("\n")
+    .map((line) => `+${line}`)
+    .join("\n")}`;
+}
+
+async function assertLastApply(applyId: string): Promise<void> {
+  const last = (await readToolkitEvents()).at(-1);
+  if (last === undefined) throw toolkitError("TOOLKIT_LEDGER_EMPTY", "No toolkit apply is recorded.");
+  if (last.applyId !== applyId) throw toolkitError("TOOLKIT_ROLLBACK_NOT_LAST", "Only the latest toolkit apply can be rolled back.");
+}
+
+function isCode(error: unknown, code: string): boolean {
+  return typeof error === "object" && error !== null && "code" in error && error.code === code;
+}
+
+function toolkitError(code: string, message: string): StinkyCobblerError {
+  return new StinkyCobblerError(code, ExitCode.VALIDATION, message);
+}

@@ -42,6 +42,7 @@ import { listContractTemplates, getContractTemplate } from "../gate/storage/cont
 import { loadOrchestrationConfig, loadTieredYaml } from "../config/tiered.js";
 import { loadAndValidateAllTieredConfig } from "../config/tiered-health.js";
 import { scaffoldUserPolicies } from "../config/scaffold.js";
+import { registerToolkitCommands } from "./toolkit-commands.js";
 
 import { z } from "zod";
 
@@ -320,4 +321,5 @@ export function registerCommands(program: Command, projectRoot: string): void {
   registerGroup15(program, projectRoot);
   registerGroup16(program, projectRoot);
   registerOrchestration(program, projectRoot);
+  registerToolkitCommands(program);
 }
