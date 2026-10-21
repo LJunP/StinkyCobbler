@@ -2,6 +2,13 @@
 
 > 发布状态是实时事实：请查询官方 npm registry 与 GitHub tags/Releases。下面按版本保留的发布准备状态属于对应日期的历史记录，不能用于判断当前是否已发布或已完成真实宿主验证。
 
+## 3.0.0-alpha.1 (source candidate; package version remains 2.0.2)
+
+- Add `toolkit init|plan|apply|rollback|doctor|list`. `plan` does not write. A non-empty apply requires `--yes`. A hand-edited managed file is a conflict and is not overwritten. `rollback --last` restores the last apply from its content-addressed backup.
+- Doctor reports `${env:NAME}` presence without printing the value. Claude Code and Codex get `SECRET_NEEDS_SHELL_ENV` from their documented syntax. ZCode gets `SECRET_EXPANSION_UNKNOWN`. Cursor documents `${env:NAME}` and gets no secret hint. No host binary was used to expand a variable.
+- This is not version `3.0.0`. The package version stays `2.0.2` because the release contract requires a stable `x.y.z`, and `3.0.0` needs a real four-host smoke record. There is no tag and no npm publish. Codex, Claude Code, Cursor, and ZCode install smoke remains `UNKNOWN / PENDING`.
+- The 2.x `gate` command group stays available, deprecated, and frozen.
+
 ## 2.0.2 (release candidate; verify npm and GitHub Releases for publication status)
 
 - MCP controlled tools now surface engine error codes (for example `WRITE_PREIMAGE_MISMATCH`, `WRITE_INTENT_NOT_CONFIRMED`) with their messages instead of a blanket `INVOCATION_FAILED`, and mark every denial or failure with MCP `isError: true`. Non-engine exceptions remain opaque.

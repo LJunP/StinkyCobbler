@@ -1,15 +1,14 @@
 # Stinky Cobbler
 
-> ### 3.x 方向声明（2026-10-20）· 2.x 进入维护
->
-> 项目正转向 **AI agent 工具箱的包管理器**：一份 `toolkit.yaml` 描述你的 skill、MCP server、指令/记忆文件与知识源，
-> 由本工具安全地（预览 diff、hash 校验、冲突不覆盖、内容寻址备份、一键回滚、本地账本）落到 Codex / Claude Code / Cursor / ZCode。
-> 决策与理由见 [ADR-0002](./docs/decisions/ADR-0002-从权限门禁转向工具箱包管理器.md)，需求见 [PRD](./docs/PRD.md)，路线见 [PLAN](./docs/PLAN.md)。
->
-> 下面描述的 2.x 权限门禁内核进入维护：只修已发布版本可复现的严重缺陷与必要安全修复，不再扩展；3.x 中以 `gate` 命令组保留并标记 deprecated。
-> 2.x 的全部保证仍以 Cooperative Mode 为前提，不是操作系统级沙箱；真实双宿主验收仍未完成。
+Stinky Cobbler 3.x 是 AI agent 工具箱的包管理器。一份 `toolkit.yaml` 描述 skill、MCP server 和指令文件。`toolkit plan` 只预览；`toolkit apply --yes` 才写入 Codex、Claude Code、Cursor 或 ZCode。手改过的受管文件记为冲突，不会被覆盖。回滚按内容寻址备份恢复写入前的字节。密钥只能写成 `${env:NAME}` 或 `${file:PATH}`。
 
-> **Codex / ZCode 本地仓库的可验证权限与变更门禁。**
+当前 checkout 仍是包版本 **2.0.2**。toolkit 行为对应文档里程碑 **3.0.0-alpha.1 源码候选**。这不是 `3.0.0`，没有 npm tag，也没有 GitHub Release。四个宿主的安装冒烟仍是 `UNKNOWN / PENDING`。公开版本以 npm registry 和 GitHub Releases 为准。
+
+五分钟路径见 [toolkit 快速开始](./docs/quickstart/toolkit.md)。从 2.x 过来见 [迁移说明](./docs/migration/2.x-to-3.x.md)。决策见 [ADR-0002](./docs/decisions/ADR-0002-从权限门禁转向工具箱包管理器.md)。
+
+2.x 权限门禁还在，`gate` 命令组已 deprecated，不再扩展。它只修已发布版本上的严重缺陷。保证只覆盖经本 CLI/MCP 路由的操作，也就是 Cooperative Mode。它不是操作系统沙箱。
+
+> **维护中的 2.x：Codex / ZCode 本地仓库的可验证权限与变更门禁。**
 
 Stinky Cobbler 是一个本地 CLI/MCP 控制面。它不替代 Codex 或 ZCode，也不自己调用模型；它只对**经自身受控通道**发起的仓库读取、单目标写入、删除和只读 Runtime 调用，校验持久化 Task、精确 Approval、Lease、路径范围、写前文件状态，并记录本地审计证据。
 

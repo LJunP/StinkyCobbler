@@ -2,6 +2,14 @@
 
 > 只追加，最新在上。每条：日期 / 任务 / 做了什么 / 验证 / 待办与问题。
 
+## 2026-10-21 · M2-T8 alpha 文档
+
+- README 开头改成工具箱包管理器。新增 `docs/quickstart/toolkit.md` 和 `docs/migration/2.x-to-3.x.md`。CHANGELOG 增加 `3.0.0-alpha.1` 源码候选条目。
+- 包版本保持 `2.0.2`。发布契约 `test/release-contract.test.ts` 要求 `x.y.z`，而 `3.0.0` 需要四个宿主的真实冒烟。没有把版本写成 `3.0.0-alpha.1`，也没有打 tag 或发布。宿主冒烟仍是 `UNKNOWN / PENDING`。
+- 2.x 的 `gate` 命令组保留为 deprecated。README 里 TaskAuthority、preimage、AbortSignal 和候选/UNKNOWN 的原有句子还在。
+- 验证：`npx vitest run test/skill-contract.test.ts` 6 项通过。没有改运行时代码。`npm run lint` 通过（测试类型基线 0、eslint 0 error / 42 warning、depcruise 116 modules / 689 dependencies，15 条已知循环）。`npm test` 87 文件 / 830 项通过。没有重跑 `test:package`：未跟踪的交接文件还在 `docs/` 下，放进包会让冒烟失败。
+- 未做：推送。M2-T7 可选，跳过。M3 还没拆进 PLAN。
+
 ## 2026-10-21 · M2-T6 doctor 密钥提示
 
 - 四个 adapter 增加 `documentedEnvExpansion`，不增加布尔 `capabilities.envExpansion`。Claude 是 `dollar-var`，Cursor 是 `dollar-env`，Codex 是 `name-forwarding`，ZCode 是 `unknown`。这些值来自上一提交核对过的官方页，不是本机展开实验。
