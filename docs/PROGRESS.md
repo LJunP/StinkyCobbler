@@ -2,6 +2,14 @@
 
 > 只追加，最新在上。每条：日期 / 任务 / 做了什么 / 验证 / 待办与问题。
 
+## 2026-10-21 · M1-T6 CLI 命令注册与 Presenter
+
+- `src/cli.ts` 只负责创建 commander 并调用 `registerCommands`，25 行。命令实现在 `src/app/register-commands.ts`，按命令组拆成不超过 50 行的函数。`task list` 无 `--json` 时首行含 `TASK ID`；`--json` 仍是可解析 JSON。数值选项从 `Number()` 改为 zod `coerce.number().int().nonnegative()`。
+- `install-host` 遇到用户改过的受管文件时退出码从 7 改为 1，并且不覆盖文件。
+- 偏差：没有拆成每个命令一个文件。拆开会切断 commander 父命令绑定，而整个注册文件仍低于 400 行。dependency-cruiser 允许 `src/app` 引用 `src/gate`，因为命令实现就在 app 里。
+- 验证：先红后绿。`npm run lint` 通过（测试类型基线 0、eslint 0 error / 42 warning、depcruise 107 modules，15 条已知循环）。`npm test` 80 文件 / 815 项通过。
+- 未做：推送。
+
 ## 2026-10-21 · M1-T5 HostAdapter 四宿主
 
 - 新增 `src/hosts/`。`hostAdapters` 是宿主 id 的唯一枚举。`entry/host-spec.ts` 已删除。`preflight` 和 `install-host` 改向 adapter 要路径。

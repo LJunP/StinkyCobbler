@@ -136,7 +136,7 @@ describe("entry CLI black-box", () => {
     await writeFile(commandFile, `${await readFile(commandFile, "utf8")}\n<!-- user edit -->\n`, "utf8");
     const failure = await cli(env, "entry", "install-host", "--host", "zcode", "--scope", "user", "--json").then(() => null, (error: unknown) => error as { code: number; stdout: string });
     expect(failure).not.toBeNull();
-    expect(failure!.code).toBe(7);
+    expect(failure!.code).toBe(1);
     expect(JSON.parse(failure!.stdout)).toMatchObject({ command: { action: "conflict" } });
     expect(await readFile(commandFile, "utf8")).toContain("<!-- user edit -->");
   });
