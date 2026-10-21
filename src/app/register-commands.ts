@@ -114,7 +114,7 @@ configCommand.command("doctor").requiredOption("--root <path>").option("--json")
 configCommand.command("migrate").requiredOption("--root <path>").option("--dry-run").option("--json").action(async (o) => { const schemas = await SchemaRegistry.create(projectRoot); const registries = await loadRegistries(projectRoot, schemas); const ws = await openWorkspace(o.root); const result = await migrateWorkspaceConfig(ws, schemas, registries, o.dryRun === true); if (result.migrated) await appendLedgerEntry(ws, { event: "workspace-config-migrated", summary: "Workspace config migrated from v1 to v2." }); emit(result, o.json); });
 }
 function registerGroup5(program: Command, projectRoot: string): void {
-program.command("init").requiredOption("--workspace-id <id>").requiredOption("--profile <id>").requiredOption("--pack <id>", "Pack to enable; may be repeated.", collectOption, []).requiredOption("--mode <mode>").requiredOption("--root <path>").option("--dry-run").option("--json").action(async (o) => { const schemas = await SchemaRegistry.create(projectRoot); const registries = await loadRegistries(projectRoot, schemas); const packs = o.pack as string[]; const profile = registries.profiles.get(o.profile); if (!profile) throw new StinkyCobblerError("PROFILE_UNKNOWN", ExitCode.VALIDATION, `Unknown profile ${o.profile}.`, { profile: o.profile }); for (const pack of packs) { if (!profile.enabledPacks.includes(pack)) throw new StinkyCobblerError("PROFILE_PACK_DENIED", ExitCode.VALIDATION, "Selected profile does not enable the pack.", { profile: profile.id, pack }); } if (new Set(packs).size !== packs.length) throw new StinkyCobblerError("PACK_DUPLICATE", ExitCode.VALIDATION, "The same pack may not be selected more than once.", { packs }); const config = { version: 2 as const, workspaceId: o.workspaceId, root: path.resolve(o.root), profile: o.profile, packs, mode: o.mode, roles: {}, plugins: {} } satisfies WorkspaceConfig; const service = new WorkspaceConfigService(schemas, registries); service.validate(config); if (o.dryRun) return emit({ dryRun: true, config, writes: [".stinky-cobbler/workspace.json", ".stinky-cobbler/ledger.jsonl", ".stinky-cobbler/policies/orchestration.yaml", ".stinky-cobbler/policies/specialists.yaml", ".stinky-cobbler/policies/templates.yaml", ".stinky-cobbler/policies/contract-templates.yaml"] }, o.json); const ws = await initWorkspace(o.root); const canonicalConfig = { ...config, root: ws.root } satisfies WorkspaceConfig; service.validate(canonicalConfig, ws.root); await createWorkspaceConfig(ws, canonicalConfig); const scaffolded = await scaffoldUserPolicies(ws); await appendLedgerEntry(ws, { event: "workspace-initialized", summary: "Workspace initialized." }); emit({ workspaceId: canonicalConfig.workspaceId, root: ws.root, stateDir: ws.directory, packs: canonicalConfig.packs, scaffolds: scaffolded, verifyCommands: [`stinky-cobbler orchestration config show --root ${ws.root}`, `stinky-cobbler doctor --root ${ws.root}`] }, o.json); });
+program.command("init").requiredOption("--workspace-id <id>").requiredOption("--profile <id>").requiredOption("--pack <id>", "Pack to enable; may be repeated.", collectOption, []).requiredOption("--root <path>").option("--dry-run").option("--json").action(async (o) => { const schemas = await SchemaRegistry.create(projectRoot); const registries = await loadRegistries(projectRoot, schemas); const packs = o.pack as string[]; const profile = registries.profiles.get(o.profile); if (!profile) throw new StinkyCobblerError("PROFILE_UNKNOWN", ExitCode.VALIDATION, `Unknown profile ${o.profile}.`, { profile: o.profile }); for (const pack of packs) { if (!profile.enabledPacks.includes(pack)) throw new StinkyCobblerError("PROFILE_PACK_DENIED", ExitCode.VALIDATION, "Selected profile does not enable the pack.", { profile: profile.id, pack }); } if (new Set(packs).size !== packs.length) throw new StinkyCobblerError("PACK_DUPLICATE", ExitCode.VALIDATION, "The same pack may not be selected more than once.", { packs }); const config = { version: 2 as const, workspaceId: o.workspaceId, root: path.resolve(o.root), profile: o.profile, packs, roles: {}, plugins: {} } satisfies WorkspaceConfig; const service = new WorkspaceConfigService(schemas, registries); service.validate(config); if (o.dryRun) return emit({ dryRun: true, config, writes: [".stinky-cobbler/workspace.json", ".stinky-cobbler/ledger.jsonl", ".stinky-cobbler/policies/orchestration.yaml", ".stinky-cobbler/policies/specialists.yaml", ".stinky-cobbler/policies/contract-templates.yaml"] }, o.json); const ws = await initWorkspace(o.root); const canonicalConfig = { ...config, root: ws.root } satisfies WorkspaceConfig; service.validate(canonicalConfig, ws.root); await createWorkspaceConfig(ws, canonicalConfig); const scaffolded = await scaffoldUserPolicies(ws); await appendLedgerEntry(ws, { event: "workspace-initialized", summary: "Workspace initialized." }); emit({ workspaceId: canonicalConfig.workspaceId, root: ws.root, stateDir: ws.directory, packs: canonicalConfig.packs, scaffolds: scaffolded, verifyCommands: [`stinky-cobbler orchestration config show --root ${ws.root}`, `stinky-cobbler doctor --root ${ws.root}`] }, o.json); });
 }
 function registerGroup6(program: Command, projectRoot: string): void {
 const task = program.command("task");
@@ -282,25 +282,21 @@ orchConfig.command("show").requiredOption("--root <path>").option("--json").acti
   const allConfig = await loadAndValidateAllTieredConfig(ws);
   const orchestrationLayers = await loadTieredYaml(ws, "orchestration.yaml", 1);
   const specialistLayers = await loadTieredYaml(ws, "specialists.yaml", 1);
-  const guidanceTemplateLayers = await loadTieredYaml(ws, "templates.yaml", 1);
   const contractTemplateLayers = await loadTieredYaml(ws, "contract-templates.yaml", 1);
   emit({
     effective: allConfig.orchestration,
     userOverrides: {
       orchestration: orchestrationLayers.user,
       specialists: specialistLayers.user,
-      guidanceTemplates: guidanceTemplateLayers.user,
       contractTemplates: contractTemplateLayers.user
     },
     userPath: orchestrationLayers.userPath,
     userPaths: {
       orchestration: orchestrationLayers.userPath,
       specialists: specialistLayers.userPath,
-      guidanceTemplates: guidanceTemplateLayers.userPath,
       contractTemplates: contractTemplateLayers.userPath
     },
     specialists: allConfig.specialists.map((p) => ({ domain: p.domain, title: p.title })),
-    guidanceTemplates: allConfig.guidanceTemplates,
     contractTemplates: allConfig.contractTemplates.map((t) => t.name)
   }, o.json);
 });

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { validateRoleTools, KNOWN_TOOLS } from "../src/config/registry.js";
 import type { RoleRegistry } from "../src/contracts/types.js";
 
-const roles: RoleRegistry = { version: 1, roles: { scout: { displayName: "侦察", category: "discovery", defaultLevel: "L0", canWrite: false }, reviewer: { displayName: "审查", category: "review", defaultLevel: "L0", canWrite: false } } };
+const roles: RoleRegistry = { version: 1, roles: { scout: { displayName: "侦察", canWrite: false }, reviewer: { displayName: "审查", canWrite: false } } };
 
 describe("role tools mapping validation", () => {
   it("accepts a valid mapping with known tools", () => {

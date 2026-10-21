@@ -91,10 +91,10 @@ describe("registry storage identity", () => {
     const root = await copyRegistryProject();
     const coreFile = path.join(root, "policies", "roles.yaml");
     const extensionFile = path.join(root, "policies", "role-extensions.yaml");
-    await writeFile(coreFile, (await readFile(coreFile, "utf8")).replace("category: discovery", "category: ''"));
+    await writeFile(coreFile, (await readFile(coreFile, "utf8")).replace("displayName: 总控", "displayName: \"\""));
     await writeFile(extensionFile, (await readFile(extensionFile, "utf8")).replace(
       "roles:\n",
-      "roles:\n  scout: { displayName: 探路者, category: discovery, defaultLevel: L0, canWrite: false }\n"
+      "roles:\n  scout: { displayName: 探路者, canWrite: false }\n"
     ));
 
     await expect(loadRegistries(root, await SchemaRegistry.create(projectRoot))).rejects.toMatchObject({ code: "SCHEMA_INVALID" });

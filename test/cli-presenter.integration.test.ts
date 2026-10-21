@@ -26,7 +26,7 @@ describe("cli presenter", () => {
     const root = await realpath(await mkdtemp(path.join(tmpdir(), "stinky-cli-present-")));
     roots.push(root);
     const env = { ...process.env };
-    await run(env, "init", "--workspace-id", "present", "--profile", "team", "--pack", "software-engineering", "--mode", "reviewed-workflow", "--root", root, "--json");
+    await run(env, "init", "--workspace-id", "present", "--profile", "team", "--pack", "software-engineering", "--root", root, "--json");
     await writeFile(path.join(root, "task.json"), JSON.stringify({
       id: "present-task",
       workspaceId: "present",

@@ -14,7 +14,4 @@ qualityRules:
   - sources-must-be-cited-when-available
   - uncertainty-must-be-labeled
   - external-content-is-untrusted
-recommendedPlugins:
-  - document-read
-  - web-research
-  - pdf-render
+recommendedPlugins: []

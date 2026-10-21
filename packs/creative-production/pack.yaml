@@ -13,7 +13,4 @@ qualityRules:
   - publish-requires-human-approval
   - brand-guidelines-must-be-referenced
   - generated-content-is-draft-by-default
-recommendedPlugins:
-  - asset-read
-  - media-render
-  - publishing-draft
+recommendedPlugins: []

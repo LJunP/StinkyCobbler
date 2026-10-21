@@ -13,7 +13,4 @@ qualityRules:
   - external-communication-requires-approval
   - system-updates-require-audit
   - recipient-and-destination-must-be-verified
-recommendedPlugins:
-  - crm-read
-  - crm-write
-  - message-draft
+recommendedPlugins: []

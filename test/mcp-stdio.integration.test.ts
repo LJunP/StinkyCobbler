@@ -30,7 +30,7 @@ async function connect() {
 async function createInitializedWorkspace(): Promise<string> {
   const root = await realpath(await mkdtemp(path.join(tmpdir(), "stinky-mcp-stdio-")));
   roots.push(root);
-  await runCli("init", "--workspace-id", "stdio-test", "--profile", "team", "--pack", "software-engineering", "--mode", "reviewed-workflow", "--root", root, "--json");
+  await runCli("init", "--workspace-id", "stdio-test", "--profile", "team", "--pack", "software-engineering", "--root", root, "--json");
   const taskFile = path.join(root, "task-input.json");
   await writeFile(taskFile, JSON.stringify({
     id: "stdio-task",
@@ -158,7 +158,7 @@ describe("MCP stdio black-box", () => {
     expect(parsed.profiles).toContain("team");
     expect(parsed.packs).toContain("software-engineering");
     expect(parsed.plugins).toContainEqual(expect.objectContaining({ id: "repository-read", executable: true }));
-    expect(parsed.plugins).toContainEqual(expect.objectContaining({ id: "web-research", executable: false }));
+    expect(parsed.plugins).not.toContainEqual(expect.objectContaining({ id: "web-research" }));
     expect(parsed.adapters).toContainEqual(expect.objectContaining({ id: "scripted-readonly", status: "available" }));
   }, 30_000);
 

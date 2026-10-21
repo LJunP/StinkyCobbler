@@ -44,7 +44,7 @@ describe("end-to-end user path (temporary HOME)", () => {
     expect(preflight.workspaceInitialized).toBe(false);
 
     // 2. Governance: init, task, lease.
-    await cli(home, "init", "--workspace-id", "e2e", "--profile", "team", "--pack", "software-engineering", "--mode", "reviewed-workflow", "--root", root, "--json");
+    await cli(home, "init", "--workspace-id", "e2e", "--profile", "team", "--pack", "software-engineering", "--root", root, "--json");
     const taskFile = path.join(root, "task.json");
     await writeFile(taskFile, JSON.stringify({
       id: "e2e-task",

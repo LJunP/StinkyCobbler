@@ -4,7 +4,7 @@ import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import { StinkyCobblerError, ExitCode } from "../errors.js";
 
-export type ContractKind = "task" | "task-transition" | "artifact" | "capsule" | "lease" | "lease-issuance" | "receipt" | "runtime-finalization" | "approval" | "audit" | "config" | "profile" | "pack" | "role" | "plugin" | "policy-decision" | "evidence-ref" | "agent-run" | "tool-call-record" | "plan" | "write-intent" | "orchestration-contract" | "orchestration-subtask" | "orchestration-artifact" | "orchestration-review" | "orchestration-run" | "orchestration-validator-receipt" | "orchestration-transaction" | "orchestration-policy" | "specialists-policy" | "templates-policy" | "contract-templates-policy" | "cancellation-fence" | "lease-usage" | "audit-outbox" | "docs-index" | "role-tools-policy" | "plugin-registry-policy";
+export type ContractKind = "task" | "task-transition" | "artifact" | "capsule" | "lease" | "lease-issuance" | "receipt" | "runtime-finalization" | "approval" | "audit" | "config" | "profile" | "pack" | "role" | "plugin" | "policy-decision" | "evidence-ref" | "agent-run" | "tool-call-record" | "plan" | "write-intent" | "orchestration-contract" | "orchestration-subtask" | "orchestration-artifact" | "orchestration-review" | "orchestration-run" | "orchestration-validator-receipt" | "orchestration-transaction" | "orchestration-policy" | "specialists-policy" | "contract-templates-policy" | "cancellation-fence" | "lease-usage" | "audit-outbox" | "docs-index" | "role-tools-policy" | "plugin-registry-policy";
 
 interface CanonicalSchema {
   filename: string;
@@ -42,7 +42,6 @@ const FILE_BY_KIND: Record<ContractKind, CanonicalSchema> = {
   "orchestration-transaction": { filename: "orchestration-transaction.schema.json", expectedId: "https://stinkycobbler.dev/schemas/orchestration-transaction.schema.json" },
   "orchestration-policy": { filename: "orchestration-policy.schema.json", expectedId: "https://stinkycobbler.dev/schemas/orchestration-policy.schema.json" },
   "specialists-policy": { filename: "specialists-policy.schema.json", expectedId: "https://stinkycobbler.dev/schemas/specialists-policy.schema.json" },
-  "templates-policy": { filename: "templates-policy.schema.json", expectedId: "https://stinkycobbler.dev/schemas/templates-policy.schema.json" },
   "contract-templates-policy": { filename: "contract-templates-policy.schema.json", expectedId: "https://stinkycobbler.dev/schemas/contract-templates-policy.schema.json" },
   "cancellation-fence": { filename: "cancellation-fence.schema.json", expectedId: "https://stinkycobbler.dev/schemas/cancellation-fence.schema.json" },
   "lease-usage": { filename: "lease-usage.schema.json", expectedId: "https://stinkycobbler.dev/schemas/lease-usage.schema.json" },

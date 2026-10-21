@@ -29,7 +29,7 @@ async function setupWorkspace(env: NodeJS.ProcessEnv): Promise<string> {
     id: "orch-e2e", workspaceId: "ws-e2e", goal: "Docs", requestedOutputs: ["document"],
     riskLevel: "L0", state: "DRAFT", scope: ["docs"], writeSet: ["docs"]
   }), "utf8");
-  await cli(env, "init", "--workspace-id", "ws-e2e", "--profile", "team", "--pack", "software-engineering", "--mode", "reviewed-workflow", "--root", root, "--json");
+  await cli(env, "init", "--workspace-id", "ws-e2e", "--profile", "team", "--pack", "software-engineering", "--root", root, "--json");
   await cli(env, "task", "create", "--file", path.join(root, "task.json"), "--root", root, "--json");
   await cli(env, "task", "transition", "orch-e2e", "--to", "SCOPED", "--root", root, "--json");
   await cli(env, "task", "transition", "orch-e2e", "--to", "DESIGNED", "--root", root, "--json");
@@ -60,14 +60,14 @@ async function setupWorkspace(env: NodeJS.ProcessEnv): Promise<string> {
 }
 
 describe("orchestration CLI e2e", () => {
-  it("shows and validates all four tiered policy files", { timeout: ORCHESTRATION_E2E_TIMEOUT_MS }, async () => {
+  it("shows and validates the tiered policy files", { timeout: ORCHESTRATION_E2E_TIMEOUT_MS }, async () => {
     const env = { ...process.env };
     const root = await setupWorkspace(env);
     const shown = await json(env, "orchestration", "config", "show", "--root", root);
-    expect(shown.guidanceTemplates.domainConfirmation.prompt).toContain("{domain}");
     expect(shown.contractTemplates).toContain("docs-audit");
     expect(shown.specialists.some((entry: { domain: string }) => entry.domain === "general")).toBe(true);
-    expect(shown.userPaths.guidanceTemplates).toBe(path.join(root, ".stinky-cobbler", "policies", "templates.yaml"));
+    expect(shown.userPaths.contractTemplates).toBe(path.join(root, ".stinky-cobbler", "policies", "contract-templates.yaml"));
+    expect(shown.userPaths.guidanceTemplates).toBeUndefined();
 
     await writeFile(path.join(root, ".stinky-cobbler", "policies", "orchestration.yaml"), "version: 1\ndefaults:\n  maxDomainInstructions: 1\n", "utf8");
     const crossFileDoctor = await json(env, "doctor", "--root", root);
@@ -76,11 +76,11 @@ describe("orchestration CLI e2e", () => {
     expect("stderr" in crossFileShowError ? crossFileShowError.stderr : "").toContain("TIERED_CONFIG_INVALID");
     await writeFile(path.join(root, ".stinky-cobbler", "policies", "orchestration.yaml"), "version: 1\n", "utf8");
 
-    await writeFile(path.join(root, ".stinky-cobbler", "policies", "templates.yaml"), "version: 1\nreviewStyle: invalid\n", "utf8");
+    await writeFile(path.join(root, ".stinky-cobbler", "policies", "contract-templates.yaml"), "version: 1\ntemplates: invalid\n", "utf8");
     const doctor = await json(env, "doctor", "--root", root);
     expect(doctor).toMatchObject({ healthy: false, configCheck: { healthy: false } });
     expect(doctor.configCheck.error).toContain("TIERED_CONFIG_INVALID");
-    expect(doctor.configCheck.fix).toContain("templates.yaml");
+    expect(doctor.configCheck.fix).toContain("contract-templates.yaml");
     const showError = await cli(env, "orchestration", "config", "show", "--root", root, "--json").catch((error: unknown) => error as { stderr?: string });
     expect("stderr" in showError ? showError.stderr : "").toContain("TIERED_CONFIG_INVALID");
   });

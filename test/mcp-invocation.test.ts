@@ -36,7 +36,6 @@ async function setup() {
     root: workspace.root,
     profile: "team",
     packs: ["software-engineering"],
-    mode: "reviewed-workflow",
     roles: {},
     plugins: {}
   });
@@ -104,7 +103,7 @@ describe("controlled MCP invocation", () => {
   });
   it("fails closed before lease reservation when the workspace config fails schema admission", async () => {
     const { root, workspace, schemas } = await setup();
-    await writeFile(await workspaceFile(workspace, "workspace.json"), JSON.stringify({ version: 3, workspaceId: "workspace", root: workspace.root, profile: "team", packs: ["software-engineering"], mode: "reviewed-workflow", roles: {}, plugins: {} }), "utf8");
+    await writeFile(await workspaceFile(workspace, "workspace.json"), JSON.stringify({ version: 3, workspaceId: "workspace", root: workspace.root, profile: "team", packs: ["software-engineering"], roles: {}, plugins: {} }), "utf8");
     let called = false;
     const result = await invokeControlled(
       schemas,
@@ -122,7 +121,7 @@ describe("controlled MCP invocation", () => {
   });
   it("fails closed before lease reservation when the workspace config fails cross-reference admission", async () => {
     const { root, workspace, schemas } = await setup();
-    await writeFile(await workspaceFile(workspace, "workspace.json"), JSON.stringify({ version: 2, workspaceId: "workspace", root: workspace.root, profile: "missing-profile", packs: ["software-engineering"], mode: "reviewed-workflow", roles: {}, plugins: {} }), "utf8");
+    await writeFile(await workspaceFile(workspace, "workspace.json"), JSON.stringify({ version: 2, workspaceId: "workspace", root: workspace.root, profile: "missing-profile", packs: ["software-engineering"], roles: {}, plugins: {} }), "utf8");
     let called = false;
     const result = await invokeControlled(
       schemas,

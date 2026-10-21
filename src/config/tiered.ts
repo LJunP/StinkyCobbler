@@ -27,12 +27,11 @@ export interface TieredLoadResult<T> {
   diagnostics: readonly string[];
 }
 
-export type TieredPolicyFileName = "orchestration.yaml" | "specialists.yaml" | "templates.yaml" | "contract-templates.yaml";
+export type TieredPolicyFileName = "orchestration.yaml" | "specialists.yaml" | "contract-templates.yaml";
 
 const POLICY_SCHEMA_KIND_BY_FILE: Record<TieredPolicyFileName, ContractKind> = {
   "orchestration.yaml": "orchestration-policy",
   "specialists.yaml": "specialists-policy",
-  "templates.yaml": "templates-policy",
   "contract-templates.yaml": "contract-templates-policy"
 };
 
@@ -40,13 +39,11 @@ export const ORCHESTRATION_MERGE_STRATEGY: MergeStrategy = {
   fields: { defaults: "record", sensitiveExtraPaths: "appendOnly" }
 };
 export const SPECIALISTS_MERGE_STRATEGY: MergeStrategy = { fields: { specialists: { keyedList: "domain" } } };
-export const TEMPLATES_MERGE_STRATEGY: MergeStrategy = "record";
 export const CONTRACT_TEMPLATES_MERGE_STRATEGY: MergeStrategy = { fields: { templates: { keyedList: "name" } } };
 
 const MERGE_STRATEGY_BY_FILE: Record<TieredPolicyFileName, MergeStrategy> = {
   "orchestration.yaml": ORCHESTRATION_MERGE_STRATEGY,
   "specialists.yaml": SPECIALISTS_MERGE_STRATEGY,
-  "templates.yaml": TEMPLATES_MERGE_STRATEGY,
   "contract-templates.yaml": CONTRACT_TEMPLATES_MERGE_STRATEGY
 };
 
@@ -64,7 +61,7 @@ export async function loadTieredYaml<T extends { version: number }>(
     throw tieredError(
       "TIERED_CONFIG_INVALID",
       `不支持的 tiered policy kind：${String(fileName)}。`,
-      "修复：只允许 orchestration.yaml、specialists.yaml、templates.yaml 或 contract-templates.yaml。"
+      "修复：只允许 orchestration.yaml、specialists.yaml 或 contract-templates.yaml。"
     );
   }
   const builtinLabel = `policies/${fileName} (builtin)`;
@@ -447,42 +444,11 @@ export interface ContractTemplatesFile {
   }[];
 }
 
-export interface TemplatesFile {
-  version: 1;
-  domainConfirmation?: {
-    prompt?: string;
-    exampleHint?: string;
-    unknownHint?: string;
-  };
-  reviewStyle?: {
-    default?: string;
-    concise?: string;
-    detailed?: string;
-  };
-  instructionsLanguage?: {
-    default?: string;
-    options?: string[];
-    note?: string;
-  };
-}
-
-export interface EffectiveTemplatesConfig {
-  version: 1;
-  domainConfirmation: { prompt: string; exampleHint: string; unknownHint: string };
-  reviewStyle: { default: string; concise: string; detailed: string };
-  instructionsLanguage: { default: string; options: string[]; note: string };
-}
-
 const SPECIALISTS_TOP_LEVEL_KEYS = new Set(["version", "specialists"]);
 const SPECIALIST_KEYS = new Set(["domain", "title", "instructions", "acceptanceChecklist", "negativeRules", "suggestedCapabilities"]);
 const CONTRACT_TEMPLATES_TOP_LEVEL_KEYS = new Set(["version", "templates"]);
 const CONTRACT_TEMPLATE_KEYS = new Set(["name", "description", "domain", "goal", "criteria", "scope"]);
-const TEMPLATES_TOP_LEVEL_KEYS = new Set(["version", "domainConfirmation", "reviewStyle", "instructionsLanguage"]);
-const DOMAIN_CONFIRMATION_KEYS = new Set(["prompt", "exampleHint", "unknownHint"]);
-const REVIEW_STYLE_KEYS = new Set(["default", "concise", "detailed"]);
-const INSTRUCTIONS_LANGUAGE_KEYS = new Set(["default", "options", "note"]);
 const SUGGESTED_CAPABILITIES = new Set(["repository-read", "git-read", "docs-index", "repository-write"]);
-const INSTRUCTION_LANGUAGES = new Set(["zh", "en"]);
 
 /** Loads and validates specialist layers. Effective specialists are already merged by domain. */
 export async function loadSpecialistsPolicy(workspace: LocalWorkspace | null): Promise<TieredLoadResult<SpecialistsFile>> {
@@ -498,20 +464,6 @@ export async function loadContractTemplatesPolicy(workspace: LocalWorkspace | nu
   assertContractTemplatesFile(loaded.builtin, "policies/contract-templates.yaml (内置)", true);
   for (const overlay of overlayEntries(loaded)) assertContractTemplatesFile(overlay.value, overlay.path, false);
   return loaded;
-}
-
-/** Loads the effective interaction-template dictionary and validates every key and value fail-closed. */
-export async function loadTemplatesConfig(workspace: LocalWorkspace | null): Promise<EffectiveTemplatesConfig> {
-  const loaded = await loadTieredYaml<TemplatesFile>(workspace, "templates.yaml", 1);
-  const source = effectiveSource(loaded, "policies/templates.yaml (内置)");
-  assertTemplatesFile(loaded.builtin, "policies/templates.yaml (内置)", true);
-  for (const overlay of overlayEntries(loaded)) assertTemplatesFile(overlay.value, overlay.path, false);
-  assertTemplatesFile(loaded.effective, source, true);
-  const effective = loaded.effective as EffectiveTemplatesConfig;
-  if (!effective.instructionsLanguage.options.includes(effective.instructionsLanguage.default)) {
-    throw invalidTieredPolicy(source, "instructionsLanguage.default 必须出现在 options 中。", "templates.yaml");
-  }
-  return effective;
 }
 
 function overlayEntries<T>(loaded: TieredLoadResult<T>): Array<{ value: T; path: string }> {
@@ -586,47 +538,6 @@ function assertContractTemplatesFile(config: ContractTemplatesFile, source: stri
     const nameKey = String(value.name).normalize("NFC").toLocaleLowerCase("en-US");
     if (names.has(nameKey)) throw invalidTieredPolicy(source, `${label}.name 与同文件中的其他模板重复。`, "contract-templates.yaml");
     names.add(nameKey);
-  }
-}
-
-function assertTemplatesFile(config: TemplatesFile, source: string, requireComplete: boolean): void {
-  assertExactKeys(config, TEMPLATES_TOP_LEVEL_KEYS, source);
-  assertTemplateSection(config.domainConfirmation, DOMAIN_CONFIRMATION_KEYS, source, "domainConfirmation", requireComplete);
-  assertTemplateSection(config.reviewStyle, REVIEW_STYLE_KEYS, source, "reviewStyle", requireComplete);
-  const language = config.instructionsLanguage;
-  if (language === undefined) {
-    if (requireComplete) throw invalidTieredPolicy(source, "缺少 instructionsLanguage。", "templates.yaml");
-    return;
-  }
-  if (!isPlainObject(language)) throw invalidTieredPolicy(source, "instructionsLanguage 必须是对象。", "templates.yaml");
-  assertExactKeys(language, INSTRUCTIONS_LANGUAGE_KEYS, `${source} instructionsLanguage`);
-  for (const key of ["default", "note"] as const) {
-    if (language[key] === undefined) {
-      if (requireComplete) throw invalidTieredPolicy(source, `instructionsLanguage.${key} 缺失。`, "templates.yaml");
-    } else {
-      assertText(language[key], source, `instructionsLanguage.${key}`, 1024);
-    }
-  }
-  if (language.options === undefined) {
-    if (requireComplete) throw invalidTieredPolicy(source, "instructionsLanguage.options 缺失。", "templates.yaml");
-  } else {
-    assertTextArray(language.options, source, "instructionsLanguage.options", 1, 2, INSTRUCTION_LANGUAGES);
-  }
-}
-
-function assertTemplateSection(value: unknown, allowed: Set<string>, source: string, label: string, requireComplete: boolean): void {
-  if (value === undefined) {
-    if (requireComplete) throw invalidTieredPolicy(source, `缺少 ${label}。`, "templates.yaml");
-    return;
-  }
-  if (!isPlainObject(value)) throw invalidTieredPolicy(source, `${label} 必须是对象。`, "templates.yaml");
-  assertExactKeys(value, allowed, `${source} ${label}`);
-  for (const key of allowed) {
-    if (value[key] === undefined) {
-      if (requireComplete) throw invalidTieredPolicy(source, `${label}.${key} 缺失。`, "templates.yaml");
-    } else {
-      assertText(value[key], source, `${label}.${key}`, 1024);
-    }
   }
 }
 

@@ -38,7 +38,7 @@ describe("entry CLI black-box", () => {
     const before = JSON.parse((await cli(env, "entry", "preflight", "--workspace", root, "--json")).stdout) as { workspaceInitialized: boolean; decision: string };
     expect(before.workspaceInitialized).toBe(false);
     expect(before.decision).toBe("workspace-uninitialized");
-    await cli(env, "init", "--workspace-id", "entry-cli", "--profile", "team", "--pack", "software-engineering", "--mode", "reviewed-workflow", "--root", root, "--json");
+    await cli(env, "init", "--workspace-id", "entry-cli", "--profile", "team", "--pack", "software-engineering", "--root", root, "--json");
     const after = JSON.parse((await cli(env, "entry", "preflight", "--workspace", root, "--via", "mcp", "--json")).stdout) as { workspaceInitialized: boolean; decision: string };
     expect(after.workspaceInitialized).toBe(true);
   });

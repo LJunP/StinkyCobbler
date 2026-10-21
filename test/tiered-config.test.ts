@@ -5,7 +5,7 @@ import path from "node:path";
 import { SchemaRegistry } from "../src/contracts/schema-registry.js";
 import { createTask, getTask, saveTask } from "../src/gate/storage/tasks.js";
 import { initWorkspace } from "../src/gate/storage/workspace.js";
-import { loadOrchestrationConfig, loadTemplatesConfig, loadTieredYaml } from "../src/config/tiered.js";
+import { loadOrchestrationConfig, loadTieredYaml } from "../src/config/tiered.js";
 import { loadAndValidateAllTieredConfig } from "../src/config/tiered-health.js";
 import {
   createContract, createRun, addSubtask, reportArtifact, recordReview, completeRound, dispatchSubtask, beginSubtask
@@ -79,7 +79,6 @@ describe("tiered config", () => {
   it.each([
     ["orchestration.yaml", "version: 1\ndefaults:\n  maxRounds: unlimited\n"],
     ["specialists.yaml", "version: 1\nspecialists: invalid\n"],
-    ["templates.yaml", "version: 1\nreviewStyle:\n  concise: 42\n"],
     ["contract-templates.yaml", "version: 1\ntemplates: invalid\n"]
   ] as const)("does not expose %s through an unvalidated loadTieredYaml boundary", async (fileName, content) => {
     const { workspace, root } = await setup();
@@ -268,30 +267,7 @@ specialists:
   });
 });
 
-describe("guidance templates", () => {
-  it("merges a partial workspace overlay into the validated builtin dictionary", async () => {
-    const { workspace, root } = await setup();
-    await writeUserPolicy(root, "templates.yaml", "version: 1\nreviewStyle:\n  concise: 一行结论\n");
-    const templates = await loadTemplatesConfig(workspace);
-    expect(templates.reviewStyle.concise).toBe("一行结论");
-    expect(templates.reviewStyle.default).toBeTruthy();
-    expect(templates.instructionsLanguage.options).toContain(templates.instructionsLanguage.default);
-  });
-
-  it.each([
-    "version: 1\nreviewStyle: concise\n",
-    "version: 1\nreviewStyle:\n  typo: invalid\n",
-    "version: 1\ninstructionsLanguage:\n  options: zh\n",
-    "version: 1\ninstructionsLanguage:\n  default: fr\n  options: [fr]\n",
-    "version: 1\nunknown: true\n"
-  ])("fails closed on malformed guidance-template policy shapes", async (content) => {
-    const { workspace, root } = await setup();
-    await writeUserPolicy(root, "templates.yaml", content);
-    await expect(loadTemplatesConfig(workspace)).rejects.toMatchObject({ code: "TIERED_CONFIG_INVALID" });
-  });
-});
-
-describe("four-file effective config health", () => {
+describe("tiered effective config health", () => {
   it.each([
     ["maxDomainInstructions", 1],
     ["maxDomainLength", 1],

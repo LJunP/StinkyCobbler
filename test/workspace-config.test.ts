@@ -35,7 +35,6 @@ function config(root: string, version: 1 | 2 = 1): WorkspaceConfig {
     root,
     profile: "team",
     packs: ["software-engineering"],
-    mode: "reviewed-workflow",
     roles: {},
     ...(version === 2 ? { plugins: {} } : {})
   };
@@ -57,7 +56,7 @@ describe("Workspace Config v2 and plugin selection", () => {
     const resolved = resolveWorkspaceConfig(validateWorkspaceConfig(selected, value.schemas, value.registries, value.root), value.registries);
     expect(resolved.plugins.find((plugin) => plugin.id === "repository-read")).toMatchObject({ workspaceSelection: "enabled", selected: true, effective: true, executable: true });
     expect(resolved.plugins.find((plugin) => plugin.id === "git-read")).toMatchObject({ workspaceSelection: "disabled", selected: false, effective: false });
-    expect(() => validateWorkspaceConfig({ ...selected, plugins: { "local-observe": { enabled: true } } }, value.schemas, value.registries, value.root)).toThrowError(/not executable/);
+    expect(() => validateWorkspaceConfig({ ...selected, plugins: { "test-run": { enabled: true } } }, value.schemas, value.registries, value.root)).toThrowError(/not executable/);
   });
 
   it("migrates v1 atomically with a backup and makes v2 a no-op", async () => {

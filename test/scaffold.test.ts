@@ -17,10 +17,10 @@ async function setup() {
 }
 
 describe("out-of-the-box policy templates (scaffold)", () => {
-  it("creates all four commented template files", async () => {
+  it("creates the commented template files", async () => {
     const { workspace } = await setup();
     const created = await scaffoldUserPolicies(workspace);
-    expect(created.sort()).toEqual(["contract-templates.yaml", "orchestration.yaml", "specialists.yaml", "templates.yaml"]);
+    expect(created.sort()).toEqual(["contract-templates.yaml", "orchestration.yaml", "specialists.yaml"]);
     for (const name of created) {
       const content = await readFile(path.join(workspace.root, ".stinky-cobbler", "policies", name), "utf8");
       expect(content).toContain("version: 1");
@@ -59,7 +59,7 @@ describe("out-of-the-box policy templates (scaffold)", () => {
     await writeFile(path.join(dir, "orchestration.yaml"), "version: 1\ndefaults:\n  maxRounds: 99\n", "utf8");
     const created = await scaffoldUserPolicies(workspace);
     expect(created).not.toContain("orchestration.yaml");
-    expect(created.length).toBe(3);
+    expect(created.length).toBe(2);
     const cfg = await loadOrchestrationConfig(workspace);
     expect(cfg.defaults?.maxRounds).toBe(99); // user edit survives
   });

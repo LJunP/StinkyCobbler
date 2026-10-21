@@ -14,14 +14,7 @@ const base: PluginManifest = {
   level: "L0",
   status: "declared-only",
   operations: ["sample-read"],
-  inputSchemaRef: "builtin:sample-read.input",
-  outputSchemaRef: "builtin:sample-read.output",
-  sideEffects: "none",
-  requiresLease: true,
-  requiresApproval: false,
   runtime: "unavailable",
-  timeoutMs: 1000,
-  auditMode: "receipt-ledger",
   source: "builtin"
 };
 
@@ -33,7 +26,8 @@ describe("v0.3 Plugin and Adapter platform", () => {
 
     const registries = await loadRegistries(root, schemas);
     expect(registries.pluginDiagnostics.get("repository-read")).toMatchObject({ status: "available", implementationAvailable: true, executable: true });
-    expect(registries.pluginDiagnostics.get("web-research")).toMatchObject({ status: "declared-only", implementationAvailable: false, executable: false, reasonCode: "PLUGIN_DECLARED_ONLY" });
+    expect(registries.pluginDiagnostics.has("web-research")).toBe(false);
+    expect(discoverBuiltinPlugins([base]).diagnostics.get("sample-read")).toMatchObject({ status: "declared-only", implementationAvailable: false, executable: false, reasonCode: "PLUGIN_DECLARED_ONLY" });
     expect(registries.pluginDiagnostics.get("test-run")).toMatchObject({ status: "internal", executable: false });
   });
 

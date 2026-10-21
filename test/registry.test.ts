@@ -12,8 +12,7 @@ describe("built-in registries", () => {
     expect(registries.packs.get("software-engineering")?.artifactTypes).toContain("test-report");
     expect(registries.packs.get("regulated-work")?.artifactTypes).toContain("evidence-pack");
     expect(registries.roles.roles.researcher!.displayName).toBe("研究员");
-    expect(registries.plugins.get("web-research")?.level).toBe("L2");
-    expect(registries.pluginDiagnostics.get("web-research")?.executable).toBe(false);
+    expect(registries.plugins.has("web-research")).toBe(false);
     expect(registries.pluginDiagnostics.get("repository-read")?.executable).toBe(true);
     expect(registries.roleTools.scout).toEqual(["repository-read", "repository-list", "docs-index"]);
     expect(registries.roleTools.reviewer).toEqual(["repository-read", "git-read"]);

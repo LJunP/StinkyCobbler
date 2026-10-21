@@ -13,6 +13,4 @@ qualityRules:
   - provenance-required
   - final-professional-decision-requires-human
   - external-egress-denied-by-default
-recommendedPlugins:
-  - approved-document-read
-  - evidence-export-draft
+recommendedPlugins: []

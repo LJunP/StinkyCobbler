@@ -47,7 +47,6 @@ async function setup(profile?: "individual" | "team" | "organization" | "regulat
       root: workspace.root,
       profile,
       packs: [profile === "regulated" ? "regulated-work" : "software-engineering"],
-      mode: "reviewed-workflow",
       roles: {},
       plugins: {}
     }), "utf8");
@@ -1632,7 +1631,6 @@ describe("criterion correspondence + same-source review (P2)", () => {
       root: workspace.root,
       profile: "individual",
       packs: ["software-engineering"],
-      mode: "reviewed-workflow",
       roles: {},
       plugins: {},
       unexpected: true

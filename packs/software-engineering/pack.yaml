@@ -20,4 +20,3 @@ recommendedPlugins:
   - repository-read
   - git-read
   - test-run
-  - local-observe

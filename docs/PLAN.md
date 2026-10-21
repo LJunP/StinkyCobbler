@@ -21,7 +21,7 @@
 - [x] M1-T4 `io/tiered-config` 按文件合并策略 + user 层（修 D-14）
 - [x] M1-T5 `hosts/HostAdapter` + codex / claude-code / cursor / zcode + conformance；`entry install-host` / `mcp-config` 的 `--host` 改为必填（从 M0-T6 推迟）
 - [x] M1-T6 CLI 命令注册化 + Presenter
-- [ ] M1-T7 删除死配置与假 affordance（删除清单待确认）
+- [x] M1-T7 删除死配置与假 affordance
 - [ ] M1-T8 SKILL 模板单源化
 
 ## M2 toolkit 内核 → 3.0.0-alpha.1

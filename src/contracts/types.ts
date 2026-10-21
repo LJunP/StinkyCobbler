@@ -103,12 +103,7 @@ export interface TaskCharter {
 
 export interface RoleDefinition {
   displayName: string;
-  category: string;
-  defaultLevel: ImpactLevel;
   canWrite: boolean;
-  requiresWorktree?: boolean;
-  writeScope?: string;
-  incompatibleWith?: string[];
 }
 
 export interface RoleRegistry { version: 1; roles: Record<string, RoleDefinition>; }
@@ -118,7 +113,6 @@ export interface Profile {
   id: string;
   label: string;
   defaultAutomation: "draft-first" | "reviewed-workflow" | "policy-governed" | "advice-only";
-  defaultApproval: string;
   enabledPacks: string[];
 }
 
@@ -139,15 +133,8 @@ export interface PluginManifest {
   level: ImpactLevel;
   status: "available" | "internal" | "declared-only" | "unavailable";
   operations: string[];
-  inputSchemaRef: string;
-  outputSchemaRef: string;
-  sideEffects: "none" | "control-plane" | "business-write" | "external-egress";
-  requiresLease: boolean;
-  requiresApproval: boolean;
   implementationRef?: string;
   runtime: "builtin" | "mcp" | "adapter" | "unavailable";
-  timeoutMs: number;
-  auditMode: "receipt-ledger" | "ledger-only" | "none";
   source: "builtin" | "workspace" | "user" | "package";
 }
 
@@ -492,23 +479,4 @@ export interface AgentReceipt {
   outputHash?: string;
   errorCode?: string;
   blockedReason?: string;
-}
-
-export interface AgentExecutorInput {
-  run: AgentRun;
-  capsule: TaskCapsule;
-  callTool: (request: Omit<ToolCallRecord, "id" | "status" | "startedAt">) => Promise<ToolCallRecord>;
-}
-
-export interface AgentExecutorResult {
-  status: Exclude<AgentRunStatus, "CREATED" | "ADMITTED" | "RUNNING">;
-  outputHash?: string;
-  errorCode?: string;
-  blockedReason?: string;
-}
-
-export interface AgentExecutor {
-  id: string;
-  execute(input: AgentExecutorInput): Promise<AgentExecutorResult>;
-  cancel?(runId: string): Promise<void>;
 }

@@ -13,7 +13,4 @@ qualityRules:
   - transformations-must-be-reproducible
   - source-and-assumptions-must-be-documented
   - sensitive-data-egress-is-denied-by-default
-recommendedPlugins:
-  - dataset-read
-  - notebook-run
-  - visualization-render
+recommendedPlugins: []

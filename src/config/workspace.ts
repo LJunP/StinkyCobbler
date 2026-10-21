@@ -17,8 +17,6 @@ import { syncDirectory } from "../gate/storage/durability.js";
 
 export const WORKSPACE_CONFIG_FILE = "workspace.json";
 
-export type WorkspaceMode = Profile["defaultAutomation"];
-
 export interface WorkspaceRoleOverride {
   displayName: string;
 }
@@ -31,8 +29,6 @@ export interface WorkspaceConfig {
   root: string;
   profile: string;
   packs: string[];
-  mode: WorkspaceMode;
-  allowLocalL0Exploration?: boolean;
   roles: Record<string, WorkspaceRoleOverride>;
   plugins?: Record<string, WorkspacePluginSelection>;
 }

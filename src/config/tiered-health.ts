@@ -1,7 +1,7 @@
-/** Holistic validation for the four effective tiered policy files. */
+/** Holistic validation for the three effective tiered policy files. */
 
-import type { EffectiveTemplatesConfig, OrchestrationConfig } from "./tiered.js";
-import { loadOrchestrationConfig, loadTemplatesConfig } from "./tiered.js";
+import type { OrchestrationConfig } from "./tiered.js";
+import { loadOrchestrationConfig } from "./tiered.js";
 import type { WorkerProfile } from "../contracts/orchestration.js";
 import { ExitCode, StinkyCobblerError } from "../errors.js";
 import { assertWorkspacePathPolicy } from "../security/workspace-path.js";
@@ -13,19 +13,17 @@ import type { LocalWorkspace } from "../gate/storage/workspace.js";
 export interface EffectiveTieredConfiguration {
   orchestration: OrchestrationConfig;
   specialists: WorkerProfile[];
-  guidanceTemplates: EffectiveTemplatesConfig;
   contractTemplates: ContractTemplate[];
 }
 
 /**
- * Loads all four policy files and validates cross-file compatibility. A file
+ * Loads the tiered policy files and validates cross-file compatibility. A file
  * is not "healthy" when its shape is valid but its effective entries can
  * never pass the configured orchestration limits or sensitive-path policy.
  */
 export async function loadAndValidateAllTieredConfig(workspace: LocalWorkspace): Promise<EffectiveTieredConfiguration> {
   const orchestration = await loadOrchestrationConfig(workspace);
   const specialists = await listSpecialists(workspace);
-  const guidanceTemplates = await loadTemplatesConfig(workspace);
   const contractTemplates = await listContractTemplates(workspace);
 
   const maxDomainLength = orchestration.defaults?.maxDomainLength ?? 64;
@@ -63,11 +61,11 @@ export async function loadAndValidateAllTieredConfig(workspace: LocalWorkspace):
     }
   }
 
-  return { orchestration, specialists, guidanceTemplates, contractTemplates };
+  return { orchestration, specialists, contractTemplates };
 }
 
 function crossFileError(message: string): StinkyCobblerError {
-  return new StinkyCobblerError("TIERED_CONFIG_INVALID", ExitCode.VALIDATION, `四文件 effective 配置不兼容：${message}`, {
+  return new StinkyCobblerError("TIERED_CONFIG_INVALID", ExitCode.VALIDATION, `分层配置 effective 值不兼容：${message}`, {
     fix: "修复：调整 orchestration.yaml 的收紧上限/敏感路径，或修改对应 specialists.yaml / contract-templates.yaml 条目，然后重新运行 doctor --root。"
   });
 }

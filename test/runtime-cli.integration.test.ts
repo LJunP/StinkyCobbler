@@ -25,7 +25,7 @@ describe("Runtime CLI black-box", () => {
   it("validates, runs, and shows an explicit scripted-readonly run", async () => {
     const root = await realpath(await mkdtemp(path.join(tmpdir(), "stinky-runtime-cli-")));
     roots.push(root);
-    await cli("init", "--workspace-id", "runtime-cli", "--profile", "team", "--pack", "software-engineering", "--mode", "reviewed-workflow", "--root", root, "--json");
+    await cli("init", "--workspace-id", "runtime-cli", "--profile", "team", "--pack", "software-engineering", "--root", root, "--json");
     await writeFile(path.join(root, "README.md"), "runtime CLI evidence\n", "utf8");
 
     const task = {

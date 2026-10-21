@@ -2,6 +2,20 @@
 
 > 只追加，最新在上。每条：日期 / 任务 / 做了什么 / 验证 / 待办与问题。
 
+## 2026-10-21 · M1-T7 删除未执行的配置
+
+- 删了 `policies/default-approvals.yaml`、`policies/default-data-classification.yaml`、`policies/templates.yaml`、`schemas/templates-policy.schema.json`、`src/gate/mcp/test-run.ts`。`plugins/builtin.yaml` 只保留 repository-read、git-read、docs-index、internal 的 test-run。账本事件名 `test-run` 还在。
+- profile 去掉 `rules`、`maxParallelAgents`、`defaultApproval`。角色去掉 `defaultLevel`、`category`、`requiresWorktree`、`writeScope`、`incompatibleWith`，留下 `displayName` 和 `canWrite`。workspace 去掉 `mode` 和 `allowLocalL0Exploration`，`init` 不再接受 `--mode`。
+- 插件清单删掉的 7 个字段是 `inputSchemaRef`、`outputSchemaRef`、`sideEffects`、`requiresLease`、`requiresApproval`、`timeoutMs`、`auditMode`。`version` 仍由 schema 校验。`label` 仍随清单加载。`qualityRules` 和 `plugins.enabled` 不在删除清单里，保留。
+- 删了 `AgentExecutor`、`AgentExecutorInput`、`AgentExecutorResult`。`GateResult`、`AgentStep`、`RuntimeEvent` 仍被 `types.ts` 里的运行记录引用，没有删。
+- 偏差：活性测试还扫到 `schemas/artifact.schema.json` 里只出现在 schema、src 和测试都没有的 `schemaRef`、`contentRef`、`sourceRefs`、`toolRefs`。同一变更删了这四项，否则规定的活性测试不能变绿。
+- 偏差：六个 pack 的 `recommendedPlugins` 原来只指向已删插件，现改成空数组。`software-engineering` 去掉 `local-observe`，保留 repository-read、git-read、test-run。否则 `loadRegistries` 会报 `PACK_UNKNOWN_PLUGIN`。
+- 已有 `workspace.json` 如果还带着 `mode` 或 `allowLocalL0Exploration`，schema 会拒绝。这次没有加“未知键只警告”的迁移。`defaultAutomation` 仍写在 profile 里，`config doctor` 仍会打印它；运行时不根据它分支。它不在删除清单里。
+- 验证：先红后绿。`test/config-liveness.test.ts` 起初失败，孤儿是 `contentRef`、`maxParallelAgents`、`schemaRef`、`sourceRefs`、`toolRefs`。`doctor --json` 起初仍含 `local-observe`；不带 `--mode` 的 `init` 被 commander 拒绝。
+- `npm run lint` 通过（测试类型基线 0、eslint 0 error / 42 warning、depcruise 106 modules / 633 dependencies，15 条已知循环，条数未增加）。`npm test` 82 文件 / 811 项通过。
+- `git diff --cached --shortstat`：55 files，222 insertions，551 deletions。低于每任务 400 行新增。
+- 未做：推送。`gate/` 总行数守卫仍未加。
+
 ## 2026-10-21 · M1-T6 CLI 命令注册与 Presenter
 
 - `src/cli.ts` 只负责创建 commander 并调用 `registerCommands`，25 行。命令实现在 `src/app/register-commands.ts`，按命令组拆成不超过 50 行的函数。`task list` 无 `--json` 时首行含 `TASK ID`；`--json` 仍是可解析 JSON。数值选项从 `Number()` 改为 zod `coerce.number().int().nonnegative()`。

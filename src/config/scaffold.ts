@@ -133,23 +133,6 @@ const SPECIALISTS_TEMPLATE = `# ── 专才注册表（自定义你的专业 w
 # 注意：specialists 键取消注释后，写几个就是「内置 + 你的」合并结果。
 `;
 
-const TEMPLATES_TEMPLATE = `# ── 话术 / 审查风格 / 指令语言模板 ─────────────────────────
-# 这些是 config show 展示、供宿主/操作者参考的指导字典；引擎与 skill 不会自动套用。
-# 想改交互文案：编辑宿主侧 skill 文件（SKILL.md）最直接。
-# domainConfirmation:
-#   prompt: 识别到问题领域：{domain}。请确认或一句话修正。
-#   exampleHint: 不确认就按识别结果继续
-#   unknownHint: 未识别出明确领域，将使用通用专才。
-# reviewStyle:
-#   default: reason 直述结论；defects 每条含位置、问题、建议。
-#   concise: reason ≤2 句；defects 每条一行。
-#   detailed: reason 分条论证；defects 附证据引用与优先级。
-# instructionsLanguage:
-#   default: zh
-#   options: [zh, en]
-#   note: 指令语言仅是供宿主参考的偏好，不会自动改写专才内容。
-`;
-
 const CONTRACT_TEMPLATES_TEMPLATE = `# ── 契约模板库（一键建契约）─────────────────────────────────
 # 用法：stinky-cobbler orchestration contract from-template <name> --task <id> --root <路径>
 # 语义：同名 name = 替换内置；新 name = 追加。
@@ -171,7 +154,6 @@ const CONTRACT_TEMPLATES_TEMPLATE = `# ── 契约模板库（一键建契约�
 const SCAFFOLD_FILES: { fileName: string; body: string }[] = [
   { fileName: "orchestration.yaml", body: ORCHESTRATION_TEMPLATE },
   { fileName: "specialists.yaml", body: SPECIALISTS_TEMPLATE },
-  { fileName: "templates.yaml", body: TEMPLATES_TEMPLATE },
   { fileName: "contract-templates.yaml", body: CONTRACT_TEMPLATES_TEMPLATE }
 ];
 
