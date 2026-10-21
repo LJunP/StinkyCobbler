@@ -2,6 +2,14 @@
 
 > 只追加，最新在上。每条：日期 / 任务 / 做了什么 / 验证 / 待办与问题。
 
+## 2026-10-21 · M2-T4 apply 与 hash 回滚
+
+- 新增 `src/app/apply.ts`、`src/app/rollback.ts`、`src/io/ledger.ts`。apply 按 op 调用 `installManagedBytes`、`upsertSegment` 和宿主 `mergeMcp`。每个成功的 op 追加 `toolkit-op-applied` 到 `$XDG_CONFIG_HOME/stinky-cobbler/ledger.jsonl`。某一步失败就停，不自动回滚，报告里提示 `toolkit rollback --last`。
+- 回滚按最后一次 apply 的 op 逆序执行。当前字节的 hash 必须等于账本里的 `afterHash` 和 sidecar。不一致就 conflict 并停。新建文件回滚后删除；替换和段落回滚到 apply 前的字节。
+- 偏差：这不是 gate 的 hash 链账本，只是 toolkit 的 JSONL。`mergeMcp` 现有接口只写 command 和 args，env 引用留在计划里，不写进宿主文件。前向 `remove` 这次不执行。
+- 验证：先红（`src/app/apply.ts` 不存在）。第三个 op 的父路径是文件时，前两个文件和两条账本还在。apply 后再 rollback，原字节回来。改过的文件 rollback 停在 conflict。`npm run lint` 通过（测试类型基线 0、eslint 0 error / 42 warning、depcruise 114 modules / 669 dependencies，15 条已知循环）。`npm test` 86 文件 / 827 项通过。
+- 未做：推送。版本仍是 2.0.2。
+
 ## 2026-10-21 · M2-T3 纯函数计划器
 
 - 新增 `src/core/plan/plan.ts` 和 `src/core/render/render.ts`。计划器只吃规格、观察结果和已经准备好的正文，不读文件、不访问网络。`src/core` 仍然不能 import `src/hosts` 或 `src/io`。
