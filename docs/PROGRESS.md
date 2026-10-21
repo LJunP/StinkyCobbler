@@ -2,6 +2,14 @@
 
 > 只追加，最新在上。每条：日期 / 任务 / 做了什么 / 验证 / 待办与问题。
 
+## 2026-10-21 · M2-T2 宿主观察
+
+- 新增 `inspectManagedFile` 和 `src/app/observe.ts`。观察只读：不创建、不修改宿主文件。skill 看 `SKILL.md` 和 sidecar；MCP 再读宿主配置里有没有该 server id。
+- 状态：文件不存在，或 MCP 文件里没有这个 id，是 `absent`。sidecar 的 hash 与当前字节一致是 `managed`。sidecar 在但字节变了是 `managed-modified`。文件在、没有 sidecar 是 `foreign`。
+- 四个宿主的 skill 和 mcp-server 都走 adapter 的 `locate` / `readMcp`。instructions 和 command 这次不观察，等计划器处理段落和命令路径。
+- 验证：先红（`src/app/observe.ts` 不存在）。假 HOME 上覆盖 absent、managed、managed-modified、foreign，并且观察前后目录摘要不变。`npm run lint` 通过（测试类型基线 0、eslint 0 error / 42 warning、depcruise 109 modules / 643 dependencies，15 条已知循环）。`npm test` 84 文件 / 817 项通过。
+- 未做：推送。版本仍是 2.0.2。
+
 ## 2026-10-21 · M2-T1 toolkit 规格
 
 - 新增 `src/core/toolkit/kinds.ts`、`src/core/toolkit/spec.ts`、`schemas/toolkit.schema.json`。`parseToolkitSpec` 用已经在依赖树里的 zod 4。明文 `env` 值报 `SECRET_LITERAL_FORBIDDEN`。重复 id 报 `TOOLKIT_DUPLICATE_ID`。未知宿主报 `TOOLKIT_HOST_UNKNOWN`，消息里列出合法宿主。

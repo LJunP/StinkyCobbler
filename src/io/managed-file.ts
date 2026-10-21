@@ -48,6 +48,23 @@ export async function readRegularHostFile(file: string): Promise<string | undefi
   return readFile(file, "utf8");
 }
 
+export type ManagedObservationState = "absent" | "managed" | "managed-modified" | "foreign";
+
+export interface ManagedInspection {
+  state: ManagedObservationState;
+  hash?: string;
+}
+
+/** Reads a host target and its sidecar. Does not create or modify either file. */
+export async function inspectManagedFile(target: string): Promise<ManagedInspection> {
+  const text = await readRegularHostFile(target);
+  if (text === undefined) return { state: "absent" };
+  const hash = sha256(text);
+  const metadata = await readManagedMetadata(target);
+  if (metadata === undefined) return { state: "foreign", hash };
+  return { state: metadata.installedSha256 === hash ? "managed" : "managed-modified", hash };
+}
+
 export async function readManagedMetadata(target: string): Promise<ManagedInstallMetadata | undefined> {
   const file = managedMetadataPath(target);
   const info = await lstat(file).catch(() => undefined);
