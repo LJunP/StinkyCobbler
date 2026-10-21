@@ -2,6 +2,15 @@
 
 > 只追加，最新在上。每条：日期 / 任务 / 做了什么 / 验证 / 待办与问题。
 
+## 2026-10-21 · M2-T3 纯函数计划器
+
+- 新增 `src/core/plan/plan.ts` 和 `src/core/render/render.ts`。计划器只吃规格、观察结果和已经准备好的正文，不读文件、不访问网络。`src/core` 仍然不能 import `src/hosts` 或 `src/io`。
+- `absent` 的 skill 生成 `create`，MCP 生成 `merge-mcp`，instructions 生成 `upsert-segment`。`foreign` 和 `managed-modified` 只进冲突，不生成写入。规格不再要的 `managed` 目标生成 `remove`。宿主明确不支持时进 `skipped`。
+- skill 正文的 sha256 与观察 hash 相同则不动；不同则 `replace` 并带上 `priorHash`。MCP 和环境变量引用原样放进 `mcpEntry`，不展开。没有提供正文的 `git+` skill 被跳过，不抓取。bundle 只记一条跳过，不展开。
+- 偏差：已安装且 sidecar 仍匹配的 MCP 配置和指令文件不会因为规格里的 command 变了就自动 `replace`。它们的观察 hash 是整份文件，不是单条 server 或单个段落。
+- 验证：先红（`src/core/plan/plan.ts` 不存在）。`npm run lint` 通过（测试类型基线 0、eslint 0 error / 42 warning、depcruise 111 modules / 651 dependencies，15 条已知循环）。`npm test` 85 文件 / 823 项通过。
+- 未做：推送。版本仍是 2.0.2。
+
 ## 2026-10-21 · M2-T2 宿主观察
 
 - 新增 `inspectManagedFile` 和 `src/app/observe.ts`。观察只读：不创建、不修改宿主文件。skill 看 `SKILL.md` 和 sidecar；MCP 再读宿主配置里有没有该 server id。
