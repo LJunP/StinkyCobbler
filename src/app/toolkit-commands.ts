@@ -1,4 +1,5 @@
 import type { Command } from "commander";
+import { editToolkitMemory, showToolkitMemory } from "./memory-segment.js";
 import {
   applyToolkit,
   doctorToolkit,
@@ -17,6 +18,8 @@ interface ToolkitOptions {
   yes?: boolean;
   last?: boolean;
   to?: string;
+  host?: string;
+  file?: string;
 }
 
 export function registerToolkitCommands(program: Command): void {
@@ -30,6 +33,24 @@ export function registerToolkitCommands(program: Command): void {
   bind(toolkit, "lock", ["--scope <scope>"], (options) => lockToolkit(options.scope));
   bind(toolkit, "update", ["--scope <scope>"], (options) => updateToolkit(options.scope));
   registerSearch(toolkit);
+  registerMemory(toolkit);
+}
+
+function registerMemory(toolkit: Command): void {
+  const memory = toolkit.command("memory").description("Show or replace one managed memory segment.");
+  bindMemory(memory, "show", (id, options) => showToolkitMemory({ id, host: options.host, scope: options.scope }));
+  bindMemory(memory, "edit", (id, options) => editToolkitMemory({ id, host: options.host, scope: options.scope, file: options.file }));
+}
+
+function bindMemory(memory: Command, name: string, run: (id: string, options: ToolkitOptions) => Promise<unknown>): void {
+  memory
+    .command(name)
+    .argument("<id>")
+    .option("--host <host>")
+    .option("--scope <scope>")
+    .option("--file <file>")
+    .option("--json")
+    .action(async (id: string, options: ToolkitOptions) => emit(await run(id, options), options.json));
 }
 
 function registerSearch(toolkit: Command): void {

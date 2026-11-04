@@ -13,6 +13,18 @@ export function upsertSegment(source: string, id: string, body: string): string 
   return `${source.slice(0, located.start)}${block}${source.slice(located.end)}`;
 }
 
+/** Returns the bytes inside one marked segment. Does not search the body. */
+export function readSegment(source: string, id: string): string {
+  assertSegmentId(id);
+  const located = locateSegment(source, id);
+  if (located === undefined) throw segmentError("Managed segment was not found.");
+  const begin = beginMarker(id);
+  const end = endMarker(id);
+  let from = located.start + begin.length;
+  if (source[from] === "\n") from += 1;
+  return source.slice(from, located.end - end.length);
+}
+
 /** Removes one marked segment. Bytes outside the pair stay identical. */
 export function removeSegment(source: string, id: string): string {
   assertSegmentId(id);

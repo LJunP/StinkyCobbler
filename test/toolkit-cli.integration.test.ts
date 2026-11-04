@@ -608,6 +608,32 @@ describe("toolkit cli", () => {
     expect(text).toContain("topic body\n");
     expect(text).not.toContain("do-not-copy");
   });
+
+  it("shows the managed memory segment and replaces only that segment", async () => {
+    const home = await tempDir("stinky-memory-cli-home-");
+    const xdg = await tempDir("stinky-memory-cli-xdg-");
+    const prefix = "keep-before old-outside\n";
+    const suffix = "keep-after\n";
+    const claudeMd = path.join(home, ".claude", "CLAUDE.md");
+    const original = `${prefix}<!-- stinky-cobbler:begin my-memory -->\nold\n<!-- stinky-cobbler:end my-memory -->\n${suffix}`;
+    await mkdir(path.dirname(claudeMd), { recursive: true });
+    await writeFile(claudeMd, original);
+    const env = childEnv(home, xdg);
+    const shown = JSON.parse((await run(env, "toolkit", "memory", "show", "my-memory", "--host", "claude-code", "--json")).stdout) as { bytes: string };
+    expect(shown.bytes).toBe("old\n");
+    expect(shown.bytes).not.toContain("old-outside");
+    await expect(readFile(`${claudeMd}.stinky-cobbler-managed.json`, "utf8")).rejects.toThrow();
+    expect(await readFile(claudeMd, "utf8")).toBe(original);
+    const replacement = path.join(xdg, "next.txt");
+    await writeFile(replacement, "new body\n");
+    await run(env, "toolkit", "memory", "edit", "my-memory", "--file", replacement, "--host", "claude-code", "--json");
+    const next = `${prefix}<!-- stinky-cobbler:begin my-memory -->\nnew body\n<!-- stinky-cobbler:end my-memory -->\n${suffix}`;
+    expect(await readFile(claudeMd, "utf8")).toBe(next);
+    const missed = await fail(env, "toolkit", "memory", "edit", "missing-id", "--file", replacement, "--host", "claude-code", "--json");
+    expect(missed.code).toBe(2);
+    expect(JSON.parse(missed.stderr ?? "{}")).toMatchObject({ error: "SEGMENT_INVALID" });
+    expect(await readFile(claudeMd, "utf8")).toBe(next);
+  });
 });
 
 async function commitSkillRepo(repo: string, body: string, marker: string): Promise<void> {

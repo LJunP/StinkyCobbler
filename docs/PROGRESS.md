@@ -2,6 +2,13 @@
 
 > 只追加，最新在上。每条：日期 / 任务 / 做了什么 / 验证 / 待办与问题。
 
+## 2026-11-04 · M4-T4 memory show 与 edit
+
+- `toolkit memory show <id> --host <host>` 只返回标记之间的原文。`edit --file` 先确认段落存在，再只替换这一段。缺段落时是 `SEGMENT_INVALID`，不会把新正文追加到文件末尾。
+- 不读 `toolkit.yaml`，不检索，不解释正文。Codex、Cursor、ZCode 没有已核实的 md 段落路径，命令返回 `TOOLKIT_HOST_UNSUPPORTED`。`show` 不写 sidecar。
+- 验证：先红（未知命令 `memory`）。然后段外的 `old-outside` 不出现在 show 里，edit 之后段外字节不变，缺少的 id 不改文件。`npm run lint` 通过（测试类型基线 0、eslint 0 error / 42 warning、depcruise 123 modules / 731 dependencies，已知循环基线未改）。`npm test` 89 文件 / 848 项通过。插入 138 行。
+- 未做：推送。版本仍是 2.0.2。M4-T5 未做。
+
 ## 2026-11-04 · M4-T3 只同步受管的 memory markdown
 
 - `kind: memory` 可以带一个本地 `files` 目录。只读一层、文件名符合 id 规则的 `*.md`。原文放进同一条宿主受管段落。`notes.txt`、符号链接和子目录不读。不解释内容，不新开宿主目录。
