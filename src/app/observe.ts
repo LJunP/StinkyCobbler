@@ -3,7 +3,7 @@ import path from "node:path";
 import type { HostAdapter, HostRoots, HostScope } from "../hosts/host-adapter.js";
 import { inspectManagedFile, type ManagedInspection, type ManagedObservationState } from "../io/managed-file.js";
 import { HOST_IDS, type ArtifactKind, type ToolkitHostId } from "../core/toolkit/kinds.js";
-import type { ToolkitSpec } from "../core/toolkit/spec.js";
+import type { McpServerSpec, ToolkitSpec } from "../core/toolkit/spec.js";
 
 export interface HostObservation {
   host: string;
@@ -28,20 +28,21 @@ async function observeHost(adapter: HostAdapter, spec: ToolkitSpec, scope: HostS
     for (const skill of spec.skills) observations.push(await observeSkill(adapter, skill.id, scope, roots));
   }
   if (adapter.supports("mcp-server")) {
-    for (const server of spec.mcpServers) observations.push(await observeMcp(adapter, server.id, scope, roots));
+    for (const server of spec.mcpServers) observations.push(await observeMcp(adapter, server, scope, roots));
   }
-  observations.push(...(await observeMemory(adapter, spec, scope, roots)));
+  observations.push(...(await observeInstructions(adapter, spec, scope, roots)));
   return observations;
 }
 
-async function observeMemory(adapter: HostAdapter, spec: ToolkitSpec, scope: HostScope, roots: HostRoots): Promise<HostObservation[]> {
+async function observeInstructions(adapter: HostAdapter, spec: ToolkitSpec, scope: HostScope, roots: HostRoots): Promise<HostObservation[]> {
   if (!adapter.supports("instructions")) return [];
+  const host = hostId(adapter.id);
+  if (host === undefined) return [];
+  const target = adapter.locate("instructions", scope, roots);
+  if (target.unsupported !== undefined || target.path.length === 0) return [];
   const observations: HostObservation[] = [];
   for (const item of spec.instructions) {
-    const host = hostId(adapter.id);
-    if (item.kind !== "memory" || host === undefined || item.render?.[host] === undefined) continue;
-    const target = adapter.locate("instructions", scope, roots);
-    if (target.unsupported !== undefined || target.path.length === 0) continue;
+    if (item.render?.[host] === undefined) continue;
     observations.push(observation(adapter.id, "instructions", item.id, target.path, await inspectManagedFile(target.path)));
   }
   return observations;
@@ -53,13 +54,27 @@ async function observeSkill(adapter: HostAdapter, id: string, scope: HostScope, 
   return observation(adapter.id, "skill", id, file, await inspectManagedFile(file));
 }
 
-async function observeMcp(adapter: HostAdapter, id: string, scope: HostScope, roots: HostRoots): Promise<HostObservation> {
+async function observeMcp(adapter: HostAdapter, server: McpServerSpec, scope: HostScope, roots: HostRoots): Promise<HostObservation> {
   const file = adapter.locate("mcp-server", scope, roots).path;
   const inspection = await inspectManagedFile(file);
-  if (inspection.state === "absent") return observation(adapter.id, "mcp-server", id, file, inspection);
-  const servers = adapter.readMcp(await readFile(file, "utf8"));
-  if (servers[id] === undefined) return observation(adapter.id, "mcp-server", id, file, { state: "absent" });
-  return observation(adapter.id, "mcp-server", id, file, inspection);
+  if (inspection.state === "absent" || inspection.state === "managed-modified") {
+    return observation(adapter.id, "mcp-server", server.id, file, inspection);
+  }
+  const installed = adapter.readMcp(await readFile(file, "utf8"))[server.id];
+  if (installed === undefined) return observation(adapter.id, "mcp-server", server.id, file, { state: "absent" });
+  if (inspection.state === "managed" && commandDiffers(installed, server)) {
+    return observation(adapter.id, "mcp-server", server.id, file, drifted(inspection));
+  }
+  return observation(adapter.id, "mcp-server", server.id, file, inspection);
+}
+
+function commandDiffers(installed: { command: string; args: readonly string[] }, server: McpServerSpec): boolean {
+  const args = server.args ?? [];
+  return installed.command !== server.command || installed.args.length !== args.length || installed.args.some((arg, index) => arg !== args[index]);
+}
+
+function drifted(inspection: ManagedInspection): ManagedInspection {
+  return { state: "managed-modified", ...(inspection.hash === undefined ? {} : { hash: inspection.hash }) };
 }
 
 function hostId(id: string): ToolkitHostId | undefined {

@@ -30,9 +30,9 @@ node dist/cli.js toolkit doctor --json
 
 `toolkit rollback --last` 恢复最后一次 apply。账本为空时命令失败。
 
-`toolkit list --json` 列出已观察的 skill 和 MCP。instructions 和 command 还没有观察。
+`toolkit list --json` 列出已观察的 skill、MCP 和指令。command 还没有观察。
 
-`toolkit lock` 在规格旁边写 `toolkit.lock`，并把本地正文存进 `blobs/<sha256>`。本地 skill 或指令文件记录正文的 sha256。`git+`、`npm:` 和 `skills.sh:` 记为未抓取，没有 hash。找不到的本地文件记为 `absent`。这个命令不下载，也不改宿主目录。
+`toolkit lock` 在规格旁边写 `toolkit.lock`，并把正文存进 `blobs/<sha256>`。本地 skill 或指令文件记录正文的 sha256。`git+` 和 `npm:` 的 skill 会在这时抓取：`git+` 做 bare clone，`npm:` 读取本地包或已发布的 tarball，只取出 `SKILL.md`，不执行脚本。抓到的正文记为 `fetched` 并带 hash。`skills.sh:` 仍然记为未抓取，没有 hash。找不到的本地文件记为 `absent`。这个命令不改宿主目录。
 
 有 skill 或指令时，`toolkit apply` 先要有这份 lock。它安装的是 blob 里的字节。源文件在 lock 之后改过，也不会被重新读取。blob 缺失时命令失败，不会退回去读源文件。`plan` 对本地文件仍预览当前源文件，所以它和 apply 可能不同。
 

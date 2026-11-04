@@ -2,6 +2,15 @@
 
 > 只追加，最新在上。每条：日期 / 任务 / 做了什么 / 验证 / 待办与问题。
 
+## 2026-11-04 · 观察普通指令，手改的 MCP 不再被覆盖
+
+- 有 `render` 且宿主路径已核实的指令都会被观察，不要求 `kind: memory`。`apply` 会把段落写进 `CLAUDE.md`。
+- 受管 MCP 文件被手改后，即使 server id 不见了，状态仍是 `managed-modified`。`apply` 冲突退出，不把 server 写回去。
+- 已受管 MCP 的 command 或 args 和规格不一致时，doctor 漂移包含该 server，`apply` 不改文件。
+- `toolkit lock` 的快速开始改成：`git+` 和 `npm:` 在 lock 时抓取，`skills.sh:` 仍不抓取。
+- 验证：先红（普通指令没有被安装，两处 MCP 漂移是空数组）。然后三条 CLI 测试通过。`npm run lint` 通过（eslint 0 error / 42 warning，depcruise 123 modules / 731 dependencies）。`npm test` 89 文件 / 851 项通过。
+- 未做：推送。没有 tag，没有 `npm publish`。
+
 ## 2026-11-04 · 包版本改为 3.0.0-rc.1，GA 仍被挡住
 
 - 安装包在两个临时前缀上各跑了四条命令：install、init、lock、apply --yes。两次 `completed` 都含 skill、mcp-server 和 instructions，`stopped` 都是 false。规格文件的编辑夹在 init 和 lock 之间，不算命令。

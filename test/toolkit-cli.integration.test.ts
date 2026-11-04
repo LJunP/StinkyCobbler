@@ -634,7 +634,94 @@ describe("toolkit cli", () => {
     expect(JSON.parse(missed.stderr ?? "{}")).toMatchObject({ error: "SEGMENT_INVALID" });
     expect(await readFile(claudeMd, "utf8")).toBe(next);
   });
+
+  it("applies a plain instruction segment", async () => {
+    const home = await tempDir("stinky-plain-instruction-home-");
+    const xdg = await tempDir("stinky-plain-instruction-xdg-");
+    const source = await tempDir("stinky-plain-instruction-source-");
+    const body = "use short paragraphs\n";
+    await writeFile(path.join(source, "notes.md"), body);
+    const env = childEnv(home, xdg);
+    await run(env, "toolkit", "init", "--json");
+    await writeFile(path.join(xdg, "stinky-cobbler", "toolkit.yaml"), [
+      "version: 1",
+      "scope: user",
+      "hosts:",
+      "  - claude-code",
+      "skills: []",
+      "mcpServers: []",
+      "instructions:",
+      "  - id: notes",
+      `    source: ${JSON.stringify(path.join(source, "notes.md"))}`,
+      "    render:",
+      "      claude-code: CLAUDE.md",
+      "bundles: []",
+      ""
+    ].join("\n"));
+    await run(env, "toolkit", "lock", "--json");
+    const applied = JSON.parse((await run(env, "toolkit", "apply", "--yes", "--json")).stdout) as { stopped: boolean; completed: Array<{ kind: string }> };
+    expect(applied.stopped).toBe(false);
+    expect(applied.completed.some((op) => op.kind === "instructions")).toBe(true);
+    const text = await readFile(path.join(home, ".claude", "CLAUDE.md"), "utf8");
+    expect(text).toContain("<!-- stinky-cobbler:begin notes -->");
+    expect(text).toContain(body);
+  });
+
+  it("does not restore an mcp server deleted from a hand-edited managed file", async () => {
+    const home = await tempDir("stinky-mcp-edit-home-");
+    const xdg = await tempDir("stinky-mcp-edit-xdg-");
+    const env = childEnv(home, xdg);
+    const specFile = path.join(xdg, "stinky-cobbler", "toolkit.yaml");
+    await run(env, "toolkit", "init", "--json");
+    await writeFile(specFile, mcpSpec("echo"));
+    await run(env, "toolkit", "apply", "--yes", "--json");
+    const toml = path.join(home, ".codex", "config.toml");
+    const edited = "# edited\n";
+    await writeFile(toml, edited);
+    const doctor = JSON.parse((await run(env, "toolkit", "doctor", "--json")).stdout) as { drift: Array<{ kind: string; state: string }> };
+    expect(doctor.drift).toEqual([expect.objectContaining({ kind: "mcp-server", id: "files", state: "managed-modified" })]);
+    const refused = await fail(env, "toolkit", "apply", "--yes", "--json");
+    expect(refused.code).toBe(7);
+    expect(JSON.parse(refused.stderr ?? "{}")).toMatchObject({ error: "TOOLKIT_CONFLICT" });
+    expect(await readFile(toml, "utf8")).toBe(edited);
+  });
+
+  it("reports drift when a managed mcp command no longer matches the spec", async () => {
+    const home = await tempDir("stinky-mcp-drift-home-");
+    const xdg = await tempDir("stinky-mcp-drift-xdg-");
+    const env = childEnv(home, xdg);
+    const specFile = path.join(xdg, "stinky-cobbler", "toolkit.yaml");
+    await run(env, "toolkit", "init", "--json");
+    await writeFile(specFile, mcpSpec("echo"));
+    await run(env, "toolkit", "apply", "--yes", "--json");
+    const toml = path.join(home, ".codex", "config.toml");
+    const installed = await readFile(toml, "utf8");
+    expect(installed).toContain("echo");
+    await writeFile(specFile, mcpSpec("printf"));
+    const doctor = JSON.parse((await run(env, "toolkit", "doctor", "--json")).stdout) as { drift: Array<{ kind: string; id: string }> };
+    expect(doctor.drift).toEqual([expect.objectContaining({ kind: "mcp-server", id: "files", state: "managed-modified" })]);
+    const refused = await fail(env, "toolkit", "apply", "--yes", "--json");
+    expect(refused.code).toBe(7);
+    expect(await readFile(toml, "utf8")).toBe(installed);
+  });
 });
+
+function mcpSpec(command: string): string {
+  return [
+    "version: 1",
+    "scope: user",
+    "hosts:",
+    "  - codex",
+    "skills: []",
+    "mcpServers:",
+    "  - id: files",
+    "    transport: stdio",
+    `    command: ${command}`,
+    "instructions: []",
+    "bundles: []",
+    ""
+  ].join("\n");
+}
 
 async function commitSkillRepo(repo: string, body: string, marker: string): Promise<void> {
   const env = { ...process.env, GIT_AUTHOR_NAME: "Test", GIT_AUTHOR_EMAIL: "test@example.com", GIT_COMMITTER_NAME: "Test", GIT_COMMITTER_EMAIL: "test@example.com" };
