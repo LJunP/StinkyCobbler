@@ -1,5 +1,15 @@
 import type { Command } from "commander";
-import { applyToolkit, doctorToolkit, initToolkit, listToolkit, lockToolkit, planToolkit, rollbackToolkit, searchToolkit } from "./toolkit-flow.js";
+import {
+  applyToolkit,
+  doctorToolkit,
+  initToolkit,
+  listToolkit,
+  lockToolkit,
+  planToolkit,
+  rollbackToolkit,
+  searchToolkit,
+  updateToolkit
+} from "./toolkit-flow.js";
 
 interface ToolkitOptions {
   json?: boolean;
@@ -18,6 +28,7 @@ export function registerToolkitCommands(program: Command): void {
   bind(toolkit, "doctor", ["--scope <scope>"], (options) => doctorToolkit(options.scope));
   bind(toolkit, "list", ["--scope <scope>"], (options) => listToolkit(options.scope));
   bind(toolkit, "lock", ["--scope <scope>"], (options) => lockToolkit(options.scope));
+  bind(toolkit, "update", ["--scope <scope>"], (options) => updateToolkit(options.scope));
   registerSearch(toolkit);
 }
 

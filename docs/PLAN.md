@@ -45,6 +45,6 @@
 - [x] M3-T4 `npm:` 来源同样只使用已锁定内容，不执行脚本
 - [x] M3-T5 bundle 只展开 lock 里已经解析的 includes
 - [x] M3-T6 `toolkit search` 在目录 API 未核实前失败关闭，并且不写盘
-- [ ] M3-T7 `toolkit update` 重新解析来源并产出 plan diff，不直接写宿主
+- [x] M3-T7 `toolkit update` 重新解析来源并产出 plan diff，不直接写宿主
 
 ## M4 知识与记忆 → 3.0.0-rc.1（待拆任务）

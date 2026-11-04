@@ -2,6 +2,13 @@
 
 > 只追加，最新在上。每条：日期 / 任务 / 做了什么 / 验证 / 待办与问题。
 
+## 2026-11-04 · M3-T7 toolkit update 只产出 plan diff
+
+- `toolkit update` 重新读取本地来源，并重新抓取 `git+` 和 `npm:`，然后返回和 `plan` 一样的 diff。它不改 `toolkit.lock`，也不写宿主。之后的 `apply` 仍安装锁定字节。
+- 偏差：重新解析不会写回 lock。隔离目录 `sources/` 会因重新 clone 而变化，这不是宿主写入。`skills.sh:` 仍然不抓取。
+- 验证：先红（未知命令 `update`）。然后已安装的 git skill 保持旧正文，plan 的 ops 仍为空，update 的 diff 含新正文，lock 文件不变，HOME 哈希不变，仓库脚本没有写出标记。`npm run lint` 通过（测试类型基线 0、eslint 0 error / 42 warning、depcruise 120 modules / 717 dependencies，15 条已知循环）。`npm test` 88 文件 / 841 项通过。插入 80 行。
+- 未做：推送。版本仍是 2.0.2。M4 仍待拆。
+
 ## 2026-10-22 · M3-T6 toolkit search 失败关闭
 
 - `toolkit search <query>` 返回 `TOOLKIT_SEARCH_UNVERIFIED`，退出码 2。查询词被丢弃。不访问网络，不写 HOME，不写 XDG。

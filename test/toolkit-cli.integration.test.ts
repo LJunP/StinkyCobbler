@@ -451,6 +451,52 @@ describe("toolkit cli", () => {
     expect(await treeHash(xdg)).toBe(xdgBefore);
     await expect(readFile(path.join(home, ".codex", "skills", "remote-skill", "SKILL.md"), "utf8")).rejects.toThrow();
   });
+
+  it("refreshes a git source into a plan diff and does not write the host", async () => {
+    const home = await tempDir("stinky-toolkit-update-home-");
+    const xdg = await tempDir("stinky-toolkit-update-xdg-");
+    const repo = await tempDir("stinky-toolkit-update-repo-");
+    const marker = path.join(repo, "pwned.txt");
+    const lockedBody = "locked git\n";
+    const refreshed = "refreshed git\n";
+    await commitSkillRepo(repo, lockedBody, marker);
+    const env = childEnv(home, xdg);
+    const source = `git+file://${repo}#skills/review`;
+    await run(env, "toolkit", "init", "--json");
+    await writeFile(path.join(xdg, "stinky-cobbler", "toolkit.yaml"), [
+      "version: 1",
+      "scope: user",
+      "hosts:",
+      "  - codex",
+      "skills:",
+      "  - id: review",
+      `    source: ${JSON.stringify(source)}`,
+      "mcpServers: []",
+      "instructions: []",
+      "bundles: []",
+      ""
+    ].join("\n"));
+    await run(env, "toolkit", "lock", "--json");
+    await run(env, "toolkit", "apply", "--yes", "--json");
+    const installed = path.join(home, ".codex", "skills", "review", "SKILL.md");
+    expect(await readFile(installed, "utf8")).toBe(lockedBody);
+    await writeFile(path.join(repo, "skills", "review", "SKILL.md"), refreshed);
+    const gitEnv = { ...process.env, GIT_AUTHOR_NAME: "Test", GIT_AUTHOR_EMAIL: "test@example.com", GIT_COMMITTER_NAME: "Test", GIT_COMMITTER_EMAIL: "test@example.com" };
+    await execFileAsync("git", ["-C", repo, "add", "."], { env: gitEnv });
+    await execFileAsync("git", ["-C", repo, "commit", "-m", "refresh"], { env: gitEnv });
+    const lockFile = path.join(xdg, "stinky-cobbler", "toolkit.lock");
+    const lockBefore = await readFile(lockFile, "utf8");
+    const homeBefore = await treeHash(home);
+    const planned = JSON.parse((await run(env, "toolkit", "plan", "--json")).stdout) as { ops: unknown[] };
+    expect(planned.ops).toEqual([]);
+    const updated = JSON.parse((await run(env, "toolkit", "update", "--json")).stdout) as { ops: Array<{ bytes?: string }>; diffs: string[] };
+    expect(updated.diffs.join("\n")).toContain("refreshed git");
+    expect(updated.ops.map((op) => op.bytes)).toContain(refreshed);
+    expect(await readFile(installed, "utf8")).toBe(lockedBody);
+    expect(await readFile(lockFile, "utf8")).toBe(lockBefore);
+    expect(await treeHash(home)).toBe(homeBefore);
+    await expect(readFile(marker, "utf8")).rejects.toThrow();
+  });
 });
 
 async function commitSkillRepo(repo: string, body: string, marker: string): Promise<void> {

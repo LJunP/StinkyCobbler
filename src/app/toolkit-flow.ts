@@ -92,6 +92,12 @@ export function searchToolkit(query: string): never {
   throw toolkitError("TOOLKIT_SEARCH_UNVERIFIED", "The skills directory API is not verified. Search writes nothing.");
 }
 
+export async function updateToolkit(scopeFlag?: string): Promise<ToolkitPlan & { diffs: string[] }> {
+  const loaded = await loadToolkit(scopeFlag);
+  const toolkitPlan = await planLoaded(loaded, await refreshedSources(loaded));
+  return { ...toolkitPlan, diffs: diffsFor(toolkitPlan) };
+}
+
 export async function rollbackToolkit(options: { last?: boolean | undefined; to?: string | undefined }): Promise<RollbackReport> {
   if (options.last !== true && options.to === undefined) throw toolkitError("TOOLKIT_ROLLBACK_TARGET", "Pass --last or --to <applyId>.");
   if (options.to !== undefined) await assertLastApply(options.to);
@@ -124,6 +130,13 @@ async function readLockIfPresent(specPath: string): Promise<ToolkitLock | undefi
 function resolvedLockIds(lock: ToolkitLock | undefined): string[] {
   if (lock === undefined) return [];
   return lock.entries.filter((entry) => entry.resolved === "local" || entry.resolved === "fetched").map((entry) => entry.id);
+}
+
+async function refreshedSources(loaded: LoadedToolkit): Promise<PlanSources> {
+  const live = await sourceBodies(loaded.spec);
+  const sourceRoot = path.join(path.dirname(loaded.specPath), "sources");
+  const fetched = { ...(await fetchGitSkills(loaded.spec, sourceRoot)), ...(await fetchNpmSkills(loaded.spec, sourceRoot)) };
+  return { ...live, skills: { ...(live.skills ?? {}), ...fetched } };
 }
 
 async function overlayLockedSources(loaded: LoadedToolkit, lock: ToolkitLock | undefined): Promise<PlanSources> {
