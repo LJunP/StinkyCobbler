@@ -5,6 +5,7 @@ import path from "node:path";
 import process from "node:process";
 import { parse as parseYaml } from "yaml";
 import { plan, type FileOp, type KindSupport, type PlanSources, type ToolkitPlan } from "../core/plan/plan.js";
+import { knowledgeFreshness, type KnowledgeFreshness, type KnowledgeToolResponse } from "../core/toolkit/freshness.js";
 import { ARTIFACT_KINDS, type ArtifactKind } from "../core/toolkit/kinds.js";
 import { buildToolkitLock, isRemoteToolkitSource, parseToolkitLock, type LockBodies, type ToolkitLock } from "../core/toolkit/lock.js";
 import { parseToolkitSpec, type ToolkitSpec } from "../core/toolkit/spec.js";
@@ -32,6 +33,7 @@ export interface ToolkitDoctorReport {
   env: Array<{ name: string; present: boolean }>;
   commands: Array<{ command: string; present: boolean }>;
   secrets: SecretHint[];
+  freshness: KnowledgeFreshness[];
 }
 
 interface LoadedToolkit {
@@ -60,13 +62,14 @@ export async function applyToolkit(options: { scope?: string | undefined; yes?: 
   return apply(toolkitPlan);
 }
 
-export async function doctorToolkit(scopeFlag?: string): Promise<ToolkitDoctorReport> {
+export async function doctorToolkit(scopeFlag?: string, toolResponses: readonly KnowledgeToolResponse[] = []): Promise<ToolkitDoctorReport> {
   const loaded = await loadToolkit(scopeFlag);
   return {
     drift: (await planLoaded(loaded)).conflicts,
     env: envPresence(loaded.spec),
     commands: await commandPresence(loaded.spec),
-    secrets: secretHints(loaded.spec)
+    secrets: secretHints(loaded.spec),
+    freshness: knowledgeFreshness(loaded.spec.mcpServers, toolResponses)
   };
 }
 

@@ -497,6 +497,37 @@ describe("toolkit cli", () => {
     expect(await treeHash(home)).toBe(homeBefore);
     await expect(readFile(marker, "utf8")).rejects.toThrow();
   });
+
+  it("does not index knowledge sources when doctor has no server tool response", async () => {
+    const home = await tempDir("stinky-toolkit-knowledge-home-");
+    const xdg = await tempDir("stinky-toolkit-knowledge-xdg-");
+    const notes = path.join(xdg, "notes");
+    const sentinel = "knowledge-sentinel-not-an-index";
+    await writeFile(notes, `${sentinel}\n`);
+    const env = childEnv(home, xdg);
+    await run(env, "toolkit", "init", "--json");
+    await writeFile(path.join(xdg, "stinky-cobbler", "toolkit.yaml"), [
+      "version: 1",
+      "scope: user",
+      "skills: []",
+      "mcpServers:",
+      "  - id: docs-rag",
+      "    transport: stdio",
+      "    command: cognee-mcp",
+      "    role: knowledge",
+      "    sources:",
+      `      - ${JSON.stringify(notes)}`,
+      "instructions: []",
+      "bundles: []",
+      ""
+    ].join("\n"));
+    const homeBefore = await treeHash(home);
+    const doctorText = (await run(env, "toolkit", "doctor", "--json")).stdout;
+    const doctor = JSON.parse(doctorText) as { freshness: Array<{ serverId: string; status: string }> };
+    expect(doctor.freshness).toEqual([{ serverId: "docs-rag", status: "unavailable" }]);
+    expect(doctorText).not.toContain(sentinel);
+    expect(await treeHash(home)).toBe(homeBefore);
+  });
 });
 
 async function commitSkillRepo(repo: string, body: string, marker: string): Promise<void> {

@@ -2,6 +2,14 @@
 
 > 只追加，最新在上。每条：日期 / 任务 / 做了什么 / 验证 / 待办与问题。
 
+## 2026-11-04 · M4-T1 知识新鲜度只采用工具结果
+
+- `doctor` 增加 `freshness`。只有 `role: knowledge` 的 server 会出现。调用方传入该 server 的工具结果时，`fresh: true/false` 变成 `fresh` 或 `stale`，并带上工具名。没有结果时是 `unavailable`。
+- 不读取 `sources`，不建索引。普通 MCP server 不出现在 `freshness` 里。CLI 不启动子进程去问 server，所以命令行上的 doctor 在没有工具结果时失败关闭。
+- 偏差：没有 MCP 客户端，不能替用户调用一个未核实的工具名。工具结果由 `doctorToolkit` 的参数传入。
+- 验证：先红（`freshness` 为 undefined）。然后缺失的 source 目录仍可报 `fresh`，磁盘上的哨兵字符串不出现在报告里，HOME 哈希不变。`npm run lint` 通过（测试类型基线 0、eslint 0 error / 42 warning、depcruise 121 modules / 718 dependencies，已知循环基线未改）。`npm test` 89 文件 / 844 项通过。插入 160 行。
+- 未做：推送。版本仍是 2.0.2。
+
 ## 2026-11-04 · M4 任务拆分
 
 - 按架构评审 §3.5 把 M4 拆成 M4-T1 到 M4-T5，写进 `docs/PLAN.md`。还没有实现。
