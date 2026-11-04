@@ -567,6 +567,47 @@ describe("toolkit cli", () => {
     expect(text).toContain("<!-- stinky-cobbler:end my-memory -->");
     expect(text.slice(0, original.length)).toBe(original);
   });
+
+  it("syncs managed memory markdown and does not copy other files", async () => {
+    const home = await tempDir("stinky-toolkit-memory-dir-home-");
+    const xdg = await tempDir("stinky-toolkit-memory-dir-xdg-");
+    const source = await tempDir("stinky-toolkit-memory-dir-source-");
+    const original = "keep-before\n\nkeep-after\n";
+    const claudeMd = path.join(home, ".claude", "CLAUDE.md");
+    await mkdir(path.dirname(claudeMd), { recursive: true });
+    await writeFile(claudeMd, original);
+    await writeFile(path.join(source, "index.md"), "index body\n");
+    await writeFile(path.join(source, "topic.md"), "topic body\n");
+    await writeFile(path.join(source, "notes.txt"), "do-not-copy\n");
+    const env = childEnv(home, xdg);
+    await run(env, "toolkit", "init", "--json");
+    await writeFile(path.join(xdg, "stinky-cobbler", "toolkit.yaml"), [
+      "version: 1",
+      "scope: user",
+      "hosts:",
+      "  - claude-code",
+      "skills: []",
+      "mcpServers: []",
+      "instructions:",
+      "  - id: my-memory",
+      `    source: ${JSON.stringify(path.join(source, "index.md"))}`,
+      "    kind: memory",
+      `    files: ${JSON.stringify(source)}`,
+      "    render:",
+      "      claude-code: CLAUDE.md",
+      "bundles: []",
+      ""
+    ].join("\n"));
+    await run(env, "toolkit", "lock", "--json");
+    const applied = JSON.parse((await run(env, "toolkit", "apply", "--yes", "--json")).stdout) as { stopped: boolean };
+    expect(applied.stopped).toBe(false);
+    const text = await readFile(claudeMd, "utf8");
+    expect(text.startsWith(original)).toBe(true);
+    expect(text).toContain("index body\n");
+    expect(text).toContain("<!-- stinky-cobbler:begin topic -->");
+    expect(text).toContain("topic body\n");
+    expect(text).not.toContain("do-not-copy");
+  });
 });
 
 async function commitSkillRepo(repo: string, body: string, marker: string): Promise<void> {

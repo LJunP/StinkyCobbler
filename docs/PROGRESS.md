@@ -2,6 +2,13 @@
 
 > 只追加，最新在上。每条：日期 / 任务 / 做了什么 / 验证 / 待办与问题。
 
+## 2026-11-04 · M4-T3 只同步受管的 memory markdown
+
+- `kind: memory` 可以带一个本地 `files` 目录。只读一层、文件名符合 id 规则的 `*.md`。原文放进同一条宿主受管段落。`notes.txt`、符号链接和子目录不读。不解释内容，不新开宿主目录。
+- 这些文件的 hash 写进 `toolkit.lock`，apply 用 blob。源文件后来改了，也不会在 apply 时重读。Codex 的指令路径仍然不写。
+- 验证：先红（规格拒绝 `files`）。然后 `topic.md` 进入段落，`do-not-copy` 不出现，`CLAUDE.md` 原有前缀不变。`npm run lint` 通过（测试类型基线 0、eslint 0 error / 42 warning、depcruise 122 modules / 721 dependencies，已知循环基线未改）。`npm test` 89 文件 / 847 项通过。插入 195 行。
+- 未做：推送。版本仍是 2.0.2。M4-T4 未做。
+
 ## 2026-11-04 · M4-T2 memory 只渲染受管段落
 
 - `instructions` 可以写 `kind: memory`。它观察 Claude Code 的 `CLAUDE.md`。文件不存在或是用户原文时，只追加受管段落。段落外的原有字节保持不变。已受管且被改过的文件仍然是冲突，不覆盖。

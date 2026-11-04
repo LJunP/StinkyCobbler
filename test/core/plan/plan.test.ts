@@ -115,6 +115,35 @@ describe("pure toolkit planner", () => {
     expect(renderMcpEntry(spec.mcpServers[0]!).env?.API_TOKEN).toBe("${env:FS_TOKEN}");
     expect(renderInstructionSegment(spec.instructions[0]!, "codex", "Use short paragraphs.\n")).toContain("<!-- stinky-cobbler:end my-style -->");
   });
+
+  it("copies supplied memory markdown into the same segment file and does not invent a host path", () => {
+    const spec = parseToolkitSpec({
+      version: 1,
+      hosts: ["claude-code", "codex"],
+      instructions: [{
+        id: "my-memory",
+        source: "./memory/index.md",
+        kind: "memory",
+        files: "./memory",
+        render: { "claude-code": "CLAUDE.md", codex: "AGENTS.md" }
+      }]
+    });
+    const result = plan(
+      spec,
+      [{ host: "claude-code", kind: "instructions", id: "my-memory", path: "/home/dev/.claude/CLAUDE.md", state: "foreign" }],
+      {
+        support: [{ host: "codex", kind: "instructions", supported: false, reason: "Codex instruction file path is not part of the verified 2.0.1 host layout." }],
+        sources: {
+          instructions: { "my-memory": "index body\n" },
+          memoryFiles: { "my-memory": { "topic.md": "topic body\n" } }
+        }
+      }
+    );
+    expect(result.ops.map((op) => op.id).sort()).toEqual(["my-memory", "topic"]);
+    expect(result.ops.every((op) => op.path === "/home/dev/.claude/CLAUDE.md" && op.action === "upsert-segment")).toBe(true);
+    expect(result.ops.map((op) => op.segment ?? "").join("\n")).toContain("topic body\n");
+    expect(result.ops.some((op) => op.path.includes("AGENTS.md"))).toBe(false);
+  });
 });
 
 function skillSpec(): ToolkitSpec {

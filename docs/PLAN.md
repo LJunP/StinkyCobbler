@@ -53,6 +53,6 @@
 
 - [x] M4-T1 `role: knowledge` 的 `sources` 已在规格中。`doctor` 的索引新鲜度只采用该 server 自己的工具结果；没有工具结果时失败关闭，不读取 `sources` 建索引
 - [x] M4-T2 `instructions` 增加 `memory` 子类型，只渲染到宿主受管段落。段落外字节保持不变
-- [ ] M4-T3 可选 `memory/*.md` 只同步受管文件，不解释内容
+- [x] M4-T3 可选 `memory/*.md` 只同步受管文件，不解释内容
 - [ ] M4-T4 `toolkit memory show` 显示受管段落原文，`toolkit memory edit` 只替换该段落
 - [ ] M4-T5 经核实的 RAG/memory preset：名称、维护状态、本地或云、数据流向四项都核实后才写入；核实前不写 preset

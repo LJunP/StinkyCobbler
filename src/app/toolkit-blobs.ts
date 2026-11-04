@@ -18,6 +18,17 @@ export async function writeLockedBlobs(directory: string, lock: ToolkitLock, bod
       throw blobError("TOOLKIT_LOCK_DRIFT", "Locked body does not match its content hash.");
     }
     await writeBlob(directory, entry.sha256, body);
+    await writeMemoryBlobs(directory, entry, bodies);
+  }
+}
+
+async function writeMemoryBlobs(directory: string, entry: LockEntry, bodies: LockBodies): Promise<void> {
+  for (const file of entry.files ?? []) {
+    const body = bodies.memoryFiles?.[entry.id]?.[file.name];
+    if (body === undefined || toolkitContentHash(body) !== file.sha256) {
+      throw blobError("TOOLKIT_LOCK_DRIFT", "Locked memory file does not match its content hash.");
+    }
+    await writeBlob(directory, file.sha256, body);
   }
 }
 
@@ -28,11 +39,22 @@ export async function sourcesFromLock(directory: string, spec: ToolkitSpec, lock
     const body = await lockedBody(directory, lock, "skill", skill.id, skill.source);
     if (body !== undefined) skills[skill.id] = body;
   }
+  const memoryFiles: Record<string, Record<string, string>> = {};
   for (const item of spec.instructions) {
     const body = await lockedBody(directory, lock, "instructions", item.id, item.source);
     if (body !== undefined) instructions[item.id] = body;
+    const extra = await lockedMemoryFiles(directory, lock, item.id);
+    if (extra !== undefined) memoryFiles[item.id] = extra;
   }
-  return { skills, instructions };
+  return { skills, instructions, ...(Object.keys(memoryFiles).length === 0 ? {} : { memoryFiles }) };
+}
+
+async function lockedMemoryFiles(directory: string, lock: ToolkitLock, id: string): Promise<Record<string, string> | undefined> {
+  const entry = lock.entries.find((item) => item.kind === "instructions" && item.id === id);
+  if (entry?.files === undefined) return undefined;
+  const files: Record<string, string> = {};
+  for (const file of entry.files) files[file.name] = await readBlob(directory, file.sha256);
+  return files;
 }
 
 async function writeBlob(directory: string, digest: string, body: string): Promise<void> {

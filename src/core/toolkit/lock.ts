@@ -10,7 +10,8 @@ const lockEntrySchema = z.strictObject({
   id: z.string().regex(/^[a-z0-9][a-z0-9-]{0,63}$/),
   source: z.string().min(1),
   resolved: z.enum(["local", "fetched", "not-fetched", "absent"]),
-  sha256: sha256Schema.optional()
+  sha256: sha256Schema.optional(),
+  files: z.array(z.strictObject({ name: z.string().regex(/^[a-z0-9][a-z0-9-]{0,63}\.md$/), sha256: sha256Schema })).optional()
 });
 
 const toolkitLockSchema = z.strictObject({ version: z.literal(1), entries: z.array(lockEntrySchema) }).superRefine((value, context) => {
@@ -31,6 +32,7 @@ export interface LockEntry {
   source: string;
   resolved: "local" | "fetched" | "not-fetched" | "absent";
   sha256?: string;
+  files?: { name: string; sha256: string }[];
 }
 
 export interface ToolkitLock {
@@ -43,6 +45,7 @@ export interface LockBodies {
   instructions: Readonly<Record<string, string | undefined>>;
   fetchedSkills?: Readonly<Record<string, string>>;
   fetchedInstructions?: Readonly<Record<string, string>>;
+  memoryFiles?: Readonly<Record<string, Readonly<Record<string, string>>>>;
 }
 
 export function isRemoteToolkitSource(source: string): boolean {
@@ -58,7 +61,12 @@ export function buildToolkitLock(spec: ToolkitSpec, bodies: LockBodies): Toolkit
     version: 1,
     entries: [
       ...spec.skills.map((skill) => lockEntry("skill", skill.id, skill.source, bodies.skills[skill.id], bodies.fetchedSkills?.[skill.id])),
-      ...spec.instructions.map((item) => lockEntry("instructions", item.id, item.source, bodies.instructions[item.id], bodies.fetchedInstructions?.[item.id]))
+      ...spec.instructions.map((item) =>
+        withMemoryFiles(
+          lockEntry("instructions", item.id, item.source, bodies.instructions[item.id], bodies.fetchedInstructions?.[item.id]),
+          bodies.memoryFiles?.[item.id]
+        )
+      )
     ]
   };
 }
@@ -85,6 +93,16 @@ function cleanEntry(entry: z.infer<typeof lockEntrySchema>): LockEntry {
     id: entry.id,
     source: entry.source,
     resolved: entry.resolved,
-    ...(entry.sha256 === undefined ? {} : { sha256: entry.sha256 })
+    ...(entry.sha256 === undefined ? {} : { sha256: entry.sha256 }),
+    ...(entry.files === undefined ? {} : { files: entry.files.map((file) => ({ name: file.name, sha256: file.sha256 })) })
   };
+}
+
+function withMemoryFiles(entry: LockEntry, files: Readonly<Record<string, string>> | undefined): LockEntry {
+  if (files === undefined) return entry;
+  const listed = Object.keys(files)
+    .sort()
+    .map((name) => ({ name, sha256: toolkitContentHash(files[name] ?? "") }));
+  if (listed.length === 0) return entry;
+  return { ...entry, files: listed };
 }

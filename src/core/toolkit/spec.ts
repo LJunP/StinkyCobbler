@@ -30,6 +30,7 @@ const instructionsSchema = z.strictObject({
   id: idSchema,
   source: sourceSchema,
   kind: z.literal("memory").optional(),
+  files: z.string().min(1).optional(),
   render: z.partialRecord(hostIdSchema, z.string().min(1)).optional()
 });
 
@@ -54,6 +55,7 @@ export const toolkitSpecSchema = z
       if (seen.has(id)) context.addIssue({ code: "custom", message: "TOOLKIT_DUPLICATE_ID", path: ["id"], input: id });
       seen.add(id);
     }
+    rejectMemoryFiles(value.instructions ?? [], context);
   });
 
 export type SkillSpec = z.infer<typeof skillSchema>;
@@ -89,6 +91,15 @@ export function toolkitJsonSchema(): Record<string, unknown> {
   return { ...generated, $id: "https://stinkycobbler.dev/schemas/toolkit.schema.json" };
 }
 
+function rejectMemoryFiles(items: readonly { id: string; kind?: "memory" | undefined; files?: string | undefined }[], context: z.RefinementCtx): void {
+  for (const item of items) {
+    if (item.files === undefined) continue;
+    const remote = item.files.startsWith("git+") || item.files.startsWith("npm:") || item.files.startsWith("skills.sh:");
+    if (item.kind === "memory" && !remote) continue;
+    context.addIssue({ code: "custom", message: "TOOLKIT_MEMORY_FILES", path: ["files"], input: item.id });
+  }
+}
+
 function artifactIds(value: {
   skills?: { id: string }[] | undefined;
   mcpServers?: { id: string }[] | undefined;
@@ -105,6 +116,8 @@ function specFailure(error: z.ZodError): StinkyCobblerError {
   if (host) return specError("TOOLKIT_HOST_UNKNOWN", `host must be one of: ${HOST_IDS.join(", ")}.`, { path: host.path, allowed: [...HOST_IDS] });
   const duplicate = error.issues.find((issue) => issue.message === "TOOLKIT_DUPLICATE_ID");
   if (duplicate) return specError("TOOLKIT_DUPLICATE_ID", "Artifact ids must be unique.", { id: duplicate.input });
+  const memoryFiles = error.issues.find((issue) => issue.message === "TOOLKIT_MEMORY_FILES");
+  if (memoryFiles) return specError("TOOLKIT_MEMORY_FILES", "Memory files must be a local directory on a memory instruction.", { id: memoryFiles.input });
   return specError("TOOLKIT_SPEC_INVALID", "Toolkit spec is invalid.", { issues: error.issues.map((issue) => issue.message) });
 }
 

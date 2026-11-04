@@ -23,6 +23,7 @@ export interface KindSupport {
 export interface PlanSources {
   skills?: Record<string, string>;
   instructions?: Record<string, string>;
+  memoryFiles?: Record<string, Record<string, string>>;
 }
 
 export interface PlanOptions {
@@ -133,6 +134,25 @@ function planInstruction(draft: Draft, item: InstructionsSpec): void {
       path: found.path,
       action: "upsert-segment",
       segment: renderInstructionSegment(item, host, body)
+    });
+    if (memory) planMemoryFiles(draft, item, host, found.path);
+  }
+}
+
+function planMemoryFiles(draft: Draft, item: InstructionsSpec, host: ToolkitHostId, target: string): void {
+  const files = draft.sources.memoryFiles?.[item.id];
+  if (files === undefined) return;
+  for (const name of Object.keys(files).sort()) {
+    const stem = name.slice(0, -3);
+    const body = files[name];
+    if (body === undefined || stem === item.id || stem.length === 0) continue;
+    draft.ops.push({
+      host,
+      kind: "instructions",
+      id: stem,
+      path: target,
+      action: "upsert-segment",
+      segment: renderInstructionSegment({ ...item, id: stem }, host, body)
     });
   }
 }

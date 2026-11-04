@@ -132,6 +132,10 @@
             "type": "string",
             "const": "memory"
           },
+          "files": {
+            "type": "string",
+            "minLength": 1
+          },
           "render": {
             "type": "object",
             "propertyNames": {

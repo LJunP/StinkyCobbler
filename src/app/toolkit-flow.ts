@@ -16,6 +16,7 @@ import { readToolkitEvents } from "../io/ledger.js";
 import { resolveConfigHome } from "../io/tiered-config.js";
 import { apply, type ApplyReport } from "./apply.js";
 import { fetchGitSkills } from "./git-source.js";
+import { readMemoryDirectory } from "./memory-files.js";
 import { fetchNpmSkills } from "./npm-source.js";
 import { blobDirectory, sourcesFromLock, writeLockedBlobs } from "./toolkit-blobs.js";
 import { observe, type HostObservation } from "./observe.js";
@@ -254,8 +255,12 @@ async function lockBodies(spec: ToolkitSpec): Promise<LockBodies> {
   const skills: Record<string, string | undefined> = {};
   const instructions: Record<string, string | undefined> = {};
   for (const skill of spec.skills) skills[skill.id] = await localBody(skill.source, true);
-  for (const item of spec.instructions) instructions[item.id] = await localBody(item.source, false);
-  return { skills, instructions };
+  const memoryFiles: Record<string, Record<string, string>> = {};
+  for (const item of spec.instructions) {
+    instructions[item.id] = await localBody(item.source, false);
+    if (item.files !== undefined) memoryFiles[item.id] = await readMemoryDirectory(item.files, localTextFile(item.source));
+  }
+  return { skills, instructions, ...(Object.keys(memoryFiles).length === 0 ? {} : { memoryFiles }) };
 }
 
 async function localBody(source: string, skill: boolean): Promise<string | undefined> {
@@ -270,11 +275,13 @@ async function sourceBodies(spec: ToolkitSpec): Promise<PlanSources> {
     const body = await readIfFile(localSkillFile(skill.source));
     if (body !== undefined) skills[skill.id] = body;
   }
+  const memoryFiles: Record<string, Record<string, string>> = {};
   for (const item of spec.instructions) {
     const body = await readIfFile(localTextFile(item.source));
     if (body !== undefined) instructions[item.id] = body;
+    if (item.files !== undefined) memoryFiles[item.id] = await readMemoryDirectory(item.files, localTextFile(item.source));
   }
-  return { skills, instructions };
+  return { skills, instructions, ...(Object.keys(memoryFiles).length === 0 ? {} : { memoryFiles }) };
 }
 
 function localSkillFile(source: string): string | undefined {
