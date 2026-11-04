@@ -29,6 +29,7 @@ const mcpServerSchema = z.strictObject({
 const instructionsSchema = z.strictObject({
   id: idSchema,
   source: sourceSchema,
+  kind: z.literal("memory").optional(),
   render: z.partialRecord(hostIdSchema, z.string().min(1)).optional()
 });
 

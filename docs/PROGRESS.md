@@ -2,6 +2,13 @@
 
 > 只追加，最新在上。每条：日期 / 任务 / 做了什么 / 验证 / 待办与问题。
 
+## 2026-11-04 · M4-T2 memory 只渲染受管段落
+
+- `instructions` 可以写 `kind: memory`。它观察 Claude Code 的 `CLAUDE.md`。文件不存在或是用户原文时，只追加受管段落。段落外的原有字节保持不变。已受管且被改过的文件仍然是冲突，不覆盖。
+- Codex、Cursor 用户级、ZCode 的指令路径仍未核实，不写。`schemas/toolkit.schema.json` 与 zod 导出对齐，补上 `kind`。
+- 验证：先红（规格拒绝未知键 `kind`）。然后 `CLAUDE.md` 的原有前缀不变，段落里是锁定正文。`npm run lint` 通过（测试类型基线 0、eslint 0 error / 42 warning、depcruise 121 modules / 718 dependencies，已知循环基线未改）。`npm test` 89 文件 / 845 项通过。插入 83 行。
+- 未做：推送。版本仍是 2.0.2。M4-T3 未做。
+
 ## 2026-11-04 · M4-T1 知识新鲜度只采用工具结果
 
 - `doctor` 增加 `freshness`。只有 `role: knowledge` 的 server 会出现。调用方传入该 server 的工具结果时，`fresh: true/false` 变成 `fresh` 或 `stale`，并带上工具名。没有结果时是 `unavailable`。

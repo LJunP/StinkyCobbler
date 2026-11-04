@@ -117,9 +117,10 @@ function planMcp(draft: Draft, server: McpServerSpec): void {
 }
 
 function planInstruction(draft: Draft, item: InstructionsSpec): void {
+  const memory = item.kind === "memory";
   for (const host of instructionHosts(draft.spec, item)) {
-    const found = guard(draft, "instructions", item.id, host);
-    if (found === undefined || found.state !== "absent") continue;
+    const found = guard(draft, "instructions", item.id, host, memory);
+    if (found === undefined || !canRenderInstruction(found.state, memory)) continue;
     const body = draft.sources.instructions?.[item.id];
     if (body === undefined) {
       draft.skipped.push({ host, kind: "instructions", id: item.id, reason: "Instruction body was not provided." });
@@ -136,7 +137,12 @@ function planInstruction(draft: Draft, item: InstructionsSpec): void {
   }
 }
 
-function guard(draft: Draft, kind: ArtifactKind, id: string, host: string): PlanObservation | undefined {
+function canRenderInstruction(state: PlanObservation["state"], memory: boolean): boolean {
+  if (memory) return state === "absent" || state === "foreign";
+  return state === "absent";
+}
+
+function guard(draft: Draft, kind: ArtifactKind, id: string, host: string, allowForeign = false): PlanObservation | undefined {
   draft.wanted.add(key(host, kind, id));
   const blocked = draft.support.find((item) => item.host === host && item.kind === kind && !item.supported);
   if (blocked) {
@@ -148,7 +154,7 @@ function guard(draft: Draft, kind: ArtifactKind, id: string, host: string): Plan
     draft.skipped.push({ host, kind, id, reason: "No observation for this target." });
     return undefined;
   }
-  if (found.state === "foreign" || found.state === "managed-modified") {
+  if (found.state === "managed-modified" || (found.state === "foreign" && !allowForeign)) {
     draft.conflicts.push({ host, kind, id, path: found.path, state: found.state });
     return undefined;
   }

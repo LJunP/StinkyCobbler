@@ -528,6 +528,45 @@ describe("toolkit cli", () => {
     expect(doctorText).not.toContain(sentinel);
     expect(await treeHash(home)).toBe(homeBefore);
   });
+
+  it("renders a memory instruction inside the managed segment and leaves the surrounding bytes", async () => {
+    const home = await tempDir("stinky-toolkit-memory-home-");
+    const xdg = await tempDir("stinky-toolkit-memory-xdg-");
+    const source = await tempDir("stinky-toolkit-memory-source-");
+    const original = "keep-before\n\nkeep-after\n";
+    const memory = "remember this\n";
+    const claudeMd = path.join(home, ".claude", "CLAUDE.md");
+    await mkdir(path.dirname(claudeMd), { recursive: true });
+    await writeFile(claudeMd, original);
+    await writeFile(path.join(source, "memory.md"), memory);
+    const env = childEnv(home, xdg);
+    await run(env, "toolkit", "init", "--json");
+    await writeFile(path.join(xdg, "stinky-cobbler", "toolkit.yaml"), [
+      "version: 1",
+      "scope: user",
+      "hosts:",
+      "  - claude-code",
+      "skills: []",
+      "mcpServers: []",
+      "instructions:",
+      "  - id: my-memory",
+      `    source: ${JSON.stringify(path.join(source, "memory.md"))}`,
+      "    kind: memory",
+      "    render:",
+      "      claude-code: CLAUDE.md",
+      "bundles: []",
+      ""
+    ].join("\n"));
+    await run(env, "toolkit", "lock", "--json");
+    const applied = JSON.parse((await run(env, "toolkit", "apply", "--yes", "--json")).stdout) as { stopped: boolean };
+    expect(applied.stopped).toBe(false);
+    const text = await readFile(claudeMd, "utf8");
+    expect(text.startsWith(original)).toBe(true);
+    expect(text).toContain("<!-- stinky-cobbler:begin my-memory -->");
+    expect(text).toContain(memory);
+    expect(text).toContain("<!-- stinky-cobbler:end my-memory -->");
+    expect(text.slice(0, original.length)).toBe(original);
+  });
 });
 
 async function commitSkillRepo(repo: string, body: string, marker: string): Promise<void> {

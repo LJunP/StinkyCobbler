@@ -2,12 +2,12 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import type { HostAdapter, HostRoots, HostScope } from "../hosts/host-adapter.js";
 import { inspectManagedFile, type ManagedInspection, type ManagedObservationState } from "../io/managed-file.js";
-import type { ArtifactKind } from "../core/toolkit/kinds.js";
+import { HOST_IDS, type ArtifactKind, type ToolkitHostId } from "../core/toolkit/kinds.js";
 import type { ToolkitSpec } from "../core/toolkit/spec.js";
 
 export interface HostObservation {
   host: string;
-  kind: Extract<ArtifactKind, "skill" | "mcp-server">;
+  kind: Extract<ArtifactKind, "skill" | "mcp-server" | "instructions">;
   id: string;
   path: string;
   state: ManagedObservationState;
@@ -30,6 +30,20 @@ async function observeHost(adapter: HostAdapter, spec: ToolkitSpec, scope: HostS
   if (adapter.supports("mcp-server")) {
     for (const server of spec.mcpServers) observations.push(await observeMcp(adapter, server.id, scope, roots));
   }
+  observations.push(...(await observeMemory(adapter, spec, scope, roots)));
+  return observations;
+}
+
+async function observeMemory(adapter: HostAdapter, spec: ToolkitSpec, scope: HostScope, roots: HostRoots): Promise<HostObservation[]> {
+  if (!adapter.supports("instructions")) return [];
+  const observations: HostObservation[] = [];
+  for (const item of spec.instructions) {
+    const host = hostId(adapter.id);
+    if (item.kind !== "memory" || host === undefined || item.render?.[host] === undefined) continue;
+    const target = adapter.locate("instructions", scope, roots);
+    if (target.unsupported !== undefined || target.path.length === 0) continue;
+    observations.push(observation(adapter.id, "instructions", item.id, target.path, await inspectManagedFile(target.path)));
+  }
   return observations;
 }
 
@@ -46,6 +60,10 @@ async function observeMcp(adapter: HostAdapter, id: string, scope: HostScope, ro
   const servers = adapter.readMcp(await readFile(file, "utf8"));
   if (servers[id] === undefined) return observation(adapter.id, "mcp-server", id, file, { state: "absent" });
   return observation(adapter.id, "mcp-server", id, file, inspection);
+}
+
+function hostId(id: string): ToolkitHostId | undefined {
+  return HOST_IDS.find((host) => host === id);
 }
 
 function selectedAdapters(adapters: readonly HostAdapter[], hosts: readonly string[] | undefined): readonly HostAdapter[] {
