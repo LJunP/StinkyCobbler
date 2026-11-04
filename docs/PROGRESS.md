@@ -2,6 +2,12 @@
 
 > 只追加，最新在上。每条：日期 / 任务 / 做了什么 / 验证 / 待办与问题。
 
+## 2026-11-04 · 用 3.0.0-rc.1 安装包再验一次
+
+- `npm run test:package` 通过，包是 `stinky-cobbler-3.0.0-rc.1.tgz`。
+- 两个临时前缀各跑四条命令：install、init、lock、`apply --yes`。两次 `completed` 都含 skill、mcp-server 和 instructions，`non-empty true`。
+- 未做：推送。没有 tag，没有 `npm publish`。GA 仍被挡住。
+
 ## 2026-11-04 · 观察普通指令，手改的 MCP 不再被覆盖
 
 - 有 `render` 且宿主路径已核实的指令都会被观察，不要求 `kind: memory`。`apply` 会把段落写进 `CLAUDE.md`。
