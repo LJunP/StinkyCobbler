@@ -2,6 +2,13 @@
 
 > 只追加，最新在上。每条：日期 / 任务 / 做了什么 / 验证 / 待办与问题。
 
+## 2026-11-04 · M4-T5 只写入已核实的 preset
+
+- 2026-11-04 打开了 projectmem 的厂商 README。四项都在该页：名称 projectmem，README 宣布 v0.3.5，本地 stdio、无账号，记忆在仓库 `.projectmem/`，默认不联网。
+- 写入 `docs/presets/projectmem.md`。`command` 必须是用户自己的 Python 绝对路径，所以这份 preset 不会被 `apply`。
+- Cognee MCP 和 AgentKits Memory 没有写入。它们的数据流向没有在这次打开的页面里核实完。
+- 未做：推送。版本仍是 2.0.2。没有改 TypeScript，所以没有为这次文档重跑全量测试。上一次全量是 M4-T4：89 文件 / 848 项通过。
+
 ## 2026-11-04 · M4-T4 memory show 与 edit
 
 - `toolkit memory show <id> --host <host>` 只返回标记之间的原文。`edit --file` 先确认段落存在，再只替换这一段。缺段落时是 `SEGMENT_INVALID`，不会把新正文追加到文件末尾。
