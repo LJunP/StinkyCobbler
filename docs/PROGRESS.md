@@ -2,6 +2,13 @@
 
 > 只追加，最新在上。每条：日期 / 任务 / 做了什么 / 验证 / 待办与问题。
 
+## 2026-11-04 · 本地验证，GA 仍被挡住
+
+- 两次空 HOME 启动：`plan` 不改 HOME，`apply --yes` 安装本地 skill、MCP 和 memory 指令，`doctor` 漂移为空，两次漂移一致。
+- `npm run test:package` 通过。安装包后的四条命令（install、init、plan、apply）跑了两次，两次 `apply` 都是 `stopped: false`。
+- `npm run lint` 通过（eslint 0 error / 42 warning，depcruise 123 modules / 731 dependencies）。`npm test` 89 文件 / 848 项通过。
+- 宿主探测：`claude` 2.1.296 在 PATH 上。`codex`、`cursor`、`zcode` 不在。没有编造冒烟记录。包版本仍是 2.0.2。没有 tag，没有 `npm publish`，没有推送。
+
 ## 2026-11-04 · 打包冒烟补上必填的 --host
 
 - `entry install-host` 从 M1 起 `--host` 必填。打包冒烟里安装 ZCode 的两次调用补上 `--host zcode`。Codex 的调用本来就有。
