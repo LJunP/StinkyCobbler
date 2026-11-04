@@ -239,7 +239,7 @@ export async function packageSmoke(options = {}) {
     const legacyConfigFile = path.join(fakeHome, ".zcode", "config.json");
     const zcodeManagedTargets = [commandFile, skillFile, configFile];
 
-    const installPreviewOutput = execPortableSync(cli, ["entry", "install-host", "--scope", "user", "--mcp", "--dry-run", "--json"], {
+    const installPreviewOutput = execPortableSync(cli, ["entry", "install-host", "--host", "zcode", "--scope", "user", "--mcp", "--dry-run", "--json"], {
       cwd: installDirectory,
       env: hostEnv,
       encoding: "utf8"
@@ -253,7 +253,7 @@ export async function packageSmoke(options = {}) {
     }
     if (existsSync(legacyConfigFile)) throw new Error("install-host must not write the legacy ~/.zcode/config.json path.");
 
-    const installOutput = execPortableSync(cli, ["entry", "install-host", "--scope", "user", "--mcp", "--json"], {
+    const installOutput = execPortableSync(cli, ["entry", "install-host", "--host", "zcode", "--scope", "user", "--mcp", "--json"], {
       cwd: installDirectory,
       env: hostEnv,
       encoding: "utf8"
