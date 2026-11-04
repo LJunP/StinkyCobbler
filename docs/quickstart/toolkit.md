@@ -1,6 +1,15 @@
 # Toolkit 快速开始
 
-这是 3.0.0-alpha.1 源码候选的用法。包版本仍是 2.0.2。它不表示已经发布，也不表示 Codex、Claude Code、Cursor、ZCode 已经完成安装冒烟。宿主冒烟仍是 `UNKNOWN / PENDING`。
+这是 3.0.0-rc.1 源码候选的用法。包版本仍是 2.0.2。它不表示已经发布，也不表示 Codex、Claude Code、Cursor、ZCode 已经完成安装冒烟。宿主冒烟仍是 `UNKNOWN / PENDING`。
+
+从安装包到第一次成功的 `toolkit apply`，四条命令：
+
+```
+npm install -g stinky-cobbler-*.tgz
+stinky-cobbler toolkit init --json
+stinky-cobbler toolkit plan --json
+stinky-cobbler toolkit apply --json
+```
 
 需要 Node.js 22 或更新版本。在本仓库里：
 

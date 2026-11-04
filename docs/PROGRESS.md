@@ -2,6 +2,12 @@
 
 > 只追加，最新在上。每条：日期 / 任务 / 做了什么 / 验证 / 待办与问题。
 
+## 2026-11-04 · 版本口径保持 2.0.2
+
+- README、快速开始和迁移说明改成当前源码：lock、来源、bundle、失败关闭的 search、update、知识新鲜度、记忆段落。包版本仍是 `2.0.2`。
+- 发布契约要求 `x.y.z`。`3.0.0-rc.1` 写不进 `package.json`。`3.0.0` 需要四个宿主的真实冒烟，目前没有。GA 发布被挡住。没有 tag，没有 `npm publish`。
+- 未做：推送。没有改 TypeScript。
+
 ## 2026-11-04 · M4-T5 只写入已核实的 preset
 
 - 2026-11-04 打开了 projectmem 的厂商 README。四项都在该页：名称 projectmem，README 宣布 v0.3.5，本地 stdio、无账号，记忆在仓库 `.projectmem/`，默认不联网。
