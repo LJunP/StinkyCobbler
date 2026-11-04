@@ -16,7 +16,7 @@ describe("release contract", () => {
     const lockfile = JSON.parse(await readFile(path.join(root, "package-lock.json"), "utf8")) as { version: string; packages?: { "": { version: string } } };
     const source = await readFile(path.join(root, "src/version.ts"), "utf8");
     const match = source.match(/STINKY_COBBLER_VERSION\s*=\s*["']([^"']+)["']/);
-    expect(packageJson.version).toMatch(/^\d+\.\d+\.\d+$/);
+    expect(packageJson.version).toMatch(/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/);
     const result = evaluateReleaseGate({
       packageJsonVersion: packageJson.version,
       lockfileVersion: lockfile.version,

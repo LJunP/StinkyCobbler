@@ -2,6 +2,13 @@
 
 > 发布状态是实时事实：请查询官方 npm registry 与 GitHub tags/Releases。下面按版本保留的发布准备状态属于对应日期的历史记录，不能用于判断当前是否已发布或已完成真实宿主验证。
 
+## 3.0.0-rc.1 (source candidate; not GA)
+
+- Package version is `3.0.0-rc.1`. This is not `3.0.0`. Codex, Claude Code, Cursor, and ZCode install smoke remains `UNKNOWN / PENDING`. There is no tag and no npm publish. GA publish is blocked.
+- `toolkit lock`, `update`, and fail-closed `search` are in this source. `git+` and `npm:` skills can be locked without running package or repository scripts. Bundles expand only lock-resolved includes.
+- A `role: knowledge` server can declare `sources`. Doctor freshness comes only from that server's tool response; otherwise it is `unavailable`. No local index is built.
+- `kind: memory` renders a managed segment. Optional `files` copies one directory level of managed markdown into that same segment. `toolkit memory show` and `edit` read or replace only that segment.
+
 ## 3.0.0-alpha.1 (source candidate; package version remains 2.0.2)
 
 - Add `toolkit init|plan|apply|rollback|doctor|list`. `plan` does not write. A non-empty apply requires `--yes`. A hand-edited managed file is a conflict and is not overwritten. `rollback --last` restores the last apply from its content-addressed backup.

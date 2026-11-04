@@ -3,7 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { isDirectInvocation } from "./release-utils.mjs";
 
-const STRICT_SEMVER = /^\d+\.\d+\.\d+$/;
+const STRICT_SEMVER = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/;
 const RELEASE_GATE_OPTIONS = new Set(["--git-ref", "--expected"]);
 
 export function releaseCandidateRef(version) {

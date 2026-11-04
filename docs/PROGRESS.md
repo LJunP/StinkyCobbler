@@ -2,6 +2,12 @@
 
 > 只追加，最新在上。每条：日期 / 任务 / 做了什么 / 验证 / 待办与问题。
 
+## 2026-11-04 · 包版本改为 3.0.0-rc.1，GA 仍被挡住
+
+- 安装包在两个临时前缀上各跑了四条命令：install、init、lock、apply --yes。两次 `completed` 都含 skill、mcp-server 和 instructions，`stopped` 都是 false。规格文件的编辑夹在 init 和 lock 之间，不算命令。
+- 包版本改为 `3.0.0-rc.1`（package.json、package-lock.json、`src/version.ts`）。这不是 `3.0.0`。发布门禁现在接受带预发布号的版本，仍拒绝 `beta` 这类非版本字符串。
+- 宿主探测仍是：`claude` 2.1.296 在 PATH 上，`codex`、`cursor`、`zcode` 不在。没有编造冒烟。没有 tag，没有 `npm publish`，没有推送。GA 发布被挡住。
+
 ## 2026-11-04 · 本地验证，GA 仍被挡住
 
 - 两次空 HOME 启动：`plan` 不改 HOME，`apply --yes` 安装本地 skill、MCP 和 memory 指令，`doctor` 漂移为空，两次漂移一致。

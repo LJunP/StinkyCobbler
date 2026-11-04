@@ -2,7 +2,7 @@
 
 Stinky Cobbler 3.x 是 AI agent 工具箱的包管理器。一份 `toolkit.yaml` 描述 skill、MCP server 和指令文件。`toolkit plan` 只预览；`toolkit apply --yes` 才写入 Codex、Claude Code、Cursor 或 ZCode。手改过的受管文件记为冲突，不会被覆盖。回滚按内容寻址备份恢复写入前的字节。密钥只能写成 `${env:NAME}` 或 `${file:PATH}`。
 
-当前 checkout 仍是包版本 **2.0.2**。源码已经包含 lock、来源、bundle、失败关闭的 search、update、知识新鲜度和记忆段落，文档里程碑可以叫到 **3.0.0-rc.1 源码候选**。发布契约只接受 `x.y.z`，而 `3.0.0` 需要四个宿主的真实冒烟，所以包版本不写成 `3.0.0-rc.1`，也不是 `3.0.0`。没有 npm tag，也没有 GitHub Release。四个宿主的安装冒烟仍是 `UNKNOWN / PENDING`。公开版本以 npm registry 和 GitHub Releases 为准。GA 发布被挡住。
+当前 checkout 的包版本是 **3.0.0-rc.1** 源码候选。源码已经包含 lock、来源、bundle、失败关闭的 search、update、知识新鲜度和记忆段落。这不是 `3.0.0`。没有 npm tag，也没有 GitHub Release。四个宿主的安装冒烟仍是 `UNKNOWN / PENDING`。公开版本以 npm registry 和 GitHub Releases 为准。GA 发布被挡住。
 
 五分钟路径见 [toolkit 快速开始](./docs/quickstart/toolkit.md)。从 2.x 过来见 [迁移说明](./docs/migration/2.x-to-3.x.md)。决策见 [ADR-0002](./docs/decisions/ADR-0002-从权限门禁转向工具箱包管理器.md)。
 
