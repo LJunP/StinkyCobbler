@@ -1,7 +1,7 @@
 @@description@@
-Stinky Cobbler 的 Codex 本地仓库受控执行与审计入口。仅在用户显式输入 `$stinky-cobbler`、从技能选择器启用、明确说“使用 stinky-cobbler”，或明确要求本工具的 Task/Approval/Lease/WriteIntent 审计流程时触发。触发后先做只读 preflight；不自动安装、不自动派生 Agent、不绕过 Cooperative Mode。
+Stinky Cobbler 3.x 是声明式 AI agent 工具箱包管理器，用一份 toolkit.yaml 把 skill、MCP server、指令与记忆文件渲染到 Codex、Claude Code、Cursor、ZCode（toolkit init/plan/apply/rollback/doctor/list/lock/update/search/memory）。本 skill 仅在用户显式输入 `$stinky-cobbler`、从技能选择器启用、明确说“使用 stinky-cobbler”，或明确要求本工具的 Task/Approval/Lease/WriteIntent 审计流程时触发。触发后先做只读 preflight，随后的 Task/Approval/Lease 是 deprecated、冻结到 4.0 的 2.x gate；不自动安装、不自动派生 Agent、不绕过 Cooperative Mode。
 @@title@@
-Codex 本地仓库门禁
+Codex 上的 3.x 工具箱包管理器（触发后进入冻结到 4.0 的 2.x gate）
 @@intro@@
 Use this skill only after explicit user activation. Ordinary coding, explanation, or repository requests do not trigger it.
 @@evidence@@

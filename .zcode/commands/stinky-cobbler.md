@@ -7,7 +7,7 @@ skills:
 
 # /stinky-cobbler
 
-这是 **Codex/ZCode 本地仓库的可验证权限与变更门禁**入口，不是自动 Agent 调度器。
+3.x 是声明式 AI agent 工具箱包管理器，用一份 `toolkit.yaml` 把 skill、MCP server、指令与记忆文件渲染到 Codex、Claude Code、Cursor、ZCode（`toolkit init/plan/apply/rollback/doctor/list/lock/update/search/memory`）。本命令只是 deprecated、冻结到 4.0 的 2.x gate 入口，不是自动 Agent 调度器。
 
 ## 参数
 

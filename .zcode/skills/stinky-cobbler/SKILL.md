@@ -1,11 +1,13 @@
 ---
 name: stinky-cobbler
-description: Stinky Cobbler 的 ZCode 本地仓库受控执行与审计入口。仅由 `/stinky-cobbler <request> [via=skill|mcp|auto]` 显式触发；先做只读 preflight，再按用户本次选择执行。不自动安装、不自动多 Agent、不绕过 Cooperative Mode。
+description: Stinky Cobbler 3.x 是声明式 AI agent 工具箱包管理器，用一份 toolkit.yaml 把 skill、MCP server、指令与记忆文件渲染到 Codex、Claude Code、Cursor、ZCode（toolkit init/plan/apply/rollback/doctor/list/lock/update/search/memory）。本 skill 仅由 `/stinky-cobbler <request> [via=skill|mcp|auto]` 显式触发，且该命令只进入 deprecated、冻结到 4.0 的 2.x gate；先做只读 preflight，再按用户本次选择执行。不自动安装、不自动多 Agent、不绕过 Cooperative Mode。
 ---
 
-# Stinky Cobbler — ZCode 本地仓库门禁
+# Stinky Cobbler — ZCode 上的 3.x 工具箱包管理器（/stinky-cobbler 只进入 deprecated、冻结到 4.0 的 2.x gate）
 
 Use this skill only for an explicit `/stinky-cobbler` request. A prior activation does not grant repository authority; every governed operation still needs the current Task/Approval/Lease facts.
+
+3.x is a declarative AI agent toolkit package manager. It uses `toolkit.yaml` for `toolkit init/plan/apply/rollback/doctor/list/lock/update/search/memory`. The Task, Approval, and Lease flow below is the 2.x gate, deprecated and frozen until 4.0.
 
 ## Version and evidence status
 
