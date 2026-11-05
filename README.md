@@ -252,9 +252,9 @@ node scripts/release-gate.mjs --expected "$PACKAGE_VERSION" --git-ref "$PACKAGE_
 
 ## 版本与发布
 
-2.0.1 是已经发布的版本。2.0.2 要从 `codex/stinky-cobbler-2.0.2-hardening` 发布，不能把含有 3.x 的分支合并进 main 来发 2.0.2。PLAN 记录：2026-11-05 的 `npm audit --audit-level=high` 失败，运行时依赖 zod 与 body-parser 各有高危公告，发布被这道检查挡住。推送、六矩阵 CI、tag `v2.0.2`、`npm publish` 和 GitHub Release 还没有做。
+2.0.1 是已经发布的版本。2.0.2 要从 `codex/stinky-cobbler-2.0.2-hardening` 发布，不能把含有 3.x 的分支合并进 main 来发 2.0.2。该分支已补 Windows fsync 修复和依赖高危修复，2026-11-05 本地发布前验证全部通过；推送、六矩阵 CI、tag `v2.0.2`、`npm publish` 和 GitHub Release 还没有做。
 
-3.x 在推送之前的状态以 [PROGRESS](./docs/PROGRESS.md) 为准：分支尚未推送，没有 tag，没有 `npm publish`，四个宿主的安装冒烟仍是 `UNKNOWN / PENDING`，GA 发布被挡住。
+3.x 分支 `codex/stinky-cobbler-3.0-m0` 已推送，六矩阵 CI（Ubuntu / macOS / Windows × Node 22 / 24）通过；没有 tag，没有 `npm publish`，四个宿主的安装冒烟仍是 `UNKNOWN / PENDING`，GA 发布被挡住。最新状态以 [PROGRESS](./docs/PROGRESS.md) 为准。
 
 ## 文档索引
 

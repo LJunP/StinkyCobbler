@@ -2,6 +2,20 @@
 
 > 只追加，最新在上。每条：日期 / 任务 / 做了什么 / 验证 / 待办与问题。
 
+## 2026-11-05 · 首次推送与六矩阵 CI 转绿
+
+- 推送 `codex/stinky-cobbler-3.0-m0`。首轮 CI（run 41986419348）六个 job 全红：Linux/macOS 卡在 `npm audit --audit-level=high`；Windows 在 `npm test` 有约 25 项失败。
+- Windows 根因：`syncFile` 以只读打开再 fsync（`3343a43` 引入），Windows 的 FlushFileBuffers 需要可写句柄，报 `EPERM`；仓库没有 `.gitattributes`，Windows 签出 CRLF，`render-skills` 的槽位全部不匹配；`fs-boundary` 测试假定所有平台都 fsync 父目录。修复见 `3995703`、`f2d2c34`：win32 用 `r+` 并只在 flush 前后清除/恢复只读属性，POSIX 不变；渲染器容忍 CRLF，新增 `* text=auto eol=lf`；测试按平台分别断言。`src/gate` 行数基线未变。
+- 依赖（作者批准，只修高危）：`788b6b9`，zod 4.4.3→4.6.7、body-parser 2.3.0→2.4.0、qs、hono、@hono/node-server、vite 8.3.0→8.3.6，均在原有范围内，package.json 未改。npm 10.9.8 的 `audit fix` 在 arborist 崩溃，改用 npm 11 只更新 lockfile。剩 13 个中危需主版本变更，未动。
+- 验证：run 41996216735 六个 job 全部通过。本地 `npm ci`、build、lint、91 文件 / 859 项、test:package、高危 audit 通过。
+- 2.0.2：`codex/stinky-cobbler-2.0.2-hardening` 本地补同样的 fsync 修复（`31cc753`）和 lockfile（`5951c5e`）；九步发布前验证全过（71 文件 / 787 项，integration 21 项，release-gate，高危 audit）。未推送。
+- 未做：2.0.2 分支推送、PR、tag、`npm publish`、GitHub Release。
+
+### 待办 / 问题（需作者决定）
+- PRD §4 的 toolkit 配置按 `id` 分层合并未实现（PLAN M2 已勾）：实现或改 PRD。
+- 2.0.2 分支是否推送跑 CI、开 PR 合并 main。
+- 13 个中危（eslint / typescript-eslint 等）需要主版本升级。
+
 ## 2026-11-05 · 全库逐文件审计、清理与 README 重写
 
 - 范围口径：PRD、ADR-0002、PLAN 对齐代码。Gemini CLI 移出 3.0。没有 `gate` 命令组，2.x 命令保持顶层、`[deprecated 2.x]`、冻结。M0-T7 改为从 `codex/stinky-cobbler-2.0.2-hardening`（切自 `bafbccf`）发布。
