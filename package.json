@@ -1,7 +1,7 @@
 {
   "name": "stinky-cobbler",
   "version": "3.0.0-rc.1",
-  "description": "Verifiable permission and repository-change gate for local AI coding agents.",
+  "description": "Declarative AI agent toolkit package manager for Codex, Claude Code, Cursor, and ZCode; the frozen 2.x gate remains in the package.",
   "type": "module",
   "repository": {
     "type": "git",

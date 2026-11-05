@@ -25,7 +25,7 @@ module.exports = {
     {
       name: "gate-is-only-reached-from-cli",
       severity: "error",
-      comment: "ADR-0002: the frozen 2.x kernel is referenced only by the entry points. M1 temporary: config, entry, security, contracts and app command handlers still import the kernel. Drop those prefixes before the M1 exit check except app, which is the command layer.",
+      comment: "ADR-0002: keep this exemption until config, entry, security, contracts, cli.ts, and mcp-server.ts no longer import src/gate. app stays allowed as the command layer. Do not drop those pathNot prefixes while the imports remain.",
       from: { pathNot: "^src/(gate/|cli\\.ts$|mcp-server\\.ts$|config/|entry/|security/|contracts/|app/)" },
       to: { path: "^src/gate/" }
     }

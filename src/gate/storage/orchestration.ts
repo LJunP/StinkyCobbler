@@ -852,7 +852,7 @@ export async function reportArtifact(workspace: LocalWorkspace, schemas: SchemaR
     await ensureOrchestrationActivationCommitted(workspace, run, subtask);
     await assertNoUnresolvedAttemptIntents(workspace, run, subtask);
     if (input.kind !== "file") {
-      throw orchError("ARTIFACT_KIND_UNVERIFIABLE", "Only file artifacts can be verified in 2.0.1; summary/evidence require a content-bearing contract planned for 2.1.", { kind: input.kind });
+      throw orchError("ARTIFACT_KIND_UNVERIFIABLE", "Only file artifacts can be verified in the frozen kernel; summary/evidence are unverifiable and have no content-bearing contract.", { kind: input.kind });
     }
     assertRelativePath(input.path);
     if (!artifactInScope(subtask.scope, input.path)) {
@@ -1052,7 +1052,7 @@ export interface RecordReviewInput {
   reviewedBy: string;
   /** Host estimate charged to the run budget; it is not provider-verified. */
   tokensUsed: number;
-  /** Reserved for a future engine-verified provider receipt adapter; unsupported caller references fail closed in 2.0.1. */
+  /** Fail-closed: unsupported caller references are rejected. ADR-0002 does not schedule an engine-verified provider receipt adapter. */
   providerTokenReceiptId?: string;
   /** Generation token returned by dispatchSubtask. */
   expectedAttempt: number;

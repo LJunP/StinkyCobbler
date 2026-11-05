@@ -1,6 +1,4 @@
-import { readFile } from "node:fs/promises";
 import { ExitCode, StinkyCobblerError } from "../errors.js";
-import { atomicWrite, readRegularHostFile } from "./managed-file.js";
 
 const ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 
@@ -31,16 +29,6 @@ export function removeSegment(source: string, id: string): string {
   const located = locateSegment(source, id);
   if (located === undefined) return source;
   return `${source.slice(0, located.start)}${source.slice(located.end)}`;
-}
-
-export async function upsertSegmentFile(target: string, id: string, body: string): Promise<void> {
-  const existing = await readRegularHostFile(target);
-  await atomicWrite(target, upsertSegment(existing ?? "", id, body));
-}
-
-export async function removeSegmentFile(target: string, id: string): Promise<void> {
-  const existing = await readFile(target, "utf8");
-  await atomicWrite(target, removeSegment(existing, id));
 }
 
 function segmentBlock(id: string, body: string): string {

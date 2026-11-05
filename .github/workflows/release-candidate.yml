@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Target version; must exactly match the package.json version (for example 2.0.1)."
+        description: "Target version; must exactly match the package.json version (for example 3.0.0-rc.1)."
         required: true
         type: string
   push:

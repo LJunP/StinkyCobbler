@@ -176,7 +176,7 @@ function recommendationsFor(decision: EntryDecision, viaValid: boolean, via: Ent
     case "mcp-available":
       return ["MCP is configured; the host MCP client can call stinky-cobbler-mcp tools.", "Keep using Skill for planning and interpretation."];
     case "mcp-missing":
-      return ["MCP is not configured in host config.json.", "Review `stinky-cobbler entry mcp-config` for the registration template.", "Explicitly run `stinky-cobbler entry install-host --mcp --dry-run` first, then confirm, if the user asked to configure the host.", "Do not silently fall back to Skill when via=mcp."];
+      return ["stinky-cobbler-mcp was not found in the selected host MCP config: Codex config.toml; Claude Code .claude.json or .mcp.json; Cursor mcp.json; ZCode .zcode/cli/config.json, .zcode/config.json, or .agents/mcp.json.", "Review `stinky-cobbler entry mcp-config` for the registration template.", "Explicitly run `stinky-cobbler entry install-host --host <host> --mcp --dry-run` first, then confirm, if the user asked to configure the host.", "Do not silently fall back to Skill when via=mcp."];
     case "workspace-uninitialized":
       return ["The workspace has no initialized .stinky-cobbler/workspace.json.", "Offer `stinky-cobbler init --dry-run` for the control-plane preview and wait for the user's explicit choice before initializing.", "Skill-only requests still work without an initialized workspace."];
     case "invalid-via":

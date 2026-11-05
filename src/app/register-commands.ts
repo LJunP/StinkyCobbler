@@ -85,7 +85,7 @@ function registerGroup2(program: Command, projectRoot: string): void {
 program.command("recommend").description("[deprecated 2.x] Recommend a minimum task plan without executing it.").option("--task <path>").option("--goal <text>").option("--json").action(async (o) => { if (!o.task && !o.goal) throw new StinkyCobblerError("INPUT_REQUIRED", ExitCode.VALIDATION, "Provide --task or --goal."); const schemas = await SchemaRegistry.create(projectRoot); const registries = await loadRegistries(projectRoot, schemas); const task = o.task ? JSON.parse(await readFile(path.resolve(o.task), "utf8")) : { id: "draft", workspaceId: "unselected", goal: o.goal, requestedOutputs: ["document"], riskLevel: "L0", state: "DRAFT" }; schemas.validate("task", task); emit({ taskDraft: task, ...recommendTask(task, registries.packs), candidates: { profiles: [...registries.profiles.keys()], packs: [...registries.packs.keys()] } }, o.json); });
 }
 function registerGroup3(program: Command, projectRoot: string): void {
-program.command("doctor").description("[deprecated 2.x] Check built-in registries and optional workspace policy files.").option("--root <path>", "Optional workspace: also validates all four tiered policy files.").option("--json").action(async (o) => {
+program.command("doctor").description("[deprecated 2.x] Check built-in registries and optional workspace policy files.").option("--root <path>", "Optional workspace: also validates all three tiered policy files.").option("--json").action(async (o) => {
   const schemas = await SchemaRegistry.create(projectRoot);
   const r = await loadRegistries(projectRoot, schemas);
   let configCheck: { healthy: boolean; error?: string; fix?: unknown; details?: Record<string, unknown> } = { healthy: true };
