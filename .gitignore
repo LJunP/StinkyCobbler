@@ -21,3 +21,12 @@ sbom.cyclonedx.json
 
 # Archify architecture reports (generated locally)
 /.archify/
+
+# Temporary or generated artifacts. Source must not read from output/.
+/output/*
+!/output/README.md
+
+# Scratch directories from scripts/build.mjs and scripts/build-offline-bundle.mjs
+.dist-build-*/
+.dist-backup-*/
+.sc-offline-publish-*/

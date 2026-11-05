@@ -122,10 +122,10 @@ describe("host skill documentation contract", () => {
 
   it("labels historical and declared-only documents without promoting future capabilities", async () => {
     const [core, roles, domain, history, nonDeveloper, threat] = await Promise.all([
-      readRepoFile("docs/architecture/核心调度内核设计.md"),
-      readRepoFile("docs/architecture/默认角色与调度策略.md"),
-      readRepoFile("docs/architecture/通用领域模型与扩展机制.md"),
-      readRepoFile("docs/architecture/产品设计基线.md"),
+      readRepoFile("docs/archive/核心调度内核设计.md"),
+      readRepoFile("docs/archive/默认角色与调度策略.md"),
+      readRepoFile("docs/archive/通用领域模型与扩展机制.md"),
+      readRepoFile("docs/archive/产品设计基线.md"),
       readRepoFile("docs/quickstart/非开发用户使用模型.md"),
       readRepoFile("docs/architecture/威胁模型与权限设计.md"),
     ]);
