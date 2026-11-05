@@ -1,325 +1,286 @@
 # Stinky Cobbler
 
-Stinky Cobbler 3.x 是 AI agent 工具箱的包管理器。一份 `toolkit.yaml` 描述 skill、MCP server 和指令文件。`toolkit plan` 只预览；`toolkit apply --yes` 才写入 Codex、Claude Code、Cursor 或 ZCode。手改过的受管文件记为冲突，不会被覆盖。回滚按内容寻址备份恢复写入前的字节。密钥只能写成 `${env:NAME}` 或 `${file:PATH}`。
+Stinky Cobbler 3.x 是声明式 AI agent 工具箱的包管理器。一份 `toolkit.yaml` 描述 skill、MCP server 和指令，`toolkit plan` 只预览，`toolkit apply` 才写到 Codex、Claude Code、Cursor 或 ZCode。
 
-当前 checkout 的包版本是 **3.0.0-rc.1** 源码候选。源码已经包含 lock、来源、bundle、失败关闭的 search、update、知识新鲜度和记忆段落。这不是 `3.0.0`。没有 npm tag，也没有 GitHub Release。四个宿主的安装冒烟仍是 `UNKNOWN / PENDING`。公开版本以 npm registry 和 GitHub Releases 为准。GA 发布被挡住。
+当前 checkout 是 **3.0.0-rc.1** 源码候选，不是 `3.0.0`。没有 npm tag，也没有 GitHub Release，未发布到 npm。npm 上最新是 2.0.1（本仓库记录的 tag `v2.0.1`，2026-09-13）。3.0 GA 被四个宿主的真实安装冒烟挡住，该冒烟仍是 `UNKNOWN / PENDING`。registry 与 Releases 的当前状态以 [npm](https://www.npmjs.com/package/stinky-cobbler) 和 [GitHub Releases](https://github.com/LJunP/StinkyCobbler/releases) 为准。
 
-五分钟路径见 [toolkit 快速开始](./docs/quickstart/toolkit.md)。从 2.x 过来见 [迁移说明](./docs/migration/2.x-to-3.x.md)。决策见 [ADR-0002](./docs/decisions/ADR-0002-从权限门禁转向工具箱包管理器.md)。
+公共可执行文件是 `stinky-cobbler` 和 `stinky-cobbler-mcp`。`dist/**` 是内部实现，不是库 API。
 
-2.x 权限门禁还在。`validate`、`task`、`approval`、`lease`、`write`、`orchestration` 这些顶层命令已 deprecated，并冻结不再扩展。它只修已发布版本上的严重缺陷。保证只覆盖经本 CLI/MCP 路由的操作，也就是 Cooperative Mode。它不是操作系统沙箱。
+## 它解决什么问题
 
-> **维护中的 2.x：Codex / ZCode 本地仓库的可验证权限与变更门禁。**
+各家 AI 编程工具的 skill 目录、MCP 配置和指令文件格式、作用域都不一样。用户要的是自己的工具箱跟着走，而不是在每个宿主里手改一遍，改坏了也找不回来。市面同类多是同步脚本：直接覆盖，没有预览，没有回滚，也不认出用户手改。
 
-Stinky Cobbler 是一个本地 CLI/MCP 控制面。它不替代 Codex 或 ZCode，也不自己调用模型；它只对**经自身受控通道**发起的仓库读取、单目标写入、删除和只读 Runtime 调用，校验持久化 Task、精确 Approval、Lease、路径范围、写前文件状态，并记录本地审计证据。
+本工具用一份声明式 `toolkit.yaml` 描述工具箱，再把它落到各宿主。`plan` 先给出每个文件的 diff，不写盘。`apply` 只改受管内容，用户手改过的文件一律 `conflict`，不覆盖。每次变更有内容寻址备份和本地账本，`rollback` 按 hash 校验后逐步回退。`doctor` 报告每个宿主的状态和漂移。
 
-![npm](https://img.shields.io/npm/v/stinky-cobbler) ![license](https://img.shields.io/badge/license-Apache--2.0-green)
+## 快速开始
 
-[快速开始](#安装与验证) · [功能](#当前实现能力矩阵) · [维护状态](#维护状态与历史阶段) · [文档](#文档) · [贡献指南](./CONTRIBUTING.md)
-
----
-
-> ### 三句话
->
-> **解决什么问题** —— AI 改仓库时，「请不要改这些文件」只是提示，不是可检查的授权记录。
-> Stinky Cobbler 把**任务范围 → 批准 → 执行凭证 → 文件变更**串成一条带证据的链：
-> 越界、过期授权、写前内容漂移、重复执行都会被对应门禁拒绝，允许与拒绝都进审计账本。
->
-> **怎么用** —— `npm i -g stinky-cobbler` → `init` 建 workspace → `task` 定范围 →
-> `approval` / `lease` 拿授权 → `write` 落盘 → `ledger verify` 验哈希链。
-> 需要 Node.js 22+ 与一次显式的宿主接入（Codex / ZCode），**不是零配置**。
->
-> **边界在哪**（这条最重要，别跳过）—— 所有保证都以「操作确实经过本 CLI/MCP 路由」为前提，
-> 即 **Cooperative Mode**。它**不是操作系统沙箱**：宿主的原生文件工具、Shell、Git
-> 或第三方 MCP 可以完全绕过它，本项目既不提供也未验证那层隔离。
-> 需要强制中介时，必须由宿主把 worker 放进只暴露受控工具的隔离环境。
-> 完整清单见[产品边界](#产品边界)。
-
----
-
-## 为什么使用它
-
-当 AI 修改仓库时，仅有“请不要改这些文件”的提示不足以形成可检查的授权记录。Stinky Cobbler 把任务范围、批准、执行凭证和文件变更串起来：允许的操作留下证据，越界、过期授权、写前内容漂移和重复执行会被相应门禁拒绝。
-
-适合需要审批、可追溯变更和条件回滚的本地 AI 编程工作流。使用者需要理解 CLI、Git 和宿主 MCP 配置；只想直接聊天生成代码、或者需要操作系统强隔离的用户，应先阅读下面的产品边界。
-
-例如：批准 AI 修改一个配置文件后，如果有人先改了该文件，原 WriteIntent 会因写前 hash 不匹配而拒绝应用。需要基于新内容重新申请，避免覆盖第三方修改。
-
-## 版本与验证状态
-
-- 当前 checkout 的版本和 Node.js 要求以 `package.json` 为准。
-- 当前公开 npm 版本必须通过 `npm view stinky-cobbler version --registry=https://registry.npmjs.org` 查询；tag、Release 与资产必须在 [GitHub Releases](https://github.com/LJunP/StinkyCobbler/releases) 核验。
-- 真实宿主支持必须绑定到同一组候选 bytes，并完成 Codex/ZCode 安装、重启后发现、MCP 消费者和受控操作 E2E。历史宿主结果或 `mcpConfigured=true` 不能替代本次证据。
-- 源码版本、绿测试、打包或 release gate 都不等于 npm publish、Git tag 或 GitHub Release。
-
-## 产品边界
-
-Stinky Cobbler 当前解决一个具体问题：**让宿主对本地仓库的受控操作能够回答“基于哪个 Task、谁批准了什么范围、用了哪个 Lease、写前文件是否漂移、最终改了什么”。**
-
-它不承诺以下能力：
-
-- 不是操作系统沙箱，也不能拦住宿主原生文件工具、Shell、Git 或第三方 MCP 绕过控制面；
-- 不是自主 Agent 调度器；`orchestration` 是本地契约/状态/预算/产物门禁，真实 worker 的创建、执行与上下文隔离由宿主负责；
-- 不创建或隔离真实 Agent/reviewer。引擎只负责状态机级 DAG 失败隔离与重叠 writeSet 阻断；Contract 创建时把 Profile 快照为不可变 `reviewPolicy`：`individual=SELF_REVIEW_AUDITED`，`team` / `organization` / `regulated` / 缺失配置=`INDEPENDENT_REQUIRED`。真正创建独立 reviewer、隔离进程或 worktree 仍由宿主负责；
-- 不是“零配置直接用”。至少需要 Node.js 22、本地安装、显式宿主接入、workspace 初始化，以及与操作匹配的 Task/Approval/Lease；
-- “本地”只描述控制面文件与 CLI/MCP 进程。Codex/ZCode、模型提供商或宿主其他工具是否联网、是否上传内容，不由本项目证明；
-- 当前实现没有 CAS、结构化 Context/Memory、摘要检索、冲突消解或跨会话长期记忆。`summary` / `evidence` 编排产物不能冒充已验证上下文。
-
-### Cooperative Mode
-
-所有保证都以“操作确实经 Stinky Cobbler CLI/MCP 路由”为前提。需要强制中介时，必须由宿主把 worker 放入只暴露受控工具的隔离环境，并移除其他写通道；本仓库没有提供或验证该宿主隔离。
-
-npm 包的受支持执行面只有 `stinky-cobbler` CLI 与 `stinky-cobbler-mcp` 两个 bin；`dist/**` 是内部实现，不是 library API，package exports 会拒绝标准 Node.js deep import。能直接读写安装目录或 workspace 控制面文件的同进程代码，本来就在 Cooperative Mode 边界之外。
-
-## 当前实现能力矩阵
-
-### 可使用的入口
-
-| 功能组 | 已实现的操作 | 主要入口 |
-|---|---|---|
-| 初始化与诊断 | workspace 配置、Profile/Pack 校验、默认策略模板、健康检查 | CLI `init`、`doctor`、`config`、`validate` |
-| 任务与权限 | Task 生命周期、规则式角色推荐、Approval 请求/决定、Lease 签发/撤销/使用重验 | CLI `task`、`recommend`、`approval`、`lease` |
-| 仓库只读 | 有界文件读取、目录列表、固定 Git 只读操作、文档索引 | MCP `repo_read`、`repo_list`、`git_read`、`docs_index` |
-| 仓库变更 | 单文件 create/modify/delete、写前校验、备份、条件回滚与恢复 | CLI `write`；MCP `repo_write`、`repo_delete` |
-| 计划与编排 | Plan 步骤推进、Contract/Subtask、依赖、重试、审查、产物与完成门禁 | CLI `plan`、`orchestration` |
-| 只读运行时 | 显式请求执行、预算、心跳、取消/超时、终态收据、恢复与核对 | CLI `runtime` |
-| 证据与审计 | Evidence/Receipt 查询、审计恢复、hash-chain 验证与归档 | CLI `evidence`、`receipt`、`audit`、`ledger` |
-| 宿主接入 | Codex/ZCode 安装预览、受管配置升级、冲突保护、备份回滚 | CLI `entry` |
-| 分发与验证 | npm 包 smoke、离线包、SBOM、校验和、六矩阵 CI | `scripts/`、GitHub Actions |
-
-MCP 另外提供 `validate_contract`、`resolve_config`、`recommend_task`、`evaluate_lease` 四个校验/查询工具。`evaluate_lease` 检查传入值，不签发权限；实际操作还会重读持久化授权。当前未注册 `test_run`，也没有通用 Shell、网络或 Git 写入工具。
-
-### 保证由谁提供
-
-状态只使用 `ENGINE_ENFORCED`、`HOST_PROCEDURAL`、`DECLARED_ONLY`、`NOT_AVAILABLE`。
-
-| 能力 | 状态 | 当前事实与边界 |
-|---|---|---|
-| **TaskAuthority** | `ENGINE_ENFORCED` | 从 workspace 重载持久化 Task，校验状态、风险、scope/writeSet、policy、adapter、role→operation 与完整父授权链；未知/不允许的角色工具 fail-closed；不是签名身份或外部授权服务 |
-| **精确 Approval / Lease** | `ENGINE_ENFORCED` | Approval 绑定对象 hash、能力、精确范围、预算、策略、主体、nonce 与消费状态；Lease 在签发及每次使用时都校验具体 operation 的角色权限；`worker` 仅接受 orchestration-derived、subtask/attempt-bound Lease |
-| **单目标 WriteIntent / preimage / 条件回滚** | `ENGINE_ENFORCED` | intent 捕获 `expectedPreimageHash`；auto-allow 不会跳过 TaskAuthority、Lease/writeSet、路径或 preimage；业务文件和控制面不是多文件事务，故障后可进入 `RECOVERY_REQUIRED`，不能合成成功 |
-| **Artifact / ValidatorReceipt / Completion 重验** | `ENGINE_ENFORCED` | dispatch、begin、review、completion 重读文件 hash；validator 由引擎注册执行；caller 自报 passing JSON 不构成证据 |
-| **DAG 失败隔离 / 并发 fence** | `ENGINE_ENFORCED` | 非关键独立分支可继续，依赖后继阻断；同 Contract active Run 与重叠 writeSet 冲突被拒绝；这不是进程/worktree 隔离 |
-| **Profile 审查独立性规则** | `ENGINE_ENFORCED` | Contract 创建时不可变快照：`individual=SELF_REVIEW_AUDITED`；`team` / `organization` / `regulated` / 缺失配置=`INDEPENDENT_REQUIRED`；legacy Contract 默认严格 |
-| **只读 Runtime cancel/deadline/finalization** | `ENGINE_ENFORCED` | 仅 `scripted-readonly` adapter；同进程 supervisor、timer、AbortSignal、owner/epoch checkpoint，以及完整 Capsule/executor/有序请求的 `executionRequestHash` 与 `PREPARED→COMMITTED` Run/Receipt/audit 绑定；Capsule policyVersion 必须等于持久化 Lease；不是宿主 Agent/进程硬中断或跨文件单事务 |
-| **本地 hash-chain ledger** | `ENGINE_ENFORCED` | 验证当前链的 Schema、顺序和 hash 自洽；不是不可篡改外部见证 |
-| **Codex/ZCode 创建 Agent、独立 reviewer、隔离 worktree** | `HOST_PROCEDURAL` | 由宿主完成；当前候选只提供 Skill/MCP 接入规则，不把宿主行为冒充引擎事实 |
-| **非开发 Pack 与未实现插件清单** | `DECLARED_ONLY` | 仅配置/路由元数据；没有受信任实现时不可宣称可执行 |
-| **CAS、ContextManifest、结构化长期记忆、统一 Host Adapter** | `NOT_AVAILABLE` | 不属于当前实现能力 |
-
-Runtime 的 cancel/deadline 是协作式边界；`CANCEL_REQUESTED` 后仍需查询 persisted Run。若停止与在途调用竞争，底层结果可能为 `UNKNOWN`，不能描述为硬中断成功。
-
-编排 CLI 使用显式 generation 防止旧 worker/旧人工决定重放：dispatch 读取并提交 `retriesUsed`，begin/artifact/review 传递返回的 `activeAttempt`，resume 提交当前 escalation 的下一 `resumeGeneration`；新一代 Run 必须用 `--supersedes-run` 绑定唯一终态前驱。完整命令见[使用说明书：防陈旧重放协议](docs/quickstart/使用说明书.md#防陈旧重放协议)。
-
-人工升级会写入精确绑定 generation、规范化 reason、Run 前后状态与 audit effect 的事务 journal。若取消 fence 已开始且升级目标尚未发布，升级、resume 与通用 reconcile 都不能越过 fence；取消重试会把该事务标为 `ABORTED`。这保证的是控制面顺序，不是宿主 worker 的停止能力。
-
-## 安装与验证
-
-安装公开版本前先核验 registry 实际版本：
+需要 Node.js 22 或更新版本（`package.json` 的 `engines` 是 `>=22.0.0`）。下面四条命令与 [toolkit 快速开始](./docs/quickstart/toolkit.md) 一致，从本地安装包到第一次成功的 `toolkit apply`。`init` 和 `lock` 之间要编辑 `toolkit.yaml`，这次编辑不是命令。3.0.0-rc.1 没有 registry 上的安装包；`npm install -g stinky-cobbler` 装到的是已发布的 2.0.1，没有这组 `toolkit` 命令。tarball 来自本仓库的 `npm pack`，或来自你自己打的候选包。
 
 ```bash
-npm view stinky-cobbler version --registry=https://registry.npmjs.org
-npm install -g stinky-cobbler --registry=https://registry.npmjs.org
-stinky-cobbler --version
-stinky-cobbler doctor --json
+npm install -g stinky-cobbler-*.tgz
+stinky-cobbler toolkit init --json
+stinky-cobbler toolkit lock --json
+stinky-cobbler toolkit apply --yes --json
 ```
 
-### 初始化 workspace：profile 和 pack 都必填，且没有默认值
-
-`init` 的 `--profile`、`--pack` 全部必填。CLI 不会列出合法值，
-填错时的报错也不一定指向真正的原因，所以这里把两组值写全。
+在本仓库里从源码运行：
 
 ```bash
-stinky-cobbler init \
-  --workspace-id my-ws \
-  --profile individual \
-  --pack software-engineering \
-  --root . --json
-```
-
-| 参数 | 合法值 |
-|---|---|
-| `--profile` | `individual` · `team` · `organization` · `regulated` |
-| `--pack` | `software-engineering` · `knowledge-work` · `business-operations` · `data-analysis` · `creative-production` · `education` · `regulated-work` |
-
-`--pack` 可重复，但**至少要给一个**；一个都不给会报 `SCHEMA_INVALID`
-而不是 usage 错误。另外 profile 与 pack 之间有准入关系：
-`individual` 不启用某个 pack 时会报 **`PROFILE_PACK_DENIED`**，
-**这个错误也会在 pack 名本身拼错或不存在时出现**——先核对上表的拼写，
-再去怀疑 profile 配置。
-
-初始化成功后 `--root` 下会出现 `.stinky-cobbler/`：
-`workspace.json`、`ledger.jsonl` 与三份策略脚手架。
-随后 `stinky-cobbler ledger verify --root .` 应返回 `valid: true`。
-
-验证当前 checkout 时从源码安装，避免把 registry 的另一版本误认为当前 bytes：
-
-尚未取得源码时，可克隆当前候选分支；已有工作区请直接在其中执行后面的构建步骤，不要重复克隆：
-
-```bash
-git clone --branch main https://github.com/LJunP/StinkyCobbler.git   # v2.0.1 已合入 main
-cd StinkyCobbler
-```
-
-注意：分支克隆只取得已推送内容，不包含维护者本地尚未提交的修复。候选测试结论必须对应你实际取得的提交。
-
-```bash
-node --version                       # 源码开发使用 Node 22.12+ 或 Node 24
-npm ci                             # 按已提交的 lockfile 安装
+npm install
 npm run build
-npm install -g .                    # 安装当前 checkout，而不是 registry 版本
-stinky-cobbler --version             # 应与 package.json 一致
-stinky-cobbler doctor --json
+node dist/cli.js toolkit init --json
+node dist/cli.js toolkit plan --json
+node dist/cli.js toolkit apply --json
+node dist/cli.js toolkit doctor --json
 ```
 
-宿主接入会修改宿主配置，必须先预览并由操作者确认：
+把当前 checkout 装到全局、而不是装 registry 上的另一版本：`npm install -g .`。
 
-```bash
-# ZCode
-stinky-cobbler entry install-host --dry-run --json
-stinky-cobbler entry install-host --mcp --dry-run --json
+`init` 把带注释的 `toolkit.yaml` 写到 `$XDG_CONFIG_HOME/stinky-cobbler/toolkit.yaml`。没有设置该变量时，路径是 `~/.config/stinky-cobbler/toolkit.yaml`。文件已经存在就拒绝覆盖。`plan` 不修改宿主目录。没有变更时 `apply` 可以直接运行。有变更时必须加上 `--yes`。冲突不会覆盖手改过的受管文件。
 
-# Codex
-stinky-cobbler entry install-host --host codex --mcp --dry-run --json
-```
+## 命令一览
 
-相同命令也负责安全升级：只有 sidecar 记录的当前 hash 或实现内置的精确已知旧版 hash 与现有 bytes 完全一致时才会升级。当前兼容代码可识别三份 2.0.0 command/Skill 模板的精确 SHA-256；版本文字本身不是依据。检测到用户编辑会返回 `conflict` 并保留原文件。升级前创建内容寻址的独占备份，升级后先预览再恢复上一份受管备份：
+`node dist/cli.js toolkit --help` 的子命令如下。写盘一列只描述该命令自己的行为。
 
-```bash
-stinky-cobbler entry install-host --rollback --dry-run --json
-stinky-cobbler entry install-host --rollback --json
+| 子命令 | 是否写盘 |
+|---|---|
+| `init` | 写一份 `toolkit.yaml`（默认 user 作用域）。已存在则拒绝覆盖。 |
+| `plan` | 不写盘。预览的是当前源文件，所以 diff 可能和后面 `apply` 安装的锁定字节不同。 |
+| `apply` | 写宿主受管文件、managed-state sidecar、内容寻址备份，并追加 toolkit 账本。有变更必须 `--yes`。冲突不覆盖。有 skill 或指令时必须先 `lock`，安装的是 blob 里的字节。 |
+| `rollback` | 把最后一次 apply 按账本写回去。用 `--last` 或 `--to <applyId>`，且只能回最后一次。账本为空则失败。当前字节或 sidecar hash 不符则 `conflict` 并停止。 |
+| `doctor` | 不写盘。报告漂移、`${env:NAME}` 的变量名是否出现在当前进程（不打印值）、command 是否存在、密钥提示，以及 `role: knowledge` 的新鲜度。没有该 server 的工具结果时新鲜度是 `unavailable`，不读取 `sources` 建索引。 |
+| `list` | 不写盘。列出已观察到的 skill、MCP 和指令。command 还没有观察。 |
+| `lock` | 写规格旁边的 `toolkit.lock` 和 `blobs/<sha256>`。`git+` 与 `npm:` 的 skill 在这时抓取，正文进 `sources/`，不执行来源里的脚本。不改宿主目录。`skills.sh:` 不抓取，没有 hash。找不到的本地文件记为 `absent`。 |
+| `update` | 不改 `toolkit.lock`，不写宿主。重新读取本地来源，并重新抓取 `git+` 和 `npm:`（会改 `sources/`），只输出 plan diff。之后的 `apply` 仍安装锁定字节。 |
+| `search <query>` | 不写盘，不访问网络。目录 API 未核实，返回 `TOOLKIT_SEARCH_UNVERIFIED`。 |
+| `memory` | `show <id>` 不写盘，只打印受管段落原文。`edit <id> --file <path>` 只替换已经存在的那一段。目前只有 Claude Code 有已核实的 md 段落路径；Codex、Cursor、ZCode 返回 `TOOLKIT_HOST_UNSUPPORTED`。 |
 
-# 若安装时包含 MCP 配置，回滚预览/执行也必须显式带 --mcp
-stinky-cobbler entry install-host --mcp --rollback --dry-run --json
-```
-
-未执行非 dry-run 安装、重启宿主并完成[真实宿主验证清单](./docs/quickstart/发布前宿主验证清单.md)前，宿主能力保持 `UNKNOWN / PENDING`。
-
-`--rollback` 只在 sidecar、当前 installed hash、普通非 symlink 备份及备份 hash 全部匹配时执行；安装后用户改动、目标/备份缺失或漂移都会 fail-closed。完整规则见[兼容与迁移政策](./docs/兼容与迁移政策.md)。
-
-初始化也不是授权：
-
-```bash
-stinky-cobbler init \
-  --workspace-id example \
-  --profile team \
-  --pack software-engineering \
-  --root /absolute/path/to/repository \
-  --dry-run
-```
-
-初始化仅预览/创建 `.stinky-cobbler/` 控制面。真正读取或写入仍需持久化 Task、对应 Approval 与 Lease。
-
-## 受控变更链
+`memory` 在帮助里还有 `show` 和 `edit`。帮助原文：
 
 ```text
-持久化 Task
-  -> 精确 delegate-capability Approval
-  -> 受限 Lease（服务端持久化记录为权威）
-  -> 单目标 WriteIntent + 写前 preimage
-  -> 可选的精确 write-confirm Approval（delete 必须；create/modify 可 auto-allow）
-  -> apply 前重验 TaskAuthority / Lease / scope / preimage
-  -> 业务文件变更
-  -> Evidence + ledger + APPLIED journal
-  -> 条件回滚
+init, plan, apply, rollback, doctor, list, lock, update, search <query>, memory
 ```
 
-任何一步被拒绝，都不能通过扩大 scope、换 Lease 字段、宿主 Shell 或第三方 MCP 来伪装成受控成功。
+## `toolkit.yaml`
 
-## 开发候选验证
+规格版本是 `1`。同一份文件里的 artifact `id` 必须唯一。
 
-运行已安装的 CLI/MCP 要求 Node.js 22+；源码开发和测试中的 Vite 8 要求 Node.js 22.12+（也支持 Node 24）。推荐使用相应主版本的最新补丁版，并通过 `npm ci` 保留锁定的依赖树。
+| 种类 | 规格里写什么 |
+|---|---|
+| `skill` | `id` 与 `source`。`source` 可以是本地路径、`git+`、`npm:` 或 `skills.sh:`。`skills.sh:` 仍然不抓取。 |
+| `mcp-server` | `id`、`transport`（`stdio` 或 `http`）、`command`。可选 `args`、`env`、`role: knowledge` 和 `sources`。 |
+| `instructions` | `id` 与 `source`。可选 `kind: memory`、本地 `files` 目录，以及按宿主的 `render`。`kind: memory` 只写入宿主文件里的受管段落，段落外字节保持不变。 |
+| `bundles` | `id` 与 `includes`。只展开 lock 里已经解析出 hash 的 include。 |
+| `command` | 类型里有这个种类。规格没有 command 字段，`list` 不观察它。 |
+
+宿主 id：`zcode`、`codex`、`claude-code`、`cursor`。可以写在顶层 `hosts`，也可以写在单个 skill 上。Gemini CLI 不在 3.0 里。
+
+作用域是 `user` 或 `project`。`user` 读 `$XDG_CONFIG_HOME/stinky-cobbler/toolkit.yaml`（未设置时是 `~/.config/stinky-cobbler/toolkit.yaml`）。`project` 读当前目录 `.stinky-cobbler/toolkit.yaml`。一次命令只读这一份，不把两份按 `id` 合并。PRD 写过 builtin → user → project 的按 `id` 合并，当前 `toolkit` 命令没有做这层合并。
+
+冻结的 2.x 策略才是分层配置：包内 `policies/`，然后 `$XDG_CONFIG_HOME/stinky-cobbler/policies/`，然后项目 `.stinky-cobbler/policies/`。见 [分层配置指南](./docs/quickstart/分层配置指南.md)。
+
+密钥只允许整段值为 `${env:NAME}` 或 `${file:PATH}`。明文会被拒绝（`SECRET_LITERAL_FORBIDDEN`）。`doctor` 对 Claude Code 和 Codex 给出 `SECRET_NEEDS_SHELL_ENV`（按已核实文档，它们的展开语法不是 `${env:NAME}`）。Cursor 的文档使用 `${env:NAME}`，不给这条提示。ZCode 的展开没有写在已核对的官方页上，`doctor` 给出 `SECRET_EXPANSION_UNKNOWN`。这些是文档结论，不是对四个宿主二进制做的展开实验。
+
+## 宿主支持
+
+路径说明在 [docs/hosts/](./docs/hosts/codex.md)。承诺边界在 [支持矩阵](./docs/支持矩阵.md)。四个宿主的真实安装冒烟都是 `UNKNOWN / PENDING`。配置写成功不等于宿主重启后发现，也不等于消费者 E2E 通过。
+
+| 宿主 | 路径依据 | 真实冒烟 |
+|---|---|---|
+| Codex | 安装路径由 2.0.1 安装器与 `test/host-codex.test.ts` 锁定；MCP 环境变量写法按官方文档核实，代码在 `src/hosts/codex.ts`。无自定义 slash-command 文件，指令路径未写入。见 [codex.md](./docs/hosts/codex.md)。 | `UNKNOWN / PENDING` |
+| ZCode | 安装路径由 2.0.1 安装器与 entry 测试锁定；没有单独的公开路径文档。MCP 展开页未写 `${env:NAME}`。代码在 `src/hosts/zcode.ts`。见 [zcode.md](./docs/hosts/zcode.md)。 | `UNKNOWN / PENDING` |
+| Claude Code | 路径按官方文档核实（2026-10-21），代码在 `src/hosts/claude-code.ts`。见 [claude-code.md](./docs/hosts/claude-code.md)。bundled `entry install-host` 为 `ENTRY_HOST_UNSUPPORTED`。 | `UNKNOWN / PENDING` |
+| Cursor | 路径按官方文档核实（2026-10-21），代码在 `src/hosts/cursor.ts`。见 [cursor.md](./docs/hosts/cursor.md)。bundled `entry install-host` 为 `ENTRY_HOST_UNSUPPORTED`。 | `UNKNOWN / PENDING` |
+
+## 安全模型
+
+`toolkit plan`、`doctor`、`list`、`search` 和 `memory show` 不写宿主文件。`apply` 只改计划里的受管目标。手改过的受管文件是 `conflict`，不覆盖。写入走内容寻址备份（`<file>.stinky-cobbler-backup-<sha256>.bak`）和 sidecar（`<file>.stinky-cobbler-managed.json`）。`rollback` 先核对当前字节和 sidecar 的 hash，再按账本恢复。toolkit 账本是配置目录下的 `ledger.jsonl`，不是操作系统审计日志。
+
+这不是 OS 沙箱。它不拦截宿主自己的文件工具、Shell、Git 或第三方 MCP。它也不调用模型，不调度 agent。
+
+## 冻结的 2.x 门禁
+
+2.x 是 Cooperative Mode 下的本地受控执行与审计层，不是当前主产品。保证只覆盖经本 CLI/MCP 路由的操作。宿主原生文件工具可以绕过它。它不是操作系统沙箱。
+
+顶层命令里，下面这些在 `--help` 中标记 `[deprecated 2.x]`，并冻结到 4.0 再决定删除或拆包：`validate`、`recommend`、`doctor`、`config`、`init`、`task`、`approval`、`evidence`、`receipt`、`runtime`、`audit`、`ledger`、`lease`、`plan`、`write`、`orchestration`。`entry` 和 `toolkit` 不标 deprecated。冻结由 `test/gate-frozen.test.ts` 守卫：只修会丢数据或误导用户的 P0，不扩展。2.x 分支只修 P0，直到 3.0 GA 之后 6 个月。2.x 的持久化记录在 3.x 里保持可读、可安全终止。`entry install-host` 与受管文件 sidecar 保持字节级兼容。
+
+受控写入链是：持久化 Task，精确 `delegate-capability` Approval，受限 Lease，单目标 WriteIntent 捕获 `expectedPreimageHash`，然后才是可选的 `write-confirm`。create/modify 可以 `auto-allow`。这个 auto-allow 不会跳过 TaskAuthority、Lease、writeSet、路径或 preimage。delete 必须单独确认，不会被 auto-allow。apply 前会重验 TaskAuthority、Lease、scope 和 preimage。
+
+只读 Runtime 的 cancel/deadline 使用同进程协作式（cooperative）`AbortSignal`。这不是宿主进程硬中断，也不是 hard kill。停止若与在途调用（in-flight）竞争，底层结果可能仍是 `UNKNOWN`，不能把它写成硬中断成功。
+
+`entry install-host` 会改宿主配置，必须先 `--dry-run`。Side effects: install-host writes the host skill and, for ZCode, its command file; --mcp merges an MCP entry into the current host config. Managed-state sidecars are written, and a verified byte-for-byte backup may be created during a managed upgrade. Existing user-edited files are preserved as conflicts rather than overwritten. Rollback is a separate explicit `--rollback` operation.
+
+2.0.1 发布后的长验证记录和 2.x 能力矩阵细则不在本文件。见 [CHANGELOG](./CHANGELOG.md)、[归档](./docs/archive/README.md) 和 [支持矩阵](./docs/支持矩阵.md)。
+
+## 项目目录
+
+下面是仓库里的两层结构。`dist/` 和 `node_modules/` 不入库。`output/` 只有 `README.md` 入库。
+
+```text
+.
+├── .codex/skills/
+├── .github/
+│   ├── ISSUE_TEMPLATE/
+│   ├── workflows/
+│   ├── dependabot.yml
+│   └── pull_request_template.md
+├── .husky/                    pre-commit, pre-push
+├── .zcode/
+│   ├── commands/
+│   └── skills/
+├── docs/
+│   ├── architecture/          ADR-0001、威胁模型
+│   ├── archive/               已被取代的历史文档
+│   ├── decisions/             ADR-0002
+│   ├── hosts/                 四宿主路径笔记
+│   ├── migration/             2.x-to-3.x.md
+│   ├── presets/               projectmem.md
+│   ├── quickstart/
+│   ├── security/              发布前安全审查清单
+│   ├── PLAN.md  PRD.md  PROGRESS.md
+│   ├── 兼容与迁移政策.md
+│   ├── 支持矩阵.md
+│   └── 架构评审与发展规划-2026-10-20.md
+├── examples/
+│   ├── content-calendar/      2.x 示例 task：内容日历
+│   ├── frameflow/             2.x 示例 task：角色与授权边界
+│   ├── research-report/       2.x 示例 task：行业研究摘要
+│   └── student-management-system/
+├── output/README.md           其余内容 gitignore
+├── packs/
+│   ├── business-operations/
+│   ├── creative-production/
+│   ├── data-analysis/
+│   ├── education/
+│   ├── knowledge-work/
+│   ├── regulated-work/
+│   └── software-engineering/
+├── plugins/builtin.yaml
+├── policies/                  2.x 策略 YAML
+├── profiles/                  individual, team, organization, regulated
+├── schemas/                   JSON Schema，含 toolkit 与 2.x 契约
+├── scripts/                   构建、打包、发布门禁、skill 渲染
+├── src/
+│   ├── app/                   toolkit 用例与 2.x 命令注册
+│   ├── config/                2.x 注册表与 workspace 配置
+│   ├── contracts/             schema registry 与共享契约类型
+│   ├── core/                  plan/、render/、toolkit/（3.x，不直接碰 fs）
+│   ├── entry/                 preflight 与 install-host
+│   ├── gate/                  冻结 2.x：domain/、mcp/、policy/、runtime/、storage/
+│   ├── hosts/                 四宿主适配与 conformance/
+│   ├── io/                    有界读写、受管文件、段落、分层合并、toolkit 账本
+│   ├── security/              工作区路径策略门面
+│   ├── cli.ts  mcp-server.ts  errors.ts  version.ts
+├── templates/
+│   ├── hosts/
+│   └── skill-core.md
+├── test/
+│   ├── app/  core/  helpers/  hosts/  io/  setup/
+│   └── *.test.ts
+├── dist/                      不入库，build 产物
+├── node_modules/              不入库
+└── （根目录文件见下表）
+```
+
+### 根目录文件
+
+| 路径 | 归属 | 用途 |
+|---|---|---|
+| `.dependency-cruiser-known-violations.json` | 构建/发布 | dependency-cruiser 已知循环基线，只降不升。 |
+| `.dependency-cruiser.cjs` | 构建/发布 | 依赖方向规则。`src/core` 不碰 fs，`src/gate` 只能被入口引用。 |
+| `.editorconfig` | 构建/发布 | 编辑器基本格式。 |
+| `.gitignore` | 构建/发布 | 忽略 `dist/`、`node_modules/`、`output/` 内容（保留 `output/README.md`）等。 |
+| `.npmrc` | 构建/发布 | `omit-lockfile-registry-resolved=true`，lockfile 不写 registry resolved。 |
+| `.nvmrc` | 构建/发布 | 源码开发使用的 Node 主版本补丁，当前是 `22.12`。 |
+| `.prettierrc` | 构建/发布 | Prettier。`npm run format` 只覆盖 `src/{core,hosts,io,app}`。 |
+| `CHANGELOG.md` | 文档 | 版本变更记录。发布状态以 npm 与 GitHub 为准。 |
+| `CONTRIBUTING.md` | 文档 | 贡献说明。 |
+| `LICENSE` | 文档 | Apache-2.0 许可文本。 |
+| `README.md` | 文档 | 本文件。 |
+| `SECURITY.md` | 文档 | 安全策略与 2.x 门禁边界。 |
+| `eslint.config.js` | 构建/发布 | ESLint。新代码有文件长度、函数长度和嵌套限制；冻结内核的存量问题降为 warning。 |
+| `package-lock.json` | 构建/发布 | 锁定依赖树。版本必须与 `package.json` 一致。 |
+| `package.json` | 构建/发布 | 包清单。当前版本 `3.0.0-rc.1`，`bin`、`engines`、`files` 都在这里。 |
+| `tsconfig.json` | 构建/发布 | 生产 TypeScript 配置。 |
+| `tsconfig.test.json` | 构建/发布 | 测试类型检查配置。 |
+| `vitest.config.ts` | 构建/发布 | Vitest 的 `unit` 与 `integration` 两个 project。 |
+
+### 顶层目录
+
+| 路径 | 归属 | 用途 |
+|---|---|---|
+| `.codex/` | 冻结 2.x | Codex skill 模板，由 `templates/` 渲染到 `.codex/skills/`。随 npm 包发布。 |
+| `.github/` | 构建/发布 | `workflows/ci.yml` 与 `workflows/release-candidate.yml`（Ubuntu / macOS / Windows × Node 22 / 24），以及 `ISSUE_TEMPLATE/`、`pull_request_template.md`、`dependabot.yml`。 |
+| `.husky/` | 构建/发布 | `pre-commit` 跑 lint-staged。`pre-push` 跑 lint 与 unit。 |
+| `.zcode/` | 冻结 2.x | ZCode skill 与 command 模板，在 `.zcode/skills/` 和 `.zcode/commands/`。随 npm 包发布。 |
+| `docs/` | 文档 | 产品与使用文档。`PRD.md`、`PLAN.md`、`PROGRESS.md` 是当前事实来源。`architecture/` 是 ADR-0001 与威胁模型。`decisions/` 是 ADR-0002。`hosts/` 是四宿主路径。`migration/` 是 2.x 到 3.x。`presets/` 是已核实的 preset。`quickstart/` 是上手文档。`security/` 是发布前安全审查清单。`archive/` 只保留已被取代的历史设计，不是当前规范。 |
+| `examples/` | 冻结 2.x | 四个 2.x task 样例：`content-calendar/`、`frameflow/`、`research-report/`、`student-management-system/`。不是 `toolkit.yaml` 示例。 |
+| `output/` | 不入库 | 临时或生成产物。只有 `output/README.md` 入库。`src/`、`test/`、`scripts/` 不得从这里读取。 |
+| `packs/` | 冻结 2.x | 2.x 领域包声明：`business-operations/`、`creative-production/`、`data-analysis/`、`education/`、`knowledge-work/`、`regulated-work/`、`software-engineering/`。声明不等于执行器。 |
+| `plugins/` | 冻结 2.x | `builtin.yaml`：repository-read、git-read、docs-index、test-run 等内置插件声明。 |
+| `policies/` | 冻结 2.x | 2.x 策略：`roles.yaml`、`role-tools.yaml`、`role-extensions.yaml`、`orchestration.yaml`、`specialists.yaml`、`contract-templates.yaml`。 |
+| `profiles/` | 冻结 2.x | 2.x workspace profile：`individual.yaml`、`team.yaml`、`organization.yaml`、`regulated.yaml`。 |
+| `schemas/` | 混合 | JSON Schema。`toolkit.schema.json` 属于 3.x，其余是 2.x 的 task、approval、lease、write-intent、orchestration 等契约。 |
+| `scripts/` | 构建/发布 | `build.mjs`、`package-smoke.mjs`、`release-gate.mjs`、`release-provenance.mjs`、离线包与 SBOM、`render-skills.mjs`、校验和。 |
+| `src/` | 混合 | TypeScript 源码。3.x 在 `core/`（`plan/`、`render/`、`toolkit/`）、`hosts/`（含 `conformance/`）、`io/`，以及 `app/` 里的 toolkit 用例。冻结 2.x 在 `gate/`（`domain/`、`mcp/`、`policy/`、`runtime/`、`storage/`）。`config/`、`contracts/`、`entry/`、`security/` 为 2.x 入口与配置仍在使用。根上有 `cli.ts`、`mcp-server.ts`、`errors.ts`、`version.ts`。 |
+| `templates/` | 冻结 2.x | `skill-core.md` 与 `templates/hosts/`。渲染成 `.codex` 和 `.zcode` 的 skill，不在模板里写宿主名。 |
+| `test/` | 混合 | Vitest。`app/`、`core/`、`hosts/`、`io/` 覆盖 3.x。根上大量 `*.test.ts` 覆盖冻结的 2.x 门禁。`helpers/`、`setup/` 是夹具与集成测试的 dist 新鲜度检查。 |
+| `dist/` | 不入库 | `npm run build` 的输出。不作为源码事实。 |
+| `node_modules/` | 不入库 | 依赖安装目录。 |
+
+## 开发与验证
+
+已安装的 CLI/MCP 要求 Node.js 22+。源码开发和测试里的 Vite 8 要求 Node.js 22.12+，也支持 Node 24。`.nvmrc` 是 `22.12`。用 `npm ci` 按已提交的 lockfile 安装。
 
 ```bash
 npm ci
-PACKAGE_VERSION=$(node -p 'require("./package.json").version')
-PACKAGE_REF=$(git branch --show-current)
-npm run check:version
-npm run typecheck
-npm run build
+npm run lint
 npm test
 npm run test:integration
 npm run test:package
-node scripts/release-gate.mjs --expected "$PACKAGE_VERSION" --git-ref "$PACKAGE_REF"
-npm audit --registry=https://registry.npmjs.org --audit-level=high
-git diff --check
 ```
 
-上述 dispatch 门禁接受 `main`、精确版本标签或 `codex/stinky-cobbler-<版本>-hardening` 分支；其他开发分支可运行 `npm run check:version`，准备候选时再使用允许的 ref。标签 checkout 应把 `PACKAGE_REF` 显式设置为对应标签。
+`npm run lint` 是 typecheck、测试类型基线、ESLint 和 dependency-cruiser。`npm test` 跑 Vitest。`npm run test:integration` 只跑 integration project。`npm run test:package` 会先 build，再做 pack 与安装冒烟。
 
-这些命令只验证当前源码候选的相应契约。正式发布还需同一候选 bytes 的真实 Codex/ZCode 消费者 E2E、最终资产/checksum/SBOM 复核，以及单独授权的 commit、tag、GitHub Release 和 npm publish。
-
-## 维护状态与历史阶段
-
-**2.0.1 已发布**（历史发布记录：npm `latest` = 2.0.1，tag `v2.0.1` → `cf7e1dc`，GitHub Release 2026-09-13）。受控执行内核已有实现和自动化回归；**真实双宿主验收仍未完成**，作为验证边界保留。2.x 内核进入维护，只保留上述必要维护范围；新功能开发转入 3.x 方向（见顶部声明与 [PLAN](./docs/PLAN.md)）。
-
-| 阶段 | 历史状态 | 已有证据 / 保留边界 |
-|---|---|---|
-| 本地权限、单目标变更与审计内核 | 已实现，有自动化覆盖 | 仅按已发布版本严重缺陷或必要安全修复需要维护 |
-| 计划、编排状态与只读 Runtime | 已实现，范围已收缩 | 宿主负责实际执行工作；引擎负责记录与门禁 |
-| 2.0.1 安全和分发加固 | **已完成** | 依赖安全更新与测试已提交；候选资产与校验和已随 Release 发布 |
-| 当前版本真实双宿主验收 | UNKNOWN / PENDING | Codex 和 ZCode 分别验证安装/重启发现、MCP 调用、读写删除回滚、取消/超时；绑定同一候选 bytes |
-| 2.0.1 正式发布 | **已完成**（2026-09-13） | npm / tag / GitHub Release 三者齐备；全新安装验证见下方[发布后验证记录](#发布后验证记录2026-09-19) |
-| 2.x 内核功能扩展 | 已停止 | 不再增加模型接入、Agent 调度或平台功能；3.x 工具箱方向见 [ADR-0002](./docs/decisions/ADR-0002-从权限门禁转向工具箱包管理器.md) |
-
-尚未实现的能力包括：自动创建和监督 worker 的统一 Host Adapter、可验证的 Provider token receipt、CAS、结构化 Context/Memory、跨会话检索，以及非开发 Pack 对应的外部执行器。这些不是 2.x 内核的交付承诺，不应仅为了凑齐功能而扩大范围。OS sandbox、真实身份与外部审计见证也不是现有引擎保证。
-
-历史证据：提交 `4dba92a` 的 [六矩阵 CI](https://github.com/LJunP/StinkyCobbler/actions/runs/32808278496) 和 [候选构建](https://github.com/LJunP/StinkyCobbler/actions/runs/32808307244) 于 2026-08-25 通过。它们只证明该提交；后续代码、依赖或文档改动需要新 SHA 的验证。最新修复清单与本地验收见[当前修复与验收记录](docs/项目状态与修复记录.md)。
-
-## 发布后验证记录（2026-09-19）
-
-在**全新空目录**从公开 registry 安装已发布版本，实测记录如下。
-这一节只记录当次运行观察到的事实，不代表对其他环境的承诺。
+发布门禁：
 
 ```bash
-npm install stinky-cobbler@2.0.1     # 98 packages, 3s
+node scripts/release-gate.mjs --expected "$PACKAGE_VERSION" --git-ref "$PACKAGE_REF"
 ```
 
-| 检查 | 结果 |
-|---|---|
-| 安装版本 | `2.0.1`（与 npm `latest` 一致） |
-| 两个 bin | `stinky-cobbler`、`stinky-cobbler-mcp` 均已链接且可执行 |
-| `doctor --json` | `healthy: true` / 4 profiles / 7 packs / 25 roles |
-| `init` | 生成 `.stinky-cobbler/`：`workspace.json`、`ledger.jsonl`、4 份策略脚手架 |
-| `task create` / `task list` | 往返一致，落 `authorityGeneration: 0` |
-| `ledger verify` | `valid: true`，2 条记录，链尾 `sha256:18fa149d…` |
-| **`ledger verify`（篡改后）** | **`valid: false`，`INVALID_ENTRY`，`entries: 0`** |
+不带参数时，它只核对 `package.json`、`package-lock.json` 和 `src/version.ts` 的版本一致。同时传入 `--expected` 和 `--git-ref` 时，ref 只能是下面三类：`main`、精确版本标签 `v<版本>`、`codex/stinky-cobbler-<版本>-hardening`。其他 ref 会被 `dispatchRefMismatch` 拒绝。这些命令只检查当前源码候选的对应契约。绿测试、打包和 release gate 都不等于 npm publish、git tag 或 GitHub Release。
 
-最后一行是这次验证里唯一真正有意义的：
-改掉账本首条记录的一个字段之后，验证器**确实拒绝**了。
-一个从未拒绝过任何输入的校验器，不能算校验器。
+## 版本与发布
 
-**本次未覆盖**：`write` 的完整落盘链需要先有 `runtime` 的 `--run` id，
-本次只验到 Task 与账本层；真实双宿主（Codex / ZCode）安装与重启后发现**仍未验收**，
-这是 README 上方状态表里唯一未决的门禁。
+2.0.1 是已经发布的版本。2.0.2 要从 `codex/stinky-cobbler-2.0.2-hardening` 发布，不能把含有 3.x 的分支合并进 main 来发 2.0.2。PLAN 记录：2026-11-05 的 `npm audit --audit-level=high` 失败，运行时依赖 zod 与 body-parser 各有高危公告，发布被这道检查挡住。推送、六矩阵 CI、tag `v2.0.2`、`npm publish` 和 GitHub Release 还没有做。
 
-运行环境：macOS 15.2 / Node.js v22.23.2 / npm 10.9.8。
+3.x 在推送之前的状态以 [PROGRESS](./docs/PROGRESS.md) 为准：分支尚未推送，没有 tag，没有 `npm publish`，四个宿主的安装冒烟仍是 `UNKNOWN / PENDING`，GA 发布被挡住。
 
-## 仓库导航
+## 文档索引
 
-| 路径 | 内容 |
-|---|---|
-| `src/cli.ts`、`src/mcp-server.ts` | 公共 CLI / MCP 入口 |
-| `src/gate/storage/`、`src/security/`、`src/gate/policy/` | 持久化状态、事务恢复、权限与路径校验 |
-| `src/gate/runtime/`、`src/contracts/`、`schemas/` | 只读 Runtime 与数据契约 |
-| `profiles/`、`packs/`、`policies/`、`plugins/` | 配置与能力声明；声明不等于执行器 |
-| `.codex/`、`.zcode/` | 宿主入口模板 |
-| `test/`、`scripts/`、`.github/workflows/` | 回归测试、构建/分发校验与 CI |
-| `docs/`、`examples/` | 使用、安全、架构及任务示例 |
-
-`dist/`、`node_modules/` 和根目录旧压缩包是本地生成物，不作为当前发布版本的依据。提交源码时以 Git 跟踪文件为准；候选产物必须从最终提交重新生成。
-
-## 文档
-
+- [PRD](./docs/PRD.md)
+- [PLAN](./docs/PLAN.md)
+- [PROGRESS](./docs/PROGRESS.md)
+- [ADR-0001 产品范围与版本边界](./docs/architecture/ADR-0001-产品范围与版本边界.md)
+- [ADR-0002 从权限门禁转向工具箱包管理器](./docs/decisions/ADR-0002-从权限门禁转向工具箱包管理器.md)
+- [架构评审与发展规划](./docs/架构评审与发展规划-2026-10-20.md)
+- [toolkit 快速开始](./docs/quickstart/toolkit.md)
 - [使用说明书](./docs/quickstart/使用说明书.md)
 - [高级用户配置指南](./docs/quickstart/高级用户配置指南.md)
+- [分层配置指南](./docs/quickstart/分层配置指南.md)
 - [发布前宿主验证清单](./docs/quickstart/发布前宿主验证清单.md)
-- [安全策略](./SECURITY.md)
+- [零终端用户指南](./docs/quickstart/零终端用户指南.md)
+- [非开发用户使用模型](./docs/quickstart/非开发用户使用模型.md)
+- [从 2.x 到 3.x](./docs/migration/2.x-to-3.x.md)
 - [支持矩阵](./docs/支持矩阵.md)
 - [兼容与迁移政策](./docs/兼容与迁移政策.md)
-- [产品范围 ADR](./docs/architecture/ADR-0001-产品范围与版本边界.md)
-- [贡献指南](./CONTRIBUTING.md)
+- [宿主路径](./docs/hosts/codex.md) · [Claude Code](./docs/hosts/claude-code.md) · [Cursor](./docs/hosts/cursor.md) · [ZCode](./docs/hosts/zcode.md)
 - [威胁模型与权限设计](./docs/architecture/威胁模型与权限设计.md)
-- [产品设计历史日志](./docs/architecture/产品设计基线.md)（历史资料，不是当前实现证明）
+- [发布前安全审查清单](./docs/security/发布前安全审查清单.md)
+- [安全策略](./SECURITY.md)
+- [贡献指南](./CONTRIBUTING.md)
+- [CHANGELOG](./CHANGELOG.md)
+- [归档](./docs/archive/README.md)（历史文档，不是当前规范）
 
 ## License
 
