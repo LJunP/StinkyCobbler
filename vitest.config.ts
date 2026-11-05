@@ -8,6 +8,8 @@ const timeouts = { testTimeout: 30_000, hookTimeout: 30_000 };
 export default defineConfig({
   test: {
     environment: "node",
+    // Strip inherited GIT_DIR & co. so git fixtures can never write the real repository.
+    setupFiles: ["test/setup/isolate-git.ts"],
     ...timeouts,
     projects: [
       {
