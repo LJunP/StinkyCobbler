@@ -36,7 +36,7 @@ const LEGACY_WARNINGS = {
 };
 
 export default tseslint.config(
-  { ignores: ["dist/**", "node_modules/**", ".archify/**", "release-artifacts/**", "coverage/**"] },
+  { ignores: ["dist/**", "node_modules/**", "output/**", ".archify/**", "release-artifacts/**", "coverage/**"] },
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
   {
