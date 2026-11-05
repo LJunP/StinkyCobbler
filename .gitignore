@@ -30,3 +30,5 @@ sbom.cyclonedx.json
 .dist-build-*/
 .dist-backup-*/
 .sc-offline-publish-*/
+# Local Claude Code session settings
+.claude/
