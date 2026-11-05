@@ -261,7 +261,7 @@ git diff --check
 | 2.0.1 正式发布 | **已完成**（2026-09-13） | npm / tag / GitHub Release 三者齐备；全新安装验证见下方[发布后验证记录](#发布后验证记录2026-09-19) |
 | 2.x 内核功能扩展 | 已停止 | 不再增加模型接入、Agent 调度或平台功能；3.x 工具箱方向见 [ADR-0002](./docs/decisions/ADR-0002-从权限门禁转向工具箱包管理器.md) |
 
-尚未实现的能力包括：自动创建和监督 worker 的统一 Host Adapter、可验证的 Provider token receipt、CAS、结构化 Context/Memory、跨会话检索，以及非开发 Pack 对应的外部执行器。这些不是当前 2.0.1 的交付承诺，不应仅为了凑齐功能而扩大范围。OS sandbox、真实身份与外部审计见证也不是现有引擎保证。
+尚未实现的能力包括：自动创建和监督 worker 的统一 Host Adapter、可验证的 Provider token receipt、CAS、结构化 Context/Memory、跨会话检索，以及非开发 Pack 对应的外部执行器。这些不是 2.x 内核的交付承诺，不应仅为了凑齐功能而扩大范围。OS sandbox、真实身份与外部审计见证也不是现有引擎保证。
 
 历史证据：提交 `4dba92a` 的 [六矩阵 CI](https://github.com/LJunP/StinkyCobbler/actions/runs/32808278496) 和 [候选构建](https://github.com/LJunP/StinkyCobbler/actions/runs/32808307244) 于 2026-08-25 通过。它们只证明该提交；后续代码、依赖或文档改动需要新 SHA 的验证。最新修复清单与本地验收见[当前修复与验收记录](docs/项目状态与修复记录.md)。
 
