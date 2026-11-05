@@ -2,6 +2,20 @@
 
 > 只追加，最新在上。每条：日期 / 任务 / 做了什么 / 验证 / 待办与问题。
 
+## 2026-11-05 · 计划与方向审查后的两项修正
+
+- 由 Claude 审查、grok worker 执行、Claude 独立验收（grok-conductor 调度）。
+- `--help` 主描述改为 3.x 工具箱包管理器。16 个 2.x 治理顶层命令的描述加 `[deprecated 2.x]`。`entry`、`toolkit` 不标。命令名、选项、顺序、行为不变。README 与 toolkit 快速开始不再写不存在的 `gate` 命令组。新增 `test/cli-help.test.ts`。
+- 新增 `test/gate-frozen.test.ts`：`src/gate` 冻结在 48 个文件、14045 行非空行（ADR-0002）。多一行即失败，已验证。PLAN 的 M2-T6 注明按官方文档核实，二进制实测并入 S1。
+- 验证：`npm run build` 通过；`npm run lint` 通过（eslint 0 error / 42 warning，depcruise 123 modules / 731 dependencies）；`npm test` 91 文件 / 855 项通过。审查时有一次 e2e 在 60 秒超时，单独重跑 27.8 秒通过，判定为负载下的偶发超时。
+- 未做：推送。没有 tag，没有 `npm publish`。
+
+### 待办 / 问题（需作者决定）
+- 分支 50+ 个提交从未推送，3.x 代码从未跑过 CI。PLAN 的"每任务一个 PR、≤ 400 行"没有执行。
+- M0-T7 的"推送 → 合并 main"已不适用：2.0.2 候选在 `bafbccf`，之后叠了 3.x 提交，直接合并会发出 3.0.0-rc.1。建议从 `bafbccf` 切 `release/2.0.2` 发布，并在这条 2.x 维护线上修 D-04～D-07、D-12。
+- 范围口径冲突：ADR-0002 写 Gemini CLI 放 M3，PRD 的 M3 没有；PRD §6 承诺的 `gate` 命令组在代码里不存在。需要改 PRD 或 ADR。
+- PRD S5 要求 package-smoke 扫描渲染产物，未做（集成测试已断言渲染文件不含密钥）。
+
 ## 2026-11-04 · 用 3.0.0-rc.1 安装包再验一次
 
 - `npm run test:package` 通过，包是 `stinky-cobbler-3.0.0-rc.1.tgz`。
