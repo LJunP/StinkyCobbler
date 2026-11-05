@@ -35,7 +35,7 @@ AI 编程工具（Codex、Claude Code、Cursor、ZCode、Gemini CLI…）各有�
 - `role: knowledge` 的 MCP server 与数据源管理、记忆指令文件子类型、经核实的 RAG / memory server preset。
 
 ### 非目标
-- OS 沙箱、模型调用、agent 调度；自建向量库；托管服务与账号；在任何产物中写明文密钥；3.x 内扩展 `gate/`。
+- OS 沙箱、模型调用、agent 调度；自建向量库；托管服务与账号；在任何产物中写明文密钥；3.x 内扩展 `gate/`；Gemini CLI 宿主（3.0 GA 后再议）。
 
 ## 5. 成功标准（3.0 GA）
 
@@ -49,4 +49,4 @@ AI 编程工具（Codex、Claude Code、Cursor、ZCode、Gemini CLI…）各有�
 
 ## 6. 兼容承诺
 
-2.x 记录可读可终止；`gate` 命令组保留但 deprecated；2.x 分支只修 P0 至 3.0 GA 后 6 个月；受管文件 sidecar 格式字节级兼容。
+2.x 记录可读可终止；2.x 治理命令保持顶层命令，`--help` 标记 `[deprecated 2.x]` 并冻结（CI 守卫 `test/gate-frozen.test.ts`）；2.x 分支只修 P0 至 3.0 GA 后 6 个月；受管文件 sidecar 格式字节级兼容。

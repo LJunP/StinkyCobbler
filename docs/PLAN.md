@@ -11,7 +11,7 @@
 - [x] M0-T5 工具链与架构守卫：eslint / prettier / editorconfig / nvmrc / dependency-cruiser / hooks / dependabot；同时 `npm audit fix` 清零 6 条 advisory
 - [x] M0-T6 P0 子集：D-01 MCP 错误映射、D-03 fsync、D-09 preflight 宿主校验、D-20 conflict 退出码、D-08 两个无守卫故障钩子、D-44 锁清理文档（`--host` 必填推迟到 M1-T5，2.x patch 不破坏现有 CLI 调用）
 - [x] M0-T4b 清零 49 条测试类型错误（legacy lease 字面量改显式夹具 `asLegacyLease`），基线 0，`tsconfig.test.json` 已恢复全严格
-- [ ] M0-T7 发布 2.0.2：候选已就绪（版本 bump、check:version、package smoke、release-gate 对 main 通过）；剩余推送 → 合并 main → 六矩阵 CI → tag `v2.0.2` → `npm publish` → GitHub Release，由作者执行
+- [ ] M0-T7 发布 2.0.2：候选已就绪（版本 bump、check:version、package smoke、release-gate 对 main 通过）；剩余从 `bafbccf` 切 `codex/stinky-cobbler-2.0.2-hardening` → 本地发布前验证 → `npm audit --audit-level=high` 当前失败（运行时依赖 zod、body-parser 各有高危公告，2026-11-05 实测），需作者批准依赖升级后才能发布 → 推送跑六矩阵 CI → PR 合并 main → tag `v2.0.2` → `npm publish` → GitHub Release，由作者执行。不得把 3.x 分支合并进 main 来发 2.0.2（那会发出 3.0.0-rc.1）。
 
 ## M1 提取资产（零行为变化）
 
