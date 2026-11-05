@@ -2,6 +2,21 @@
 
 > 只追加，最新在上。每条：日期 / 任务 / 做了什么 / 验证 / 待办与问题。
 
+## 2026-11-05 · 全库逐文件审计、清理与 README 重写
+
+- 范围口径：PRD、ADR-0002、PLAN 对齐代码。Gemini CLI 移出 3.0。没有 `gate` 命令组，2.x 命令保持顶层、`[deprecated 2.x]`、冻结。M0-T7 改为从 `codex/stinky-cobbler-2.0.2-hardening`（切自 `bafbccf`）发布。
+- 逐文件审计：343 项（337 个跟踪文件加本地目录）分六片只读审计，结果与 `git ls-files` 逐项对账，无遗漏。KEEP 295、FIX 36、ARCHIVE 7、GITIGNORE 5、DELETE 0（没有可举证删除的文件）。
+- 修复：过时 2.x 文案、两个无人调用的段落写函数、`install-host` / `mcp-config` 示例补 `--host`、skill 模板与渲染产物写明 3.x、根文档与安全/架构文档改为 3.x 口径、GitHub 模板覆盖 toolkit 与四宿主。
+- 结构：6 份历史文档移到 `docs/archive/`（内容未改）并建索引。新建 `output/`，只有 `output/README.md` 入库；本地 `.archify/`、`release-artifacts/` 与 3.x 交接提示词移入 `output/`（提示词含本机路径，不入库）。`.gitignore` 增加 `/output/*`、`.claude/`、构建临时目录；ESLint 忽略 `output/`。
+- README 重写：定位、快速开始、命令一览、`toolkit.yaml`、宿主支持（区分官方文档核实与 2.0.1 安装器/测试）、安全模型、冻结 2.x、完整目录表、开发与发布。39 个相对链接全部有效。
+- 2.0.2 候选（`codex/stinky-cobbler-2.0.2-hardening`，本地）：check:version、typecheck、build、71 文件 / 784 项、integration 21 项、test:package、release-gate 都通过；`npm audit --audit-level=high` 失败。
+- 未做：推送前本条记录先提交。没有 tag，没有 `npm publish`。
+
+### 待办 / 问题（需作者决定）
+- `npm audit` 高危：运行时依赖 zod、body-parser（另有 3 个中危），2.0.2 和 3.x 都受影响。修复需要升级依赖。
+- PRD §4 的"配置分层 builtin → user → project 按 id 合并"没有实现：`toolkit` 只读一份 `toolkit.yaml`，不合并，PLAN 的 M2 却已勾选。要么实现，要么改 PRD。
+- PRD S5 的 package-smoke 扫描渲染产物仍未做。
+
 ## 2026-11-05 · 计划与方向审查后的两项修正
 
 - 由 Claude 审查、grok worker 执行、Claude 独立验收（grok-conductor 调度）。
