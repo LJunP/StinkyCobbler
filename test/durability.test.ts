@@ -1,8 +1,9 @@
-import { chmod, mkdtemp, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { S_IWUSR } from "node:constants";
+import { chmod, mkdtemp, open, readdir, readFile, rm, stat, writeFile, type FileHandle } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { copyFileDurably, publishFileDurably, removeFileDurably, syncDirectory } from "../src/storage/durability.js";
+import { copyFileDurably, publishFileDurably, removeFileDurably, syncDirectory, syncFile } from "../src/storage/durability.js";
 
 const roots: string[] = [];
 
@@ -77,5 +78,119 @@ describe("durable business-file publication", () => {
     await removeFileDurably(target);
     await expect(stat(target)).rejects.toMatchObject({ code: "ENOENT" });
     await expect(removeFileDurably(target)).resolves.toBeUndefined();
+  });
+});
+
+describe("file fsync open flags", () => {
+  // Windows chmod only toggles the read-only attribute, and stat then reports
+  // 0o444 or 0o666. Compare against the mode this test just observed, and use
+  // S_IWUSR for writability. POSIX hosts still require the exact chmod mode.
+  async function fileWithMode(mode: number): Promise<string> {
+    const root = await mkdtemp(path.join(os.tmpdir(), "stinky-file-sync-"));
+    roots.push(root);
+    const file = path.join(root, "notes.md");
+    await writeFile(file, "hello\n");
+    await chmod(file, mode);
+    return file;
+  }
+
+  async function modeBits(file: string): Promise<number> {
+    return (await stat(file)).mode & 0o777;
+  }
+
+  function expectHostMode(actual: number, posixMode: number, writable: boolean): void {
+    if (process.platform === "win32") {
+      expect(actual & S_IWUSR).toBe(writable ? S_IWUSR : 0);
+      return;
+    }
+    expect(actual).toBe(posixMode);
+  }
+
+  // syncFile calls handle.sync(). A real "r" flush is EPERM on Windows, so simulated platforms get a fake.
+  function idleHandle(): FileHandle {
+    return {
+      sync: async () => undefined,
+      close: async () => undefined
+    } as unknown as FileHandle;
+  }
+
+  it("opens read-only on POSIX and read-write on Windows", async () => {
+    const file = await fileWithMode(0o644);
+    const before = await modeBits(file);
+    expectHostMode(before, 0o644, true);
+
+    const flags: string[] = [];
+    const record = async (_target: string, flag: "r" | "r+"): Promise<FileHandle> => {
+      flags.push(flag);
+      return idleHandle();
+    };
+
+    await syncFile(file, "linux", record);
+    expect(flags).toEqual(["r"]);
+    flags.length = 0;
+    await syncFile(file, "win32", record);
+    expect(flags).toEqual(["r+"]);
+    const after = await modeBits(file);
+    expect(after).toBe(before);
+    expectHostMode(after, 0o644, true);
+  });
+
+  it("clears a Windows read-only attribute only around the flush and leaves POSIX mode 0400 untouched", async () => {
+    const file = await fileWithMode(0o400);
+    const before = await modeBits(file);
+    expectHostMode(before, 0o400, false);
+    const flags: string[] = [];
+
+    await syncFile(file, "win32", async (target, flag) => {
+      flags.push(flag);
+      expect((await modeBits(target)) & S_IWUSR).toBe(S_IWUSR);
+      return open(target, flag);
+    });
+    expect(flags).toEqual(["r+"]);
+    const restored = await modeBits(file);
+    expect(restored).toBe(before);
+    expectHostMode(restored, 0o400, false);
+
+    flags.length = 0;
+    await syncFile(file, "linux", async (target, flag) => {
+      flags.push(flag);
+      expect((await modeBits(target)) & S_IWUSR).toBe(0);
+      if (process.platform === "win32") return idleHandle();
+      return open(target, flag);
+    });
+    expect(flags).toEqual(["r"]);
+    const untouched = await modeBits(file);
+    expect(untouched).toBe(before);
+    expectHostMode(untouched, 0o400, false);
+  });
+
+  it("propagates fsync failures on POSIX and Windows, and restores a Windows read-only attribute", async () => {
+    const writable = await fileWithMode(0o644);
+    const readOnly = await fileWithMode(0o400);
+    const writableBefore = await modeBits(writable);
+    const readOnlyBefore = await modeBits(readOnly);
+    expectHostMode(writableBefore, 0o644, true);
+    expectHostMode(readOnlyBefore, 0o400, false);
+
+    const failSync = async (): Promise<FileHandle> => ({
+      sync: async () => {
+        throw Object.assign(new Error("sync failed"), { code: "EIO" });
+      },
+      close: async () => undefined
+    }) as unknown as FileHandle;
+
+    await expect(syncFile(writable, "linux", async () => failSync())).rejects.toMatchObject({ code: "EIO" });
+    await expect(syncFile(writable, "win32", async () => failSync())).rejects.toMatchObject({ code: "EIO" });
+    const writableAfter = await modeBits(writable);
+    expect(writableAfter).toBe(writableBefore);
+    expectHostMode(writableAfter, 0o644, true);
+
+    await expect(syncFile(readOnly, "win32", async () => failSync())).rejects.toMatchObject({ code: "EIO" });
+    const readOnlyAfter = await modeBits(readOnly);
+    expect(readOnlyAfter).toBe(readOnlyBefore);
+    expectHostMode(readOnlyAfter, 0o400, false);
+
+    await expect(syncFile(path.join(path.dirname(writable), "missing"), "linux")).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(syncFile(path.join(path.dirname(writable), "missing"), "win32")).rejects.toMatchObject({ code: "ENOENT" });
   });
 });
