@@ -5,6 +5,7 @@ Describe the problem, the chosen change, and explicit non-goals.
 ## Product and security boundary
 
 - [ ] The change remains within Cooperative Mode and does not claim host sandboxing or universal mediation.
+- [ ] Toolkit changes state that `plan` writes nothing, a `conflict` does not overwrite user edits, `rollback` restores the previous bytes, and which of Codex, Claude Code, Cursor, and ZCode are affected.
 - [ ] Engine-enforced behavior is separated from host-procedural or declared-only behavior.
 - [ ] Authority, scope, failure, recovery, audit, and user-data effects are documented.
 - [ ] Security-sensitive changes fail closed and do not silently broaden permissions.

@@ -7,7 +7,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Start with the user problem. Stinky Cobbler is a Cooperative Mode local controlled-execution and audit layer, not a host sandbox or general-purpose multi-Agent platform.
+        Start with the user problem. Stinky Cobbler 3.x is a declarative AI agent toolkit package manager. The 2.x gate remains available, is deprecated, and stays frozen until 4.0. It is still not a host sandbox.
   - type: textarea
     id: problem
     attributes:
@@ -27,6 +27,7 @@ body:
     attributes:
       label: Intended layer
       options:
+        - Toolkit package (skill/MCP/instructions)
         - Engine-enforced CLI/MCP gate
         - Host-procedural integration
         - Compatibility or migration
