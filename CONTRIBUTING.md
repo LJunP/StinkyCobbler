@@ -1,6 +1,6 @@
 # Contributing to Stinky Cobbler
 
-感谢你帮助改进 Stinky Cobbler。提交贡献前，请先确认问题属于本项目的实际范围：它是 Cooperative Mode 下的本地受控执行与审计层，只治理经自身 CLI/MCP 路由的仓库操作；它不是宿主 sandbox、通用多 Agent 平台，也不自动保证安全、审查独立或语义正确。
+感谢你帮助改进 Stinky Cobbler。提交贡献前，请先确认问题属于本项目的实际范围：3.x 是声明式 AI agent 工具箱包管理器，用一份 `toolkit.yaml` 把 skill、MCP server 和指令落到 Codex、Claude Code、Cursor、ZCode；2.x 顶层治理命令（`validate`、`task`、`approval`、`lease`、`write`、`orchestration` 等）保持可用，在 `--help` 标记 `[deprecated 2.x]` 并冻结。贡献范围包括 toolkit 文档与这四个宿主的适配，以及仍在维护的 2.x 门禁缺陷。它不是宿主 sandbox、通用多 Agent 平台，也不自动保证安全、审查独立或语义正确。只治理经自身 CLI/MCP 路由的仓库操作。
 
 ## 提交问题
 

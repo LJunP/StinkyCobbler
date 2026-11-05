@@ -14,7 +14,7 @@
 - Add `toolkit init|plan|apply|rollback|doctor|list`. `plan` does not write. A non-empty apply requires `--yes`. A hand-edited managed file is a conflict and is not overwritten. `rollback --last` restores the last apply from its content-addressed backup.
 - Doctor reports `${env:NAME}` presence without printing the value. Claude Code and Codex get `SECRET_NEEDS_SHELL_ENV` from their documented syntax. ZCode gets `SECRET_EXPANSION_UNKNOWN`. Cursor documents `${env:NAME}` and gets no secret hint. No host binary was used to expand a variable.
 - This is not version `3.0.0`. The package version stays `2.0.2` because the release contract requires a stable `x.y.z`, and `3.0.0` needs a real four-host smoke record. There is no tag and no npm publish. Codex, Claude Code, Cursor, and ZCode install smoke remains `UNKNOWN / PENDING`.
-- The 2.x `gate` command group stays available, deprecated, and frozen.
+- Top-level 2.x governance commands (`validate`, `task`, `approval`, `lease`, `write`, `orchestration`, and the rest) stay available, deprecated, and frozen.
 
 ## 2.0.2 (release candidate; verify npm and GitHub Releases for publication status)
 

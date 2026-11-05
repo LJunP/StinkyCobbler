@@ -12,7 +12,9 @@ Older architecture documents are design/history material. The current source, te
 
 ## Product and threat-model scope
 
-Stinky Cobbler is a **verifiable permission and change gate for local repositories used from Codex or ZCode**. It is a local CLI/MCP control plane; it is not a model, autonomous host, operating-system sandbox, identity provider, trusted clock, or external audit service.
+Stinky Cobbler 3.x is a declarative toolkit package manager. Its write surface renders a `toolkit.yaml` onto Codex, Claude Code, Cursor, and ZCode. `toolkit plan` does not write. A hand-edited managed file is a `conflict` and is not overwritten. Secrets may only be `${env:NAME}` or `${file:PATH}` references; plaintext is rejected. That surface is not a model, autonomous host, operating-system sandbox, identity provider, trusted clock, or external audit service.
+
+The frozen 2.x gate remains a **verifiable permission and change gate for local repositories used from Codex or ZCode**. It is a local CLI/MCP control plane; it is not a model, autonomous host, operating-system sandbox, identity provider, trusted clock, or external audit service. The controls in the rest of this document describe that frozen gate.
 
 It operates in **Cooperative Mode**. Only operations routed through its CLI/MCP boundary receive the controls described below. Host-native file tools, Shell, Git writes, third-party MCP servers, or direct control-plane edits can bypass it. Strong mediation requires a separately isolated host/worker that exposes only governed tools; this repository neither supplies nor proves that isolation.
 
@@ -90,7 +92,7 @@ Only a workspace file that the engine re-reads and hashes can become a `VERIFIED
 
 Orchestration mutations carry explicit replay generations. Dispatch requires the caller-observed inactive Subtask `retriesUsed`; begin, artifact report, and review require the exact `activeAttempt` returned by dispatch. Human resume requires the current escalation's next `resumeGeneration`. Old generations fail closed. Repeating an exact create request returns its original Run even after terminal state; an intentional successor must bind a unique terminal predecessor through `supersedesRunRef` / `--supersedes-run`. These record-level fences do not stop an external worker process.
 
-The current implementation does not provide CAS, structured Context/Memory, summary compression, retrieval, conflict resolution, expiry/revocation, or cross-session memory recovery. These capabilities must not be described as present.
+The current implementation does not provide CAS or retrieval. A managed memory segment (`kind: memory`) is not a memory system: it does not add summary compression, conflict resolution, expiry/revocation, or cross-session memory recovery. Those capabilities must not be described as present.
 
 ## Workspace, path, and audit boundaries
 
