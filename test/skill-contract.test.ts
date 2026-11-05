@@ -25,6 +25,23 @@ describe("host skill documentation contract", () => {
     expect(codex).not.toBe(zcode);
   });
 
+  it("renders CRLF templates to the same LF bytes as the checked-in skills", async () => {
+    const [core, codexHost, zcodeHost, codexSkill, zcodeSkill] = await Promise.all([
+      readRepoFile("templates/skill-core.md"),
+      readRepoFile("templates/hosts/codex.md"),
+      readRepoFile("templates/hosts/zcode.md"),
+      readRepoFile(".codex/skills/stinky-cobbler/SKILL.md"),
+      readRepoFile(".zcode/skills/stinky-cobbler/SKILL.md")
+    ]);
+    const crlf = (text: string) => text.replace(/\n/g, "\r\n");
+    const codex = renderSkill(crlf(core), parseSlots(crlf(codexHost)));
+    const zcode = renderSkill(crlf(core), parseSlots(crlf(zcodeHost)));
+    expect(codex).toBe(codexSkill);
+    expect(zcode).toBe(zcodeSkill);
+    expect(codex.includes("\r")).toBe(false);
+    expect(zcode.includes("\r")).toBe(false);
+  });
+
   it("keeps eight shared skill invariants and the ZCode via choice", async () => {
     const [codex, zcode, command] = await Promise.all([
       readRepoFile(".codex/skills/stinky-cobbler/SKILL.md"),

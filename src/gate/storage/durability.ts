@@ -1,30 +1,36 @@
 import { randomUUID } from "node:crypto";
-import { COPYFILE_EXCL } from "node:constants";
-import { copyFile, open, rename, rm } from "node:fs/promises";
+import { COPYFILE_EXCL, S_IWUSR } from "node:constants";
+import { chmod, copyFile, open, rename, rm, stat, type FileHandle } from "node:fs/promises";
 import path from "node:path";
 
-/**
- * Flushes directory metadata where Node exposes a supported directory fsync.
- * Windows rejects fsync on directory handles with EPERM; file contents are
- * still fsynced before every atomic publish operation on that platform.
- */
+type OpenSyncTarget = (path: string, flags: "r" | "r+") => Promise<FileHandle>;
+
+/** Directory fsync. Windows returns EPERM for directory handles; file contents are still fsynced. */
 export async function syncDirectory(directory: string, platform: NodeJS.Platform = process.platform): Promise<void> {
-  if (platform === "win32") return;
-  const handle = await open(directory, "r");
+  if (platform !== "win32") await syncOpened(open, directory, "r");
+}
+
+/**
+ * File fsync. POSIX opens "r": fsync on a read-only fd keeps mode 0400 files
+ * durable, and that error is never swallowed. Windows FlushFileBuffers needs a
+ * writable handle (EPERM on "r"), so open "r+". copyFile preserves the
+ * read-only attribute; clear it only around that flush, then restore it.
+ */
+export async function syncFile(file: string, platform: NodeJS.Platform = process.platform, openFile: OpenSyncTarget = open): Promise<void> {
+  if (platform !== "win32") return syncOpened(openFile, file, "r");
+  const mode = (await stat(file)).mode & 0o777;
+  const readOnly = (mode & S_IWUSR) === 0;
+  if (readOnly) await chmod(file, mode | S_IWUSR);
   try {
-    await handle.sync();
+    await syncOpened(openFile, file, "r+");
   } finally {
-    await handle.close();
+    if (readOnly) await chmod(file, mode);
   }
 }
 
-async function syncFile(file: string): Promise<void> {
-  const handle = await open(file, "r");
-  try {
-    await handle.sync();
-  } finally {
-    await handle.close();
-  }
+async function syncOpened(openFile: OpenSyncTarget, target: string, flags: "r" | "r+"): Promise<void> {
+  const handle = await openFile(target, flags);
+  try { await handle.sync(); } finally { await handle.close(); }
 }
 
 /**
@@ -41,13 +47,9 @@ export async function publishFileDurably(target: string, data: string | Uint8Arr
     try {
       await handle.writeFile(data, typeof data === "string" ? { encoding: "utf8" } : {});
       await handle.sync();
-    } finally {
-      await handle.close();
-    }
+    } finally { await handle.close(); }
     await rename(temporary, target);
-  } finally {
-    await rm(temporary, { force: true }).catch(() => undefined);
-  }
+  } finally { await rm(temporary, { force: true }).catch(() => undefined); }
   await syncDirectory(directory);
 }
 

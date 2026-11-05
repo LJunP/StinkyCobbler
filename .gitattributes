@@ -1,0 +1,4 @@
+# Check out text as LF on every OS. Windows Git otherwise writes CRLF, and a
+# slot line that is exactly @@name@@ no longer matches in scripts/render-skills.mjs.
+# git ls-files has no binary paths (no images, archives, or fonts) to mark here.
+* text=auto eol=lf

@@ -36,38 +36,63 @@ describe("writeBounded", () => {
     await expect(readFile(path.join(outside, "guide.md"), "utf8")).rejects.toThrow();
   });
 
-  it("fsyncs the file before rename and the parent directory after rename", async () => {
-    const workspace = await tempDir("stinky-bounded-order-");
-    await mkdir(path.join(workspace, "docs"));
-    const events: string[] = [];
-    const fs: BoundaryFs = {
-      lstat: nodeFs.lstat,
-      mkdir: nodeFs.mkdir,
-      rm: nodeFs.rm,
-      rename: async (from, to) => {
-        events.push(`rename:${path.basename(pathText(to))}`);
-        await nodeFs.rename(from, to);
-      },
-      open: async (file, flags, mode) => {
-        const opened = pathText(file);
-        const handle = await nodeFs.open(opened, flags, mode);
-        const sync = handle.sync.bind(handle);
-        handle.sync = async () => {
-          events.push(`sync:${path.basename(opened)}`);
-          await sync();
-        };
-        return handle;
-      }
-    };
-
-    await writeBounded(workspace, "docs/guide.md", "hello\n", { mode: 0o600, fsync: true, fs });
-
-    expect(await readFile(path.join(workspace, "docs", "guide.md"), "utf8")).toBe("hello\n");
-    const syncFile = events.findIndex((event) => event.startsWith("sync:.guide.md."));
-    const renameIndex = events.indexOf("rename:guide.md");
-    const syncDir = events.lastIndexOf("sync:docs");
-    expect(syncFile).toBeGreaterThanOrEqual(0);
-    expect(renameIndex).toBeGreaterThan(syncFile);
-    expect(syncDir).toBeGreaterThan(renameIndex);
+  it("fsyncs the file before rename and the parent directory after rename on POSIX, and does not fsync the parent on Windows", async () => {
+    const posix = await recordedWrite("linux");
+    const win = await recordedWrite("win32");
+    expectDirectoryFsyncAfterRename(posix);
+    expectNoDirectoryFsync(win);
   });
 });
+
+function recordingBoundary(events: string[]): BoundaryFs {
+  return {
+    lstat: nodeFs.lstat,
+    mkdir: nodeFs.mkdir,
+    rm: nodeFs.rm,
+    rename: async (from, to) => {
+      events.push(`rename:${path.basename(pathText(to))}`);
+      await nodeFs.rename(from, to);
+    },
+    open: async (file, flags, mode) => {
+      const opened = pathText(file);
+      const handle = await nodeFs.open(opened, flags, mode);
+      const sync = handle.sync.bind(handle);
+      // Directory opens use numeric flags. Windows rejects FlushFileBuffers on
+      // those handles, so a POSIX-platform simulation records the call without
+      // performing the unsupported syscall. File handles still fsync for real.
+      const directory = typeof flags === "number";
+      handle.sync = async () => {
+        events.push(`sync:${path.basename(opened)}`);
+        if (directory && process.platform === "win32") return;
+        await sync();
+      };
+      return handle;
+    }
+  };
+}
+
+async function recordedWrite(platform: NodeJS.Platform): Promise<string[]> {
+  const workspace = await tempDir("stinky-bounded-order-");
+  await mkdir(path.join(workspace, "docs"));
+  const events: string[] = [];
+  await writeBounded(workspace, "docs/guide.md", "hello\n", { mode: 0o600, fsync: true, fs: recordingBoundary(events), platform });
+  expect(await readFile(path.join(workspace, "docs", "guide.md"), "utf8")).toBe("hello\n");
+  return events;
+}
+
+function expectDirectoryFsyncAfterRename(events: string[]): void {
+  const syncFile = events.findIndex((event) => event.startsWith("sync:.guide.md."));
+  const renameIndex = events.indexOf("rename:guide.md");
+  const syncDir = events.lastIndexOf("sync:docs");
+  expect(syncFile).toBeGreaterThanOrEqual(0);
+  expect(renameIndex).toBeGreaterThan(syncFile);
+  expect(syncDir).toBeGreaterThan(renameIndex);
+}
+
+function expectNoDirectoryFsync(events: string[]): void {
+  const syncFile = events.findIndex((event) => event.startsWith("sync:.guide.md."));
+  const renameIndex = events.indexOf("rename:guide.md");
+  expect(syncFile).toBeGreaterThanOrEqual(0);
+  expect(renameIndex).toBeGreaterThan(syncFile);
+  expect(events).not.toContain("sync:docs");
+}

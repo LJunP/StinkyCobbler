@@ -8,15 +8,20 @@ const HOSTS = {
   zcode: ".zcode/skills/stinky-cobbler/SKILL.md"
 };
 
+function toLf(text) {
+  return text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+}
+
 export function parseSlots(text) {
-  const source = text.endsWith("\n") ? text.slice(0, -1) : text;
+  const source = toLf(text);
+  const body = source.endsWith("\n") ? source.slice(0, -1) : source;
   const slots = {};
   let key = null;
   let lines = [];
   const flush = () => {
     if (key !== null) slots[key] = lines.join("\n");
   };
-  for (const line of source.split("\n")) {
+  for (const line of body.split(/\r?\n/)) {
     const mark = /^@@([A-Za-z0-9_]+)@@$/.exec(line);
     if (mark) {
       flush();
@@ -31,7 +36,7 @@ export function parseSlots(text) {
 export function renderSkill(core, slots) {
   const used = new Set();
   const missing = [];
-  const rendered = core.replace(/@@([A-Za-z0-9_]+)@@/g, (token, key) => {
+  const rendered = toLf(core).replace(/@@([A-Za-z0-9_]+)@@/g, (token, key) => {
     if (!Object.hasOwn(slots, key)) {
       missing.push(key);
       return token;
@@ -43,7 +48,8 @@ export function renderSkill(core, slots) {
   if (missing.length > 0 || unused.length > 0 || rendered.includes("@@")) {
     throw new Error(`Skill slots missing=${missing.join(",") || "-"} unused=${unused.join(",") || "-"}`);
   }
-  return rendered.endsWith("\n") ? rendered : `${rendered}\n`;
+  const lf = toLf(rendered);
+  return lf.endsWith("\n") ? lf : `${lf}\n`;
 }
 
 async function main() {
@@ -54,7 +60,7 @@ async function main() {
     const slots = parseSlots(await readFile(path.join(root, "templates/hosts", `${host}.md`), "utf8"));
     const rendered = renderSkill(core, slots);
     const target = path.join(root, relative);
-    const current = await readFile(target, "utf8");
+    const current = toLf(await readFile(target, "utf8"));
     if (current !== rendered) {
       drifted.push(relative);
       if (!check) await writeFile(target, rendered);

@@ -1,8 +1,8 @@
-import { chmod, mkdtemp, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { chmod, mkdtemp, open, readdir, readFile, rm, stat, writeFile, type FileHandle } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { copyFileDurably, publishFileDurably, removeFileDurably, syncDirectory } from "../src/gate/storage/durability.js";
+import { copyFileDurably, publishFileDurably, removeFileDurably, syncDirectory, syncFile } from "../src/gate/storage/durability.js";
 
 const roots: string[] = [];
 
@@ -77,5 +77,73 @@ describe("durable business-file publication", () => {
     await removeFileDurably(target);
     await expect(stat(target)).rejects.toMatchObject({ code: "ENOENT" });
     await expect(removeFileDurably(target)).resolves.toBeUndefined();
+  });
+});
+
+describe("file fsync open flags", () => {
+  async function fileWithMode(mode: number): Promise<string> {
+    const root = await mkdtemp(path.join(os.tmpdir(), "stinky-file-sync-"));
+    roots.push(root);
+    const file = path.join(root, "notes.md");
+    await writeFile(file, "hello\n");
+    await chmod(file, mode);
+    return file;
+  }
+
+  it("opens read-only on POSIX and read-write on Windows", async () => {
+    const file = await fileWithMode(0o644);
+    const flags: string[] = [];
+    const record = async (target: string, flag: "r" | "r+") => {
+      flags.push(flag);
+      return open(target, flag);
+    };
+
+    await syncFile(file, "linux", record);
+    expect(flags).toEqual(["r"]);
+    flags.length = 0;
+    await syncFile(file, "win32", record);
+    expect(flags).toEqual(["r+"]);
+    expect((await stat(file)).mode & 0o777).toBe(0o644);
+  });
+
+  it("clears a Windows read-only attribute only around the flush and leaves POSIX mode 0400 untouched", async () => {
+    const file = await fileWithMode(0o400);
+    const flags: string[] = [];
+
+    await syncFile(file, "win32", async (target, flag) => {
+      flags.push(flag);
+      expect((await stat(target)).mode & 0o200).not.toBe(0);
+      return open(target, flag);
+    });
+    expect(flags).toEqual(["r+"]);
+    expect((await stat(file)).mode & 0o777).toBe(0o400);
+
+    flags.length = 0;
+    await syncFile(file, "linux", async (target, flag) => {
+      flags.push(flag);
+      expect((await stat(target)).mode & 0o200).toBe(0);
+      return open(target, flag);
+    });
+    expect(flags).toEqual(["r"]);
+    expect((await stat(file)).mode & 0o777).toBe(0o400);
+  });
+
+  it("propagates fsync failures on POSIX and Windows, and restores a Windows read-only attribute", async () => {
+    const writable = await fileWithMode(0o644);
+    const readOnly = await fileWithMode(0o400);
+    const failSync = async (): Promise<FileHandle> => ({
+      sync: async () => {
+        throw Object.assign(new Error("sync failed"), { code: "EIO" });
+      },
+      close: async () => undefined
+    }) as unknown as FileHandle;
+
+    await expect(syncFile(writable, "linux", async () => failSync())).rejects.toMatchObject({ code: "EIO" });
+    await expect(syncFile(writable, "win32", async () => failSync())).rejects.toMatchObject({ code: "EIO" });
+    expect((await stat(writable)).mode & 0o777).toBe(0o644);
+    await expect(syncFile(readOnly, "win32", async () => failSync())).rejects.toMatchObject({ code: "EIO" });
+    expect((await stat(readOnly)).mode & 0o777).toBe(0o400);
+    await expect(syncFile(path.join(path.dirname(writable), "missing"), "linux")).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(syncFile(path.join(path.dirname(writable), "missing"), "win32")).rejects.toMatchObject({ code: "ENOENT" });
   });
 });

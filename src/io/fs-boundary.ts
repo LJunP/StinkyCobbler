@@ -31,6 +31,8 @@ export interface WriteBoundedOptions {
   /** Durable writes always fsync the file and, except on Windows, its parent directory. */
   fsync: true;
   fs?: BoundaryFs;
+  /** Defaults to the host platform. Windows cannot fsync a directory handle. */
+  platform?: NodeJS.Platform;
 }
 
 interface ParentLocation {
@@ -50,6 +52,7 @@ const realFs: BoundaryFs = { lstat, open, rename, mkdir, rm };
  */
 export async function writeBounded(root: string, relativePath: string, data: string | Uint8Array, options: WriteBoundedOptions): Promise<void> {
   const fs = options.fs ?? realFs;
+  const platform = options.platform ?? process.platform;
   const parent = await prepareParent(path.resolve(root), normalizeRelativePath(relativePath), fs);
   await assertLeafReplaceable(parent, fs);
   const handle = await openDirectory(parent.absolutePath, fs);
@@ -58,7 +61,7 @@ export async function writeBounded(root: string, relativePath: string, data: str
     await publish(parent, data, options.mode ?? 0o600, fs);
     await assertSameDirectory(handle, parent);
     await assertWrittenFile(parent, fs);
-    if (process.platform !== "win32") await handle.sync();
+    if (platform !== "win32") await handle.sync();
   } finally {
     await handle.close();
   }
