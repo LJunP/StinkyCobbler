@@ -2,6 +2,19 @@
 
 > 只追加，最新在上。每条：日期 / 任务 / 做了什么 / 验证 / 待办与问题。
 
+## 2026-11-05 · 2.0.2 分支推送、测试泄漏事故与根因修复
+
+- 事故：在 linked worktree 里 `git push` 2.0.2 分支时，husky pre-push 继承了绝对路径的 `GIT_DIR`，覆盖了 `test/git-read.test.ts` 夹具的 `git -C <dir>`。夹具的 `git init` / `config` / `commit` 写进了真实仓库：2.0.2 分支多出坏提交 `a364111`（作者 test，README 被换成一行），共享 `.git/config` 被写入 `user.name=test`、`user.email=test@example.com`、`core.bare=true`、`maintenance.auto=false`、`gc.auto=0`。坏提交随后被推到远端。
+- 处置：`.git/config` 恢复（`core.bare=false`，删除四个泄漏键，身份回到全局 LJunP）；本地分支回到 `5951c5e`（工作区文件未动）；取消测坏提交的 CI；作者手动 `--force-with-lease` 把远端改回 `5951c5e`。核对过 `core.fsmonitor`、`filter.*`、`include.path` 等无残留；3.0 分支未受影响。
+- 根因修复 `dd21ffc`：新 setup `test/setup/isolate-git.ts` 清除所有改写仓库位置的 `GIT_*` 变量，并把 `GIT_CONFIG_GLOBAL` / `GIT_CONFIG_SYSTEM` 指向空文件；回归测试 `test/setup/git-isolation.test.ts`。在丢弃克隆里设绝对 `GIT_DIR` 复现攻击：28/28 通过，克隆 HEAD 与 config 不变。
+- 验证：2.0.2（`5951c5e`）六矩阵 CI 全绿（run 42003185978）。3.0 本地 92 文件 / 862 项通过。
+- 未做：2.0.2 分支还没有这份隔离修复。PR、tag、`npm publish`、GitHub Release 未做。
+
+### 待办 / 问题
+- 2.0.2 分支是否补 `isolate-git` 修复再发布（建议补，避免发布前从 worktree 推送再次触发）。
+- 2.0.2 → main 的 PR、tag `v2.0.2`、`npm publish`、GitHub Release 由作者执行。
+- PRD §4 toolkit 配置分层合并未实现。
+
 ## 2026-11-05 · 首次推送与六矩阵 CI 转绿
 
 - 推送 `codex/stinky-cobbler-3.0-m0`。首轮 CI（run 41986419348）六个 job 全红：Linux/macOS 卡在 `npm audit --audit-level=high`；Windows 在 `npm test` 有约 25 项失败。
