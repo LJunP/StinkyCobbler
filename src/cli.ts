@@ -9,7 +9,7 @@ import { STINKY_COBBLER_VERSION } from "./version.js";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const program = new Command();
-program.name("stinky-cobbler").description("Local evidence-gated AI collaboration control plane.").version(STINKY_COBBLER_VERSION);
+program.name("stinky-cobbler").description("Declarative AI agent toolkit package manager: plan, apply, and rollback skills, MCP servers, and instructions across Codex, Claude Code, Cursor, and ZCode.").version(STINKY_COBBLER_VERSION);
 registerCommands(program, projectRoot);
 program.parseAsync().catch((error: unknown) => {
   if (error instanceof ZodError) {

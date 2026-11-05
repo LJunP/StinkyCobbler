@@ -38,4 +38,4 @@ node dist/cli.js toolkit doctor --json
 
 `git+file:` 和 `git+https:` 的 skill 在 `toolkit lock` 时用 bare clone 放进规格旁边的 `sources/`。只读取 `SKILL.md`（`#subdir` 是仓库内的目录）。不 checkout，不运行仓库里的脚本或 hook。`plan` 展示这份锁定正文的 diff。没有 `--yes` 时 `apply` 不安装。`npm:` 的本地包目录只读取 `SKILL.md`，不执行 `prepare` 或其他脚本。`npm:name@version` 只下载已发布的 tarball 并取出 `SKILL.md`，不安装。`skills.sh:` 仍然不抓取。bundle 只展开 lock 里已经解析的 include。没有 hash 的 include 不会被安装，也不会因此去抓取。`toolkit search <query>` 在目录 API 核实前返回 `TOOLKIT_SEARCH_UNVERIFIED`，不访问网络，也不写盘。`toolkit update` 重新读取本地来源，并重新抓取 `git+` 和 `npm:`，然后只产出 plan diff。它不改 `toolkit.lock`，也不写宿主；之后的 `apply` 仍安装锁定字节。`role: knowledge` 的新鲜度只采用该 server 自己的工具结果。`toolkit doctor` 没有这份结果时记为 `unavailable`，不读取 `sources` 建索引。`instructions` 的 `kind: memory` 只把正文放进宿主文件的受管段落，例如 Claude Code 的 `CLAUDE.md`。段落外的原有字节保持不变。可选 `files` 目录只复制一层合格的 `*.md` 原文到同一受管段落，不解释内容，也不新开宿主目录。`toolkit memory show <id> --host claude-code` 只打印该受管段落的原文。`toolkit memory edit <id> --file <path> --host claude-code` 只替换这一段。它们不检索、不解释记忆内容。Codex 的指令路径还没有核实，所以不会写。
 
-`gate` 命令组仍可用，已 deprecated，不再扩展。
+2.x 治理命令仍是顶层命令，例如 `task`、`approval`、`lease`、`ledger`，已 deprecated 并冻结，不再扩展。

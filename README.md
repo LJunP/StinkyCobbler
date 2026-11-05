@@ -6,7 +6,7 @@ Stinky Cobbler 3.x 是 AI agent 工具箱的包管理器。一份 `toolkit.yaml`
 
 五分钟路径见 [toolkit 快速开始](./docs/quickstart/toolkit.md)。从 2.x 过来见 [迁移说明](./docs/migration/2.x-to-3.x.md)。决策见 [ADR-0002](./docs/decisions/ADR-0002-从权限门禁转向工具箱包管理器.md)。
 
-2.x 权限门禁还在，`gate` 命令组已 deprecated，不再扩展。它只修已发布版本上的严重缺陷。保证只覆盖经本 CLI/MCP 路由的操作，也就是 Cooperative Mode。它不是操作系统沙箱。
+2.x 权限门禁还在。`validate`、`task`、`approval`、`lease`、`write`、`orchestration` 这些顶层命令已 deprecated，并冻结不再扩展。它只修已发布版本上的严重缺陷。保证只覆盖经本 CLI/MCP 路由的操作，也就是 Cooperative Mode。它不是操作系统沙箱。
 
 > **维护中的 2.x：Codex / ZCode 本地仓库的可验证权限与变更门禁。**
 
