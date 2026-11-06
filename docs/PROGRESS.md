@@ -2,6 +2,15 @@
 
 > 只追加，最新在上。每条：日期 / 任务 / 做了什么 / 验证 / 待办与问题。
 
+## 2026-11-06 · 远端分支规范化（main / develop / release / hotfix / feature）
+
+- 分支模型（作者决定，见 CONTRIBUTING「分支模型」）：`main` 只放已发布代码、默认分支；`develop` 集成下一版本；`release/<version>`、`hotfix/<version>` 经 PR 进 `main` 后回合并 `develop`；`feature/<name>` 经 PR 进 `develop`。
+- 远端：从 `codex/stinky-cobbler-3.0-m0`（`6061010`）建 `develop`；`codex/stinky-cobbler-2.0.2-hardening` 用 GitHub 改名为 `release/2.0.2`。改名把以它为 head 的 PR #1 自动关闭（GitHub 只为以它为 base 的 PR 改目标），已开 PR #2 替代，内容不变。删除 `codex/stinky-cobbler-3.0-m0`（与 develop 同一提交）和 `codex/stinky-cobbler-2.0.1-hardening`（已包含于 `main` 与 `v2.0.1`）。远端现为 `main`、`develop`、`release/2.0.2`。
+- 代码：release-gate 接受 `main`、`v<version>`、`release/<version>`、`hotfix/<version>`；旧 `codex/stinky-cobbler-<version>-hardening` 只为复核 2.0.1/2.0.2 历史 provenance 保留。CI push 触发改为 `main`、`develop`、`release/**`、`hotfix/**`。develop `12c29c4`、release/2.0.2 `16a75c3`。
+- 保护：`main`、`develop` 必须 PR、六个 CI 矩阵任务通过、禁止 force push 与删除，不要求评审，管理员可绕过。
+- 验证：develop 92 文件 / 862 项、release/2.0.2 72 文件 / 792 项本地通过；release-gate 对 `release/<当前版本>` 通过、对 `release/9.9.9` 拒绝。CI：develop push、release/2.0.2 push 六项全绿；PR #2 的 Windows Node 22 任务一次超时（该测试在 Windows 正常约 8.7 秒，此次 30.2 秒），重跑后六项全绿。
+- 未做：PR #2 合并、tag `v2.0.2`、`npm publish`、GitHub Release；2.0.2 发布后把 `main` 回合并 `develop`；3.x 何时走 `release/3.0.0`。
+
 ## 2026-11-05 · 2.0.2 分支推送、测试泄漏事故与根因修复
 
 - 事故：在 linked worktree 里 `git push` 2.0.2 分支时，husky pre-push 继承了绝对路径的 `GIT_DIR`，覆盖了 `test/git-read.test.ts` 夹具的 `git -C <dir>`。夹具的 `git init` / `config` / `commit` 写进了真实仓库：2.0.2 分支多出坏提交 `a364111`（作者 test，README 被换成一行），共享 `.git/config` 被写入 `user.name=test`、`user.email=test@example.com`、`core.bare=true`、`maintenance.auto=false`、`gc.auto=0`。坏提交随后被推到远端。
