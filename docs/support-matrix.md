@@ -63,4 +63,4 @@ Stinky Cobbler 3.x 是声明式 AI agent 工具箱包管理器：一份 `toolkit
 | Contract | 是 | 公共 CLI `orchestration contract cancel` | 否；返回 `CONTRACT_REISSUE_REQUIRED`，需新建 Contract |
 | Plan | 是 | 可 `cancel` | 否；返回 `PLAN_REISSUE_REQUIRED`，需重新生成/确认 Plan |
 
-完整迁移、宿主 managed upgrade 和回滚规则见[兼容与迁移政策](./兼容与迁移政策.md)。
+完整迁移、宿主 managed upgrade 和回滚规则见[兼容与迁移政策](./compatibility-policy.md)。

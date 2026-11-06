@@ -34,7 +34,7 @@
 |---|---|---|---|
 | Git-read 边界用例不稳定 | 本次候选失败已按 B09 复现并定位；缺少底层日志的更早失败不能一概归因 | 保留全部安全断言，修复夹具并取得新 SHA 六矩阵结果 | 回归失败则阻止发布 |
 | 当前 bytes 的六矩阵 CI | 旧 SHA 已通过，新修改尚无同 SHA 结果 | 提交并推送到候选分支，检查三系统 × Node 22/24 | 不阻止推送用于验证；阻止宣称跨平台已验证 |
-| 当前 bytes 的 Codex/ZCode 实机 E2E | UNKNOWN / PENDING | 按[宿主验证清单](quickstart/发布前宿主验证清单.md)在明确授权下执行，记录宿主版本及候选 hash | 不阻止源码提交；正式发布前必须完成 |
+| 当前 bytes 的 Codex/ZCode 实机 E2E | UNKNOWN / PENDING | 按[宿主验证清单](../release/host-acceptance-checklist.md)在明确授权下执行，记录宿主版本及候选 hash | 不阻止源码提交；正式发布前必须完成 |
 | 当前 bytes 的离线包、SBOM、checksum、provenance | 旧产物不覆盖本轮依赖更新 | 从最终 SHA 重新生成并校验；不得复用根目录旧压缩包 | 不阻止源码提交；分发前必须完成 |
 
 ## 已实现与未实现
@@ -48,7 +48,7 @@
 5. **只读 Runtime**：受信任 `scripted-readonly` adapter、请求绑定、预算/心跳、协作式取消与超时、终态收据、事务 journal 和恢复核对。
 6. **接入与审计**：CLI/MCP、Codex/ZCode 安装预览与受管升级/回滚、ledger hash-chain、Evidence/Receipt、打包 smoke、离线包与供应链校验脚本。
 
-完整入口和保证矩阵见 [README](../README.md#当前实现能力矩阵)。具体参数和有序操作步骤见[使用说明书](quickstart/使用说明书.md)。
+完整入口和保证矩阵见 [README](https://github.com/LJunP/StinkyCobbler/blob/v2.0.1/README.md#当前实现能力矩阵)。具体参数和有序操作步骤见[使用说明书](../gate/user-manual.md)。
 
 ### 尚未开发，不应当作待修 bug
 

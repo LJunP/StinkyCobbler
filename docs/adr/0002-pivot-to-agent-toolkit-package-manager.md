@@ -6,7 +6,7 @@
 
 ## 背景
 
-2.0.1 把产品收缩为"Codex / ZCode 本地仓库的可验证权限与变更门禁"，随后于 2026-09-21 冻结功能。2026-10-20 的架构评审（[docs/架构评审与发展规划-2026-10-20.md](../架构评审与发展规划-2026-10-20.md)）确认了三件事：
+2.0.1 把产品收缩为"Codex / ZCode 本地仓库的可验证权限与变更门禁"，随后于 2026-09-21 冻结功能。2026-10-20 的架构评审（[docs/archive/architecture-review-2026-10-20.md](../archive/architecture-review-2026-10-20.md)）确认了三件事：
 
 1. 治理内核（约 12k 行）安全思想扎实，但其高保证写入链对真实用户不可达：精确 Approval 需要的 `subjectHash` 没有任何公开命令能算出，一次写入需要 26 条命令。
 2. 代码结构已经积累了明显的债务（上帝文件、约 20 份复制的辅助函数、`config ↔ storage` 循环依赖、O(N²) 账本、约 25 个无人读取的配置键）。
@@ -49,13 +49,13 @@ Stinky Cobbler 是 **AI agent 工具箱的包管理器**：用户用一份声明
 ## 后果
 
 - README、支持矩阵、SKILL 模板的口径在 M0 改为"3.x 方向 + 2.x 维护承诺"。
-- 新代码受 [架构规则](../架构评审与发展规划-2026-10-20.md#25-严格规定与规则防屎山宪法) 约束，并尽可能由 ESLint / dependency-cruiser / 配置存活性测试在 CI 强制。
+- 新代码受 [架构规则](../archive/architecture-review-2026-10-20.md#25-严格规定与规则防屎山宪法) 约束，并尽可能由 ESLint / dependency-cruiser / 配置存活性测试在 CI 强制。
 - 被拒绝的备选：A）2.0.1 原样冻结另起新仓库（资产要复制、安全基因易丢失、品牌重新积累）；C）推倒重写并改名（丢掉 767 项测试积累的边界经验，独立开发者周期过长）。
 
 ## 相关文档
 
-- [架构评审与发展规划](../架构评审与发展规划-2026-10-20.md)
-- [ADR-0001](../architecture/ADR-0001-产品范围与版本边界.md)
+- [架构评审与发展规划](../archive/architecture-review-2026-10-20.md)
+- [ADR-0001](./0001-product-scope-and-version-boundaries.md)
 - [PRD](../PRD.md) · [PLAN](../PLAN.md) · [PROGRESS](../PROGRESS.md)
 
 > 2026-11-05 修订：两处措辞与代码对齐，决策实质未改。Gemini CLI 不在 3.0，3.0 GA 后再议，不再写「放 M3」。2.x 治理命令保持顶层命令，`--help` 标记 `[deprecated 2.x]` 并冻结，不另设命令组；行数由 `test/gate-frozen.test.ts` 守卫。`entry` 与 `toolkit` 不标 deprecated。

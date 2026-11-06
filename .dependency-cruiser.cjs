@@ -4,21 +4,21 @@ module.exports = {
     {
       name: "no-circular",
       severity: "error",
-      comment: "Rule A3: no import cycles. Known 2.x kernel cycles are listed in .dependency-cruiser-known-violations.json and may only shrink.",
+      comment: "STANDARDS C2: no import cycles. Known 2.x kernel cycles are listed in .dependency-cruiser-known-violations.json and may only shrink.",
       from: {},
       to: { circular: true }
     },
     {
       name: "no-dynamic-import-to-break-cycles",
       severity: "error",
-      comment: "Rule A3: dynamic import() must not be used to hide a cycle.",
+      comment: "STANDARDS C2: dynamic import() must not be used to hide a cycle.",
       from: {},
       to: { dynamic: true, circular: true }
     },
     {
       name: "core-has-no-io",
       severity: "error",
-      comment: "Rule A9: src/core never touches the file system or hosts/app/io.",
+      comment: "STANDARDS C2 and C9: src/core never touches the file system or hosts/app/io.",
       from: { path: "^src/core/" },
       to: { path: "^(node:fs|fs|node:fs/promises|src/(hosts|app|io)/)" }
     },

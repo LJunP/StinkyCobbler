@@ -5,7 +5,7 @@ export type ArtifactKind = (typeof ARTIFACT_KINDS)[number];
 
 /**
  * Host ids in `hostAdapters` order.
- * Core cannot import `src/hosts` (dependency-cruiser rule A9), so the
+ * Core cannot import `src/hosts` (STANDARDS C2, enforced by dependency-cruiser core-has-no-io), so the
  * equality is locked by `test/core/toolkit/spec.test.ts`.
  */
 export const HOST_IDS = ["zcode", "codex", "claude-code", "cursor"] as const;

@@ -14,7 +14,7 @@ Stinky Cobbler 3.x 是声明式 AI agent 工具箱的包管理器。一份 `tool
 
 ## 快速开始
 
-需要 Node.js 22 或更新版本（`package.json` 的 `engines` 是 `>=22.0.0`）。下面四条命令与 [toolkit 快速开始](./docs/quickstart/toolkit.md) 一致，从本地安装包到第一次成功的 `toolkit apply`。`init` 和 `lock` 之间要编辑 `toolkit.yaml`，这次编辑不是命令。3.0.0-rc.1 没有 registry 上的安装包；`npm install -g stinky-cobbler` 装到的是已发布的 2.0.1，没有这组 `toolkit` 命令。tarball 来自本仓库的 `npm pack`，或来自你自己打的候选包。
+需要 Node.js 22 或更新版本（`package.json` 的 `engines` 是 `>=22.0.0`）。下面四条命令与 [toolkit 快速开始](./docs/guides/toolkit-quickstart.md) 一致，从本地安装包到第一次成功的 `toolkit apply`。`init` 和 `lock` 之间要编辑 `toolkit.yaml`，这次编辑不是命令。3.0.0-rc.1 没有 registry 上的安装包；`npm install -g stinky-cobbler` 装到的是已发布的 2.0.1，没有这组 `toolkit` 命令。tarball 来自本仓库的 `npm pack`，或来自你自己打的候选包。
 
 ```bash
 npm install -g stinky-cobbler-*.tgz
@@ -77,13 +77,13 @@ init, plan, apply, rollback, doctor, list, lock, update, search <query>, memory
 
 作用域是 `user` 或 `project`。`user` 读 `$XDG_CONFIG_HOME/stinky-cobbler/toolkit.yaml`（未设置时是 `~/.config/stinky-cobbler/toolkit.yaml`）。`project` 读当前目录 `.stinky-cobbler/toolkit.yaml`。一次命令只读这一份，不把两份按 `id` 合并。PRD 写过 builtin → user → project 的按 `id` 合并，当前 `toolkit` 命令没有做这层合并。
 
-冻结的 2.x 策略才是分层配置：包内 `policies/`，然后 `$XDG_CONFIG_HOME/stinky-cobbler/policies/`，然后项目 `.stinky-cobbler/policies/`。见 [分层配置指南](./docs/quickstart/分层配置指南.md)。
+冻结的 2.x 策略才是分层配置：包内 `policies/`，然后 `$XDG_CONFIG_HOME/stinky-cobbler/policies/`，然后项目 `.stinky-cobbler/policies/`。见 [分层配置指南](./docs/gate/tiered-config-guide.md)。
 
 密钥只允许整段值为 `${env:NAME}` 或 `${file:PATH}`。明文会被拒绝（`SECRET_LITERAL_FORBIDDEN`）。`doctor` 对 Claude Code 和 Codex 给出 `SECRET_NEEDS_SHELL_ENV`（按已核实文档，它们的展开语法不是 `${env:NAME}`）。Cursor 的文档使用 `${env:NAME}`，不给这条提示。ZCode 的展开没有写在已核对的官方页上，`doctor` 给出 `SECRET_EXPANSION_UNKNOWN`。这些是文档结论，不是对四个宿主二进制做的展开实验。
 
 ## 宿主支持
 
-路径说明在 [docs/hosts/](./docs/hosts/codex.md)。承诺边界在 [支持矩阵](./docs/支持矩阵.md)。四个宿主的真实安装冒烟都是 `UNKNOWN / PENDING`。配置写成功不等于宿主重启后发现，也不等于消费者 E2E 通过。
+路径说明在 [docs/hosts/](./docs/hosts/codex.md)。承诺边界在 [支持矩阵](./docs/support-matrix.md)。四个宿主的真实安装冒烟都是 `UNKNOWN / PENDING`。配置写成功不等于宿主重启后发现，也不等于消费者 E2E 通过。
 
 | 宿主 | 路径依据 | 真实冒烟 |
 |---|---|---|
@@ -110,7 +110,7 @@ init, plan, apply, rollback, doctor, list, lock, update, search <query>, memory
 
 `entry install-host` 会改宿主配置，必须先 `--dry-run`。Side effects: install-host writes the host skill and, for ZCode, its command file; --mcp merges an MCP entry into the current host config. Managed-state sidecars are written, and a verified byte-for-byte backup may be created during a managed upgrade. Existing user-edited files are preserved as conflicts rather than overwritten. Rollback is a separate explicit `--rollback` operation.
 
-2.0.1 发布后的长验证记录和 2.x 能力矩阵细则不在本文件。见 [CHANGELOG](./CHANGELOG.md)、[归档](./docs/archive/README.md) 和 [支持矩阵](./docs/支持矩阵.md)。
+2.0.1 发布后的长验证记录和 2.x 能力矩阵细则不在本文件。见 [CHANGELOG](./CHANGELOG.md)、[归档](./docs/archive/README.md) 和 [支持矩阵](./docs/support-matrix.md)。
 
 ## 项目目录
 
@@ -129,18 +129,17 @@ init, plan, apply, rollback, doctor, list, lock, update, search <query>, memory
 │   ├── commands/
 │   └── skills/
 ├── docs/
-│   ├── architecture/          ADR-0001、威胁模型
+│   ├── adr/                   NNNN-kebab-title.md
 │   ├── archive/               已被取代的历史文档
-│   ├── decisions/             ADR-0002
+│   ├── gate/                  冻结的 2.x 手册与威胁模型
+│   ├── guides/                3.x 使用文档
 │   ├── hosts/                 四宿主路径笔记
 │   ├── migration/             2.x-to-3.x.md
 │   ├── presets/               projectmem.md
-│   ├── quickstart/
-│   ├── security/              发布前安全审查清单
-│   ├── PLAN.md  PRD.md  PROGRESS.md
-│   ├── 兼容与迁移政策.md
-│   ├── 支持矩阵.md
-│   └── 架构评审与发展规划-2026-10-20.md
+│   ├── release/               宿主验收与安全审查清单
+│   ├── PLAN.md  PRD.md  PROGRESS.md  STANDARDS.md
+│   ├── compatibility-policy.md
+│   └── support-matrix.md
 ├── examples/
 │   ├── content-calendar/      2.x 示例 task：内容日历
 │   ├── frameflow/             2.x 示例 task：角色与授权边界
@@ -213,7 +212,7 @@ init, plan, apply, rollback, doctor, list, lock, update, search <query>, memory
 | `.github/` | 构建/发布 | `workflows/ci.yml` 与 `workflows/release-candidate.yml`（Ubuntu / macOS / Windows × Node 22 / 24），以及 `ISSUE_TEMPLATE/`、`pull_request_template.md`、`dependabot.yml`。 |
 | `.husky/` | 构建/发布 | `pre-commit` 跑 lint-staged。`pre-push` 跑 lint 与 unit。 |
 | `.zcode/` | 冻结 2.x | ZCode skill 与 command 模板，在 `.zcode/skills/` 和 `.zcode/commands/`。随 npm 包发布。 |
-| `docs/` | 文档 | 产品与使用文档。`PRD.md`、`PLAN.md`、`PROGRESS.md` 是当前事实来源。`architecture/` 是 ADR-0001 与威胁模型。`decisions/` 是 ADR-0002。`hosts/` 是四宿主路径。`migration/` 是 2.x 到 3.x。`presets/` 是已核实的 preset。`quickstart/` 是上手文档。`security/` 是发布前安全审查清单。`archive/` 只保留已被取代的历史设计，不是当前规范。 |
+| `docs/` | 文档 | 产品与使用文档。`STANDARDS.md` 是项目总规范。`PRD.md`、`PLAN.md`、`PROGRESS.md` 是当前事实来源。`compatibility-policy.md` 与 `support-matrix.md` 是兼容承诺与支持矩阵。`adr/` 是架构决定。`guides/` 是 3.x 上手文档。`hosts/` 是四宿主路径。`presets/` 是已核实的 preset。`migration/` 是 2.x 到 3.x。`release/` 是宿主验收与安全审查清单。`gate/` 是冻结的 2.x 手册与威胁模型。`archive/` 只保留已被取代的历史设计，不是当前规范。 |
 | `examples/` | 冻结 2.x | 四个 2.x task 样例：`content-calendar/`、`frameflow/`、`research-report/`、`student-management-system/`。不是 `toolkit.yaml` 示例。 |
 | `output/` | 不入库 | 临时或生成产物。只有 `output/README.md` 入库。`src/`、`test/`、`scripts/` 不得从这里读取。 |
 | `packs/` | 冻结 2.x | 2.x 领域包声明：`business-operations/`、`creative-production/`、`data-analysis/`、`education/`、`knowledge-work/`、`regulated-work/`、`software-engineering/`。声明不等于执行器。 |
@@ -260,25 +259,29 @@ node scripts/release-gate.mjs --expected "$PACKAGE_VERSION" --git-ref "$PACKAGE_
 
 ## 文档索引
 
+- [STANDARDS](./docs/STANDARDS.md)（项目总规范，改动仓库前必读）
+- [AGENTS.md](./AGENTS.md)（入口，指向 STANDARDS）
 - [PRD](./docs/PRD.md)
 - [PLAN](./docs/PLAN.md)
 - [PROGRESS](./docs/PROGRESS.md)
-- [ADR-0001 产品范围与版本边界](./docs/architecture/ADR-0001-产品范围与版本边界.md)
-- [ADR-0002 从权限门禁转向工具箱包管理器](./docs/decisions/ADR-0002-从权限门禁转向工具箱包管理器.md)
-- [架构评审与发展规划](./docs/架构评审与发展规划-2026-10-20.md)
-- [toolkit 快速开始](./docs/quickstart/toolkit.md)
-- [使用说明书](./docs/quickstart/使用说明书.md)
-- [高级用户配置指南](./docs/quickstart/高级用户配置指南.md)
-- [分层配置指南](./docs/quickstart/分层配置指南.md)
-- [发布前宿主验证清单](./docs/quickstart/发布前宿主验证清单.md)
-- [零终端用户指南](./docs/quickstart/零终端用户指南.md)
-- [非开发用户使用模型](./docs/quickstart/非开发用户使用模型.md)
+- [ADR-0001 产品范围与版本边界](./docs/adr/0001-product-scope-and-version-boundaries.md)
+- [ADR-0002 从权限门禁转向工具箱包管理器](./docs/adr/0002-pivot-to-agent-toolkit-package-manager.md)
+- [ADR-0003 仓库目录结构、命名与持续治理](./docs/adr/0003-repository-structure-and-standards.md)
+- [架构评审与发展规划](./docs/archive/architecture-review-2026-10-20.md)
+- [toolkit 快速开始](./docs/guides/toolkit-quickstart.md)
+- [使用说明书](./docs/gate/user-manual.md)
+- [高级用户配置指南](./docs/gate/advanced-config-guide.md)
+- [分层配置指南](./docs/gate/tiered-config-guide.md)
+- [发布前宿主验证清单](./docs/release/host-acceptance-checklist.md)
+- [零终端用户指南](./docs/gate/no-terminal-guide.md)
+- [非开发用户使用模型](./docs/gate/non-developer-model.md)
 - [从 2.x 到 3.x](./docs/migration/2.x-to-3.x.md)
-- [支持矩阵](./docs/支持矩阵.md)
-- [兼容与迁移政策](./docs/兼容与迁移政策.md)
+- [projectmem preset](./docs/presets/projectmem.md)
+- [支持矩阵](./docs/support-matrix.md)
+- [兼容与迁移政策](./docs/compatibility-policy.md)
 - [宿主路径](./docs/hosts/codex.md) · [Claude Code](./docs/hosts/claude-code.md) · [Cursor](./docs/hosts/cursor.md) · [ZCode](./docs/hosts/zcode.md)
-- [威胁模型与权限设计](./docs/architecture/威胁模型与权限设计.md)
-- [发布前安全审查清单](./docs/security/发布前安全审查清单.md)
+- [威胁模型与权限设计](./docs/gate/threat-model.md)
+- [发布前安全审查清单](./docs/release/security-review-checklist.md)
 - [安全策略](./SECURITY.md)
 - [贡献指南](./CONTRIBUTING.md)
 - [CHANGELOG](./CHANGELOG.md)

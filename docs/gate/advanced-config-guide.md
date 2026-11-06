@@ -1,8 +1,8 @@
 # 高级用户配置指南
 
-**3.x 是声明式 AI agent 工具箱包管理器。** 主路径见 [Toolkit 快速开始](./toolkit.md)（`toolkit plan` / `apply` / `doctor` / `rollback`，宿主 Codex、Claude Code、Cursor、ZCode）。策略分层见 [分层配置指南](./分层配置指南.md)。
+**3.x 是声明式 AI agent 工具箱包管理器。** 主路径见 [Toolkit 快速开始](../guides/toolkit-quickstart.md)（`toolkit plan` / `apply` / `doctor` / `rollback`，宿主 Codex、Claude Code、Cursor、ZCode）。策略分层见 [分层配置指南](./tiered-config-guide.md)。
 
-下面各节是冻结的 2.x 治理手册：顶层命令在 `--help` 标记 `[deprecated 2.x]`，冻结到 4.0，没有单独的 `gate` 命令组。`entry` 与 `toolkit` 不标 deprecated。这些段落描述本地仓库的只读与 L1 单目标变更门禁，不是当前产品定义。日常 2.x 步骤见 [使用说明书](./使用说明书.md)。
+下面各节是冻结的 2.x 治理手册：顶层命令在 `--help` 标记 `[deprecated 2.x]`，冻结到 4.0，没有单独的 `gate` 命令组。`entry` 与 `toolkit` 不标 deprecated。这些段落描述本地仓库的只读与 L1 单目标变更门禁，不是当前产品定义。日常 2.x 步骤见 [使用说明书](./user-manual.md)。
 
 **本文描述当前实现，不代表任一版本已经 npm/GitHub 发布或已通过真实宿主验证。** 发布版本、tag/Release/资产与宿主证据必须实时核验。当前 `package.json` 要求 Node.js **>=22**。
 
@@ -58,7 +58,7 @@ stinky-cobbler entry install-host --host zcode --mcp --json
 - `--rollback` 只有在 sidecar、当前 installed hash、普通非 symlink 备份和备份 hash 全部匹配时恢复；安装后用户改动、目标/备份缺失或漂移会 fail-closed。安装时使用 `--mcp`，回滚时也必须显式带 `--mcp`。
 - 安装包没有 `postinstall`，`npm install` 不会修改任何宿主 `.zcode/`。
 
-完整的 managed upgrade、已知 2.0.0 hash 和 rollback 条件见[兼容与迁移政策](../兼容与迁移政策.md)。
+完整的 managed upgrade、已知 2.0.0 hash 和 rollback 条件见[兼容与迁移政策](../compatibility-policy.md)。
 
 只读事实检查（入口决策依据，不创建 workspace、不写文件）：
 
@@ -227,16 +227,16 @@ ZCode 用户级配置写入 `~/.zcode/cli/config.json`；workspace 级配置写�
 
 Contract 创建时会把 Profile 解析为不可变 `reviewPolicy`：`individual=SELF_REVIEW_AUDITED`；`team` / `organization` / `regulated` / 缺失配置=`INDEPENDENT_REQUIRED`。legacy Contract 缺字段也默认严格。前者允许同源 review 但保留 `sameSourceReview` / `SELF_REVIEW_NON_INDEPENDENT`；后者拒绝同源 review。修改 Profile 不会改写既有 Contract，采用新策略必须新建 Contract。
 
-调用方必须用持久化 generation 防陈旧重放：先用 `orchestration subtask show` 读取 `retriesUsed` 并作为 dispatch `--attempt`；begin/artifact/review 继续传 dispatch 返回的同一个 `activeAttempt`。ESCALATED Run 先读 `run status`，resume 传当前 `resumeGeneration + 1`。旧 token 被拒绝后必须重读状态，禁止盲目递增。终态 Run 的 exact create retry 返回原 Run；新一代必须用 `--supersedes-run` 绑定唯一终态前驱。详见[使用说明书](./使用说明书.md#防陈旧重放协议)。
+调用方必须用持久化 generation 防陈旧重放：先用 `orchestration subtask show` 读取 `retriesUsed` 并作为 dispatch `--attempt`；begin/artifact/review 继续传 dispatch 返回的同一个 `activeAttempt`。ESCALATED Run 先读 `run status`，resume 传当前 `resumeGeneration + 1`。旧 token 被拒绝后必须重读状态，禁止盲目递增。终态 Run 的 exact create retry 返回原 Run；新一代必须用 `--supersedes-run` 绑定唯一终态前驱。详见[使用说明书](./user-manual.md#防陈旧重放协议)。
 
 当前实现只有 `orchestration artifact report --kind file` 可以产生 VERIFIED 产物：引擎读取工作区内真实文件、计算内容 hash，并在后续 dispatch 时重新核对引用。`kind=summary` 与 `kind=evidence` 必须拒绝，不能生成 synthetic hash、不能进入 `inputArtifacts`，也不能被描述为可靠的跨轮上下文、Evidence 或长期记忆。当前子任务上下文由契约锚点 `contractGoal` / `globalAcceptanceCriteria`、子任务 `goal`、`domainInstructions` 和显式引用的已验证文件产物（含 `path` + `contentHash`）组成；结构化摘要、压缩、检索、冲突消解、过期/撤销与长期记忆治理不属于当前实现。
 
-2.0.0 Lease/Contract/Plan 可读但因缺少当前 authority 快照不可执行，必须重发 Lease、新建 Contract、重新生成/确认 Plan。它们分别有公共 CLI `lease revoke`、`orchestration contract cancel`、`plan cancel` 安全终止路径；参见[兼容与迁移政策](../兼容与迁移政策.md)。
+2.0.0 Lease/Contract/Plan 可读但因缺少当前 authority 快照不可执行，必须重发 Lease、新建 Contract、重新生成/确认 Plan。它们分别有公共 CLI `lease revoke`、`orchestration contract cancel`、`plan cancel` 安全终止路径；参见[兼容与迁移政策](../compatibility-policy.md)。
 
 ## 分层配置（2.0 增强，初始化后使用默认值）
 
 内置默认值减少初始化后的参数填写，但安装、宿主接入、workspace 初始化、Task/Approval/Lease 与真实宿主验证仍不可省略。高级用户按需覆盖，详见独立文档
-[`docs/quickstart/分层配置指南.md`](./分层配置指南.md)。核心要点：
+[`docs/gate/tiered-config-guide.md`](./tiered-config-guide.md)。核心要点：
 
 - **三层**：内置默认（包内 `policies/*.yaml`，勿改，会被更新覆盖），然后 `$XDG_CONFIG_HOME/stinky-cobbler/policies`（未设置时 `~/.config/stinky-cobbler/policies`），然后项目 `.stinky-cobbler/policies/*.yaml`（最后合并，可 git 审计）
 - **可自定义**：编排预算/规模上限/Lease 默认/写入大小、专才注册表（追加+覆盖+自定义名称）、审查自动否决阈值、话术/审查风格模板、契约模板库、敏感路径追加（只增不减）

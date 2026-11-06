@@ -130,12 +130,12 @@ async function createFixture() {
     packages: { "": { name: "stinky-cobbler", version } }
   }, null, 2)}\n`;
   await mkdir(path.join(candidatePackage, "dist"), { recursive: true });
-  await mkdir(path.join(candidatePackage, "docs", "quickstart"), { recursive: true });
+  await mkdir(path.join(candidatePackage, "docs", "gate"), { recursive: true });
   await writeFile(path.join(candidatePackage, "package.json"), packageJsonText, "utf8");
   await writeFile(path.join(candidatePackage, "dist", "cli.js"), `console.log(${JSON.stringify(version)});\n`, "utf8");
   await chmod(path.join(candidatePackage, "dist", "cli.js"), 0o755);
   await writeFile(path.join(candidatePackage, "dist", "mcp-server.js"), "// exits cleanly on EOF\n", "utf8");
-  await writeFile(path.join(candidatePackage, "docs", "quickstart", "使用说明书.md"), "# Manual\n", "utf8");
+  await writeFile(path.join(candidatePackage, "docs", "gate", "user-manual.md"), "# Manual\n", "utf8");
   await mkdir(sourceRoot);
   await writeFile(path.join(sourceRoot, "package.json"), packageJsonText, "utf8");
   await writeFile(path.join(sourceRoot, "package-lock.json"), lockfileText, "utf8");

@@ -1,6 +1,6 @@
 # Stinky Cobbler 3.x 产品需求（PRD）
 
-> 唯一事实来源。需求变化先改本文件，再改代码。来源与论证见 [架构评审与发展规划-2026-10-20](架构评审与发展规划-2026-10-20.md) 与 [ADR-0002](decisions/ADR-0002-从权限门禁转向工具箱包管理器.md)。
+> 唯一事实来源。需求变化先改本文件，再改代码。来源与论证见 [架构评审与发展规划-2026-10-20](archive/architecture-review-2026-10-20.md) 与 [ADR-0002](adr/0002-pivot-to-agent-toolkit-package-manager.md)。
 
 ## 1. 为什么做
 

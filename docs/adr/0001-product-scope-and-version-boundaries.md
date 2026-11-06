@@ -1,6 +1,6 @@
 # ADR-0001：产品范围与版本边界
 
-- 状态：Accepted。非沙箱、非模型平台等边界仍有效；产品定义被 [ADR-0002](../decisions/ADR-0002-从权限门禁转向工具箱包管理器.md) 取代
+- 状态：Accepted。非沙箱、非模型平台等边界仍有效；产品定义被 [ADR-0002](./0002-pivot-to-agent-toolkit-package-manager.md) 取代
 - 决策范围：冻结的 2.x 门禁。3.x 产品定义不在本 ADR
 
 ## 背景
@@ -13,7 +13,7 @@ Stinky Cobbler 同时包含 Task/Approval/Lease、受控仓库读写、Runtime�
 
 ### 产品定位
 
-冻结的 2.x 门禁定位为 Cooperative Mode 下的**本地受控执行与审计层**。3.x 的产品定义见 [ADR-0002](../decisions/ADR-0002-从权限门禁转向工具箱包管理器.md)。2.x 门禁只对经自身 CLI/MCP 路由的本地仓库操作提供：
+冻结的 2.x 门禁定位为 Cooperative Mode 下的**本地受控执行与审计层**。3.x 的产品定义见 [ADR-0002](./0002-pivot-to-agent-toolkit-package-manager.md)。2.x 门禁只对经自身 CLI/MCP 路由的本地仓库操作提供：
 
 - persisted Task 与 TaskAuthority；
 - 精确 Approval 和 persisted Lease；
@@ -69,5 +69,5 @@ npm 发布物只把 `stinky-cobbler` CLI 与 `stinky-cobbler-mcp` 声明为受�
 
 - [README](../../README.md)
 - [Security Policy](../../SECURITY.md)
-- [支持矩阵](../支持矩阵.md)
-- [兼容与迁移政策](../兼容与迁移政策.md)
+- [支持矩阵](../support-matrix.md)
+- [兼容与迁移政策](../compatibility-policy.md)
