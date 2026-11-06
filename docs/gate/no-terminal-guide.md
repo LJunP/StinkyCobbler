@@ -1,8 +1,8 @@
 # 无终端操作者指南
 
-> **3.x 主路径是 `toolkit apply`**（声明式工具箱包管理器，见 [Toolkit 快速开始](./toolkit.md)）。本页只覆盖冻结的 2.x 安装：`entry install-host` 仍可用，且不标 deprecated。
+> **3.x 主路径是 `toolkit apply`**（声明式工具箱包管理器，见 [Toolkit 快速开始](../guides/toolkit-quickstart.md)）。本页只覆盖冻结的 2.x 安装：`entry install-host` 仍可用，且不标 deprecated。
 >
-> 文件名保留兼容旧链接，但 Stinky Cobbler **不是零配置或无人值守产品**。无终端用户仍需要一位可信安装者完成受支持 Node.js、安装、宿主配置、workspace 初始化与真实宿主验证。
+> Stinky Cobbler **不是零配置或无人值守产品**。无终端用户仍需要一位可信安装者完成受支持 Node.js、安装、宿主配置、workspace 初始化与真实宿主验证。
 
 公开 npm 版本、GitHub tag/Release/资产与 Codex/ZCode 验证状态会变化，必须由安装者实时核验；源码版本或配置检测不能替代。
 

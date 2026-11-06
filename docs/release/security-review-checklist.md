@@ -30,8 +30,8 @@
 | orchestration、specialists、contract-templates 三文件加 XDG 层 | 通过 | `src/config/tiered.ts`；`src/config/tiered-health.ts`；`test/tiered-config.test.ts` | `TieredPolicyFileName` 只有这三份文件，exact-shape/unknown-key fail-closed；builtin、XDG user、workspace 三层加载 effective 值，并交叉验证专才注入和契约模板符合 orchestration caps 与追加敏感路径；`maxDefects`/`maxSteps` 已接入引擎，假旋钮已移除 |
 | 发布链源码门禁 | 通过；每次发布须重跑 | `scripts/build.mjs`；`scripts/package-smoke.mjs`；`scripts/build-offline-bundle.mjs`；`scripts/verify-offline-bundle.mjs`；`scripts/generate-release-manual.mjs`；`scripts/generate-sbom.mjs`；`scripts/generate-checksum.mjs`；`scripts/verify-release-artifacts.mjs`；相关发布测试 | fresh sibling build 通过两阶段 rename 替换 `dist/` 并拒绝 symlink，避免旧 orphan 入包；可捕获失败会恢复旧输出，但不承诺两次 rename 间的进程崩溃原子性。离线 zip 使用 portable Node archive 逻辑和 exclusive no-clobber 发布；manifest 重算当前 tgz digest，包目录与 tgz 独立解包树逐项一致，内含 lockfile 与发布 lockfile 逐字节一致，并用内含独立 npm cache 按 canonical lockfile SRI 做无网络 `npm ci` 后逐字节比较依赖树；独立手册逐字生成自跟踪文档。SBOM 使用精确版本文件名且 no-clobber，校验根应用 name/version、nested npm 身份、CycloneDX 十六进制 SHA-512，并双向拒绝缺失/重复/额外组件与畸形 hash；tgz/zip checksum 只接受当前精确文件并使用标准 sha256sum 格式 |
 | Cooperative Mode | 边界 | `SECURITY.md`；`README.md` | 只治理经自身 CLI/MCP 路由的操作；宿主原生文件工具、Shell、Git 写入或第三方 MCP 可绕过，不是 OS 沙箱或完全中介 |
-| Codex、Claude Code、Cursor、ZCode 真实宿主 | 发布门禁：PENDING | `docs/quickstart/发布前宿主验证清单.md` | 配置检测、历史版本实测和本地 MCP stdio 不等于当前宿主消费者 E2E；Codex 与 ZCode 必须在同一候选 bytes 上分别验证。Claude Code 与 Cursor 的 toolkit 冒烟同样 PENDING |
-| 外部系统 / 自主 Agent / Context Memory | DECLARED_ONLY / NOT_AVAILABLE | architecture/Pack/Plugin 历史材料；当前 adapter/tool registry | 不作为 2.0.1 executable 能力或发布卖点 |
+| Codex、Claude Code、Cursor、ZCode 真实宿主 | 发布门禁：PENDING | `docs/release/host-acceptance-checklist.md` | 配置检测、历史版本实测和本地 MCP stdio 不等于当前宿主消费者 E2E；Codex 与 ZCode 必须在同一候选 bytes 上分别验证。Claude Code 与 Cursor 的 toolkit 冒烟同样 PENDING |
+| 外部系统 / 自主 Agent / Context Memory | DECLARED_ONLY / NOT_AVAILABLE | docs/archive/Pack/Plugin 历史材料；当前 adapter/tool registry | 不作为 2.0.1 executable 能力或发布卖点 |
 
 ## 已关闭的审查项
 

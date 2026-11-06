@@ -1,7 +1,7 @@
 # ADR-0003：仓库目录结构、命名与持续治理
 
-- 状态：Proposed（2026-11-06，待作者确认后改为 Accepted）
-- 关联：[ADR-0002](ADR-0002-从权限门禁转向工具箱包管理器.md)（2.x 冻结到 4.0）、[STANDARDS](../STANDARDS.md)（本决定的执行细则）
+- 状态：Accepted（2026-11-06）
+- 关联：[ADR-0002](0002-pivot-to-agent-toolkit-package-manager.md)（2.x 冻结到 4.0）、[STANDARDS](../STANDARDS.md)（本决定的执行细则）
 
 ## 背景
 

@@ -1,6 +1,6 @@
 # Stinky Cobbler 使用说明书
 
-> **3.x 主路径**：[Toolkit 快速开始](./toolkit.md)。3.x 是声明式 AI agent 工具箱包管理器（`toolkit init | plan | apply | rollback | doctor | list | lock | update | search | memory`），宿主为 Codex、Claude Code、Cursor、ZCode。
+> **3.x 主路径**：[Toolkit 快速开始](../guides/toolkit-quickstart.md)。3.x 是声明式 AI agent 工具箱包管理器（`toolkit init | plan | apply | rollback | doctor | list | lock | update | search | memory`），宿主为 Codex、Claude Code、Cursor、ZCode。
 >
 > **本页是冻结的 2.x 手册**。下面描述仍可用的顶层治理命令：`--help` 标记 `[deprecated 2.x]`，冻结到 4.0，没有单独的 `gate` 命令组。`entry` 与 `toolkit` 不标 deprecated。2.x 门禁范围是 Codex / ZCode 本地仓库的可验证权限与变更。
 >
@@ -60,9 +60,9 @@ stinky-cobbler entry install-host --host zcode --mcp --dry-run --json
 stinky-cobbler entry install-host --host codex --mcp --dry-run --json
 ```
 
-只有用户确认精确目标后才执行相应的非 dry-run 命令。随后必须重启/重载宿主并跑[发布前宿主验证清单](./发布前宿主验证清单.md)。`mcpConfigured=true` 仅说明配置被检测到，不证明宿主已加载或调用成功。
+只有用户确认精确目标后才执行相应的非 dry-run 命令。随后必须重启/重载宿主并跑[发布前宿主验证清单](../release/host-acceptance-checklist.md)。`mcpConfigured=true` 仅说明配置被检测到，不证明宿主已加载或调用成功。
 
-`install-host` 通过目标旁的 managed sidecar 和精确 SHA-256 判断能否安全升级；当前实现只对 sidecar 匹配或内置的 2.0.0 精确模板 hash 自动升级。用户编辑返回 `conflict` 并保留。升级前创建内容寻址、独占的 byte-for-byte 备份；`--rollback` 仅在当前目标和备份都匹配记录 hash、均无链接/漂移时恢复。完整条件见[兼容与迁移政策](../兼容与迁移政策.md)。
+`install-host` 通过目标旁的 managed sidecar 和精确 SHA-256 判断能否安全升级；当前实现只对 sidecar 匹配或内置的 2.0.0 精确模板 hash 自动升级。用户编辑返回 `conflict` 并保留。升级前创建内容寻址、独占的 byte-for-byte 备份；`--rollback` 仅在当前目标和备份都匹配记录 hash、均无链接/漂移时恢复。完整条件见[兼容与迁移政策](../compatibility-policy.md)。
 
 ## 初始化 workspace
 
@@ -203,7 +203,7 @@ npx stinky-cobbler orchestration contract cancel <contract-id> --root <workspace
 - Contract 返回 `CONTRACT_REISSUE_REQUIRED`，可先通过 CLI 取消旧记录，再新建并快照当前 `reviewPolicy`；
 - Plan 返回 `PLAN_REISSUE_REQUIRED`，需重新生成、确认。
 
-不要手工补旧 JSON 字段或改状态绕过。详见[兼容与迁移政策](../兼容与迁移政策.md)。
+不要手工补旧 JSON 字段或改状态绕过。详见[兼容与迁移政策](../compatibility-policy.md)。
 
 ## 日常输出
 

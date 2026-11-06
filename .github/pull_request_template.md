@@ -14,7 +14,7 @@ Describe the problem, the chosen change, and explicit non-goals.
 
 - [ ] CLI, schema, config, persisted records, host installation, and downgrade/rollback effects were reviewed.
 - [ ] User-edited host files are preserved; managed upgrades/rollbacks have a dry-run and exact-byte checks.
-- [ ] Relevant changes are reflected in `CHANGELOG.md`, `docs/支持矩阵.md`, and `docs/兼容与迁移政策.md`.
+- [ ] Relevant changes are reflected in `CHANGELOG.md`, `docs/support-matrix.md`, and `docs/compatibility-policy.md`.
 
 ## Verification
 

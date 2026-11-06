@@ -2,6 +2,24 @@
 
 > 只追加，最新在上。每条：日期 / 任务 / 做了什么 / 验证 / 待办与问题。
 
+## 2026-11-06 · ADR-0003 P1–P2：项目规范与 docs/ 重组
+
+- P1（PR #4，已合并 develop）：ADR-0003、`docs/STANDARDS.md`、根目录 `AGENTS.md`。作者决定：文件名用英文 kebab-case；2.x 封存进 gate 目录，不删；总规则写在 STANDARDS，由 AGENTS.md 指向；按 P1–P7 分批迁移，每批一个 PR，六项 CI 通过后合并。P1 合并时没有记 PROGRESS，在本条补记。
+- P2：docs/ 下 21 个文件改名迁移，git 全部识别为 rename。ADR 合到 `docs/adr/`；2.x 手册与威胁模型进 `docs/gate/`；两份发布清单进 `docs/release/`；toolkit 快速开始进 `docs/guides/`；兼容政策与支持矩阵放在 docs 根目录；架构评审与历史设计文档进 `docs/archive/`，正文不改，只修链接目标。同步更新了 README、CONTRIBUTING、CHANGELOG（只动未发布的 3.0.0-rc.1 段）、迁移说明（新增「文档路径变更（3.0）」对照表）、GitHub 模板、脚本与测试里的文档路径、`src/config/scaffold.ts` 里的路径字符串，以及代码注释里的旧规则编号。离线包内的 `使用说明书.md` 文件名保留不变。ADR-0003 状态改为 Accepted。
+- 架构评审 §2.5 的 25 条已逐条并入 STANDARDS §2–§7（第 24 条进 §2，第 17 条进 §2 与 §6，第 21 条进 §7）。第 1 条的「硬上限 800」未采用：ESLint `max-lines` 直接以 400 为硬上限。
+- 规则状态核实：迁移本身先做了 45 个代理的多视角审查，grok 返工两轮，evaluator 两次 NEEDS_WORK 后 PASS。随后用 52 个代理逐条核对 STANDARDS 的 ✅/🟡/⬜（每条质疑都有反方攻击）：49 条质疑中 41 条成立；修改后再由 evaluator 复核，补改了 10 处。以 develop（`06f3bde`）的 STANDARDS 为基线，结果是：18 处状态改变——降级 16 处（§1.4 新增目录 ✅→⬜、§1.4 output/ ✅→🟡、文件目录命名 🟡→⬜、约定大写文件 ✅→⬜、测试命名 🟡→⬜、分支命名 ✅→🟡、C1/C2/C3/C5/C13 ✅→🟡、C10/C12 🟡→⬜、T1 🟡→⬜、§6 分支模型 ✅→🟡、§6 打 tag ✅→⬜），升级 2 处（C9 ⬜→🟡、D2 ⬜→🟡）；状态不变但写明工具真实覆盖范围 5 处（C4、C6、C7、C8、D6）；新增带状态的条目 18 处（§2 版本片段、§3.1 工具链 8 行含 Dependabot ⬜ 与 `npm audit` ✅、T8、T9、§6 两条、§7 五项首次标注）。§7.4、§7.5 与两份发布清单对齐；「结构守卫读取 §1.2」改为 P6 起才读取。
+
+### 待办 / 问题（核实规则状态时发现，需作者决定）
+- `toolkit rollback` 遇冲突仍退出 0，违反 C7「conflict 类结果非零退出」。已实跑复现：临时 HOME 里 `apply --yes` 后改动受管的 SKILL.md，再 `rollback --last --json`，退出码 0，stdout 带 `conflict`，`restored` 为空，用户改动未被覆盖。原因是 `src/app/toolkit-commands.ts` 的 `bind` 只打印结果，不设退出码；`src/app/rollback.ts` 冲突时 return 而不 throw。建议先写失败测试再修。
+- `entry install-host` 遇冲突退出 1，这个值不在错误码表里（CONFLICT 是 7）。退出码在 `src/app/register-commands.ts:178` 设置，`test/entry.integration.test.ts:139` 与 `test/cli-presenter.integration.test.ts:55` 锁定了现行为；改成 7 会改变 2.x 命令的对外退出码，改不改由作者定。
+- `entry preflight --via <无效值>` 退出 2，但输出里没有 `error` 字段，只有 `decision: "invalid-via"`（C7「非零退出码对应错误码」的第三个偏差）：`src/app/register-commands.ts:177` 直接设 `ExitCode.VALIDATION`，不经 `StinkyCobblerError`；`test/entry.integration.test.ts:72-84` 锁定现行为。与 install-host 同属 2.x `entry` 命令，改不改由作者定。
+- `src/` 有 5 个文件直接 import `zod`，但 `package.json` 没有声明它，靠 `@modelcontextprotocol/sdk` 间接安装。补声明属于依赖变更，需作者批准。
+- C9、C10 与现状不符：9 个 `app/` 文件直接 import fs，其中 5 个直接写盘（缓存、`toolkit.lock`、scaffold、rollback 删除）。二选一：把这些读写迁到 `io/`，或者收窄规则。
+- Dependabot：配置不在默认分支 `main`，至今没有运行过；配置里没写 `target-branch`，PR #2 合并后它会向 `main` 开 PR，与分支模型不符；仓库级漏洞告警也没有开。改 CI 配置和仓库设置需作者批准。
+- C4 现状偏差：`src/core/toolkit/lock.ts:9` 用字面量 `["skill", "instructions"]` 重复了 `kinds.ts` 里 artifact 种类的子集，规则要求从 `kinds.ts` 派生。
+- C5 的 config-liveness 对 3.x 不起作用：toolkit schema 的键都写在 zod 定义里，文本匹配必然命中。P6 可以改成按读取点检查。
+- 全局规则 `ai-tools-config/rules/dev-workflow.md` 写的 ADR 目录是 `docs/decisions/`，与 STANDARDS 的 `docs/adr/` 冲突。改配置仓库需作者确认。
+
 ## 2026-11-06 · 远端分支规范化（main / develop / release / hotfix / feature）
 
 - 分支模型（作者决定，见 CONTRIBUTING「分支模型」）：`main` 只放已发布代码、默认分支；`develop` 集成下一版本；`release/<version>`、`hotfix/<version>` 经 PR 进 `main` 后回合并 `develop`；`feature/<name>` 经 PR 进 `develop`。

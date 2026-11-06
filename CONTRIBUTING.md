@@ -53,7 +53,7 @@ git diff --check
 2. 权限、路径、Approval、Lease、WriteIntent、preimage、回滚和审计门禁必须 fail-closed；不得用兼容性理由静默放宽。
 3. 保留 Cooperative Mode 边界：未经本工具路由的宿主文件工具、Shell、Git 和第三方 MCP 不受治理。
 4. 新能力必须区分 `ENGINE_ENFORCED`、`HOST_PROCEDURAL`、`DECLARED_ONLY` 和 `NOT_AVAILABLE`，不能把设计或宿主流程写成引擎保证。
-5. 修改持久化格式、CLI 或宿主安装行为时，同步更新 [支持矩阵](./docs/支持矩阵.md)、[兼容与迁移政策](./docs/兼容与迁移政策.md)、CHANGELOG 和相应回归测试。
+5. 修改持久化格式、CLI 或宿主安装行为时，同步更新 [支持矩阵](./docs/support-matrix.md)、[兼容与迁移政策](./docs/compatibility-policy.md)、CHANGELOG 和相应回归测试。
 6. 不直接修改用户的宿主配置或工作区控制面来“修复”测试；安装与迁移必须先提供 dry-run，并保护用户改动。
 
 ## Pull Request 验收

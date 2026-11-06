@@ -83,7 +83,7 @@ export async function verifyOfflineBundle(file, sourceRoot = root) {
       }
     }
 
-    const canonicalManual = await readFile(path.join(bundleRoot, "package", "docs", "quickstart", "使用说明书.md")).catch(() => undefined);
+    const canonicalManual = await readFile(path.join(bundleRoot, "package", "docs", "gate", "user-manual.md")).catch(() => undefined);
     const copiedManual = await readFile(path.join(bundleRoot, "使用说明书.md")).catch(() => undefined);
     if (canonicalManual === undefined || copiedManual === undefined || !canonicalManual.equals(copiedManual)) {
       problems.push("Offline bundle manual is missing or differs from the packaged canonical manual.");

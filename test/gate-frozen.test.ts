@@ -63,7 +63,7 @@ const FROZEN_MESSAGE = [
   "src/gate is frozen per ADR-0002; shrinking is fine and the baseline should then be lowered.",
   "Do not add *.ts files or non-empty lines under src/gate.",
   "After a shrink, set GATE_NONEMPTY_LINE_BASELINE to the new non-empty line count and drop deleted paths from GATE_TS_FILES.",
-  "See docs/decisions/ADR-0002-从权限门禁转向工具箱包管理器.md."
+  "See docs/adr/0002-pivot-to-agent-toolkit-package-manager.md."
 ].join(" ");
 
 function repoRelativeGatePath(entry: string): string {

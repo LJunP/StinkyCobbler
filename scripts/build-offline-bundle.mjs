@@ -91,7 +91,7 @@ export async function buildOfflineBundle(options = {}) {
       if (launcher.executable) await chmod(destination, 0o755);
     }
 
-    const canonicalManual = path.join(outDir, "package", "docs", "quickstart", "使用说明书.md");
+    const canonicalManual = path.join(outDir, "package", "docs", "gate", "user-manual.md");
     await copyFile(canonicalManual, path.join(outDir, "使用说明书.md"));
     await writeFile(path.join(outDir, "bundle-manifest.json"), `${JSON.stringify({
       version: 2,

@@ -71,8 +71,8 @@ describe("host skill documentation contract", () => {
     const [readme, security, manual, advanced] = await Promise.all([
       readRepoFile("README.md"),
       readRepoFile("SECURITY.md"),
-      readRepoFile("docs/quickstart/使用说明书.md"),
-      readRepoFile("docs/quickstart/高级用户配置指南.md"),
+      readRepoFile("docs/gate/user-manual.md"),
+      readRepoFile("docs/gate/advanced-config-guide.md"),
     ]);
 
     for (const document of [readme, security, manual, advanced]) {
@@ -97,8 +97,8 @@ describe("host skill documentation contract", () => {
     const [readme, security, manual, checklist] = await Promise.all([
       readRepoFile("README.md"),
       readRepoFile("SECURITY.md"),
-      readRepoFile("docs/quickstart/使用说明书.md"),
-      readRepoFile("docs/quickstart/发布前宿主验证清单.md"),
+      readRepoFile("docs/gate/user-manual.md"),
+      readRepoFile("docs/release/host-acceptance-checklist.md"),
     ]);
 
     for (const document of [readme, security, manual, checklist]) {
@@ -121,8 +121,8 @@ describe("host skill documentation contract", () => {
       readRepoFile("README.md"),
       readRepoFile("SECURITY.md"),
       readRepoFile("CHANGELOG.md"),
-      readRepoFile("docs/quickstart/使用说明书.md"),
-      readRepoFile("docs/quickstart/发布前宿主验证清单.md"),
+      readRepoFile("docs/gate/user-manual.md"),
+      readRepoFile("docs/release/host-acceptance-checklist.md"),
     ]);
 
     for (const document of [readme, security, manual, checklist]) {
@@ -139,12 +139,12 @@ describe("host skill documentation contract", () => {
 
   it("labels historical and declared-only documents without promoting future capabilities", async () => {
     const [core, roles, domain, history, nonDeveloper, threat] = await Promise.all([
-      readRepoFile("docs/archive/核心调度内核设计.md"),
-      readRepoFile("docs/archive/默认角色与调度策略.md"),
-      readRepoFile("docs/archive/通用领域模型与扩展机制.md"),
-      readRepoFile("docs/archive/产品设计基线.md"),
-      readRepoFile("docs/quickstart/非开发用户使用模型.md"),
-      readRepoFile("docs/architecture/威胁模型与权限设计.md"),
+      readRepoFile("docs/archive/core-scheduler-kernel-design.md"),
+      readRepoFile("docs/archive/default-roles-and-scheduling.md"),
+      readRepoFile("docs/archive/domain-model-and-extensions.md"),
+      readRepoFile("docs/archive/product-design-baseline-2026-08.md"),
+      readRepoFile("docs/gate/non-developer-model.md"),
+      readRepoFile("docs/gate/threat-model.md"),
     ]);
 
     expect(core).toMatch(/Dated historical design.*不是当前实现证明/iu);

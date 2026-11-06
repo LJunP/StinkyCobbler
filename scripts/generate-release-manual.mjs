@@ -15,7 +15,7 @@ export async function generateReleaseManual(source, out) {
 }
 
 async function main() {
-  const source = path.join(root, "docs", "quickstart", "使用说明书.md");
+  const source = path.join(root, "docs", "gate", "user-manual.md");
   const out = path.join(root, "STINKY-COBBLER-MANUAL.md");
   console.log(JSON.stringify(await generateReleaseManual(source, out), null, 2));
 }

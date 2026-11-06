@@ -122,7 +122,7 @@ export function validateSbomApplication(sbom, packageJson) {
 export function validateReleaseManual(releaseManual, canonicalManual) {
   return Buffer.isBuffer(releaseManual) && Buffer.isBuffer(canonicalManual) && releaseManual.equals(canonicalManual)
     ? []
-    : ["STINKY-COBBLER-MANUAL.md does not match docs/quickstart/使用说明书.md."];
+    : ["STINKY-COBBLER-MANUAL.md does not match docs/gate/user-manual.md."];
 }
 
 /** Requires one exact candidate tgz/zip and their two exact checksum files. */
@@ -246,7 +246,7 @@ export async function verifyReleaseArtifacts() {
   }
 
   const releaseManual = await readFile(path.join(root, "STINKY-COBBLER-MANUAL.md")).catch(() => undefined);
-  const canonicalManual = await readFile(path.join(root, "docs", "quickstart", "使用说明书.md")).catch(() => undefined);
+  const canonicalManual = await readFile(path.join(root, "docs", "gate", "user-manual.md")).catch(() => undefined);
   problems.push(...validateReleaseManual(releaseManual, canonicalManual));
 
   return { valid: problems.length === 0, sbomComponents: sbom?.components?.length ?? 0, tarballs: tarballs.length, offlineBundles: offlineBundles.length, problems };
