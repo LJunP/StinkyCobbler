@@ -2,7 +2,7 @@ name: ci
 
 on:
   push:
-    branches: [main, master, "codex/**"]
+    branches: [main, develop, "release/**", "hotfix/**"]
   pull_request:
 
 permissions:

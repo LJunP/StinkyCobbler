@@ -15,6 +15,7 @@
 - Update locked dependencies for advisories published after the candidate was prepared: `zod` 4.4.3 → 4.6.7, `body-parser` 2.3.0 → 2.4.0, `qs` 6.16.0 → 6.17.1, `hono` and `@hono/node-server` patch releases, and the development `vite` 8.3.0 → 8.3.6, all within the declared ranges. `npm audit --omit=dev` reports 0 vulnerabilities; the remaining moderate advisories are in development tooling only (ESLint and typescript-eslint, which need a major upgrade).
 - Tests strip inherited `GIT_DIR` and other repository-locating Git variables and pin the global/system Git config to an empty file, so Git fixtures can no longer write the real repository when the suite runs from a Git hook in a linked worktree.
 - Keep the rollback backup when a `modify` write applies bytes identical to the current file. Previously both the pre-image and post-image predicates were true, so apply recovery discarded the backup and a later `write rollback` had nothing to restore from.
+- The release gate accepts `release/<version>` and `hotfix/<version>` for the exact package version (legacy `codex/stinky-cobbler-<version>-hardening` is kept so earlier provenance can be re-verified). CI push triggers follow `main`, `develop`, `release/**`, and `hotfix/**`.
 
 ## 2.0.1
 

@@ -248,7 +248,7 @@ npm audit --registry=https://registry.npmjs.org --audit-level=high
 git diff --check
 ```
 
-上述 dispatch 门禁接受 `main`、精确版本标签或 `codex/stinky-cobbler-<版本>-hardening` 分支；其他开发分支可运行 `npm run check:version`，准备候选时再使用允许的 ref。标签 checkout 应把 `PACKAGE_REF` 显式设置为对应标签。
+上述 dispatch 门禁接受 `main`、精确版本标签、`release/<版本>` 或 `hotfix/<版本>`，并仍接受历史分支 `codex/stinky-cobbler-<版本>-hardening`（仅用于复核更早 provenance）；其他开发分支可运行 `npm run check:version`，准备候选时再使用允许的 ref。标签 checkout 应把 `PACKAGE_REF` 显式设置为对应标签。
 
 这些命令只验证当前源码候选的相应契约。正式发布还需同一候选 bytes 的真实 Codex/ZCode 消费者 E2E、最终资产/checksum/SBOM 复核，以及单独授权的 commit、tag、GitHub Release 和 npm publish。
 

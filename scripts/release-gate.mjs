@@ -6,12 +6,22 @@ import { isDirectInvocation } from "./release-utils.mjs";
 const STRICT_SEMVER = /^\d+\.\d+\.\d+$/;
 const RELEASE_GATE_OPTIONS = new Set(["--git-ref", "--expected"]);
 
+/**
+ * Legacy candidate branch `codex/stinky-cobbler-<version>-hardening`.
+ * Kept only so historical provenance (2.0.1 and 2.0.2) can still be re-verified.
+ * New release preparation uses `release/<version>`; urgent fixes use `hotfix/<version>`.
+ */
 export function releaseCandidateRef(version) {
   return `codex/stinky-cobbler-${version}-hardening`;
 }
 
+/** Exact refs a workflow_dispatch run may use for one package version, including the legacy candidate branch. */
+export function allowedDispatchRefs(version) {
+  return ["main", `v${version}`, `release/${version}`, `hotfix/${version}`, releaseCandidateRef(version)];
+}
+
 export function isAllowedDispatchRef(gitRef, version) {
-  return gitRef === "main" || gitRef === `v${version}` || gitRef === releaseCandidateRef(version);
+  return allowedDispatchRefs(version).includes(gitRef);
 }
 
 /**

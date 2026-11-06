@@ -123,6 +123,44 @@ describe("release contract", () => {
       .toMatchObject({ valid: false, shaValid: false });
   });
 
+  it("normalizes release and hotfix refs by replacing slashes, keeping the legacy provenance ref intact", () => {
+    const aligned = {
+      packageJsonVersion: "2.0.1",
+      lockfileVersion: "2.0.1",
+      lockfileRootVersion: "2.0.1",
+      sourceVersion: "2.0.1",
+      sha: "a".repeat(40)
+    };
+    expect(evaluateReleaseProvenance({
+      ...aligned,
+      eventName: "workflow_dispatch",
+      expectedVersion: "2.0.1",
+      gitRef: "release/2.0.1"
+    })).toMatchObject({
+      valid: true,
+      version: "2.0.1",
+      ref: "release-2.0.1",
+      sourceRef: "release/2.0.1"
+    });
+    expect(evaluateReleaseProvenance({
+      ...aligned,
+      eventName: "workflow_dispatch",
+      expectedVersion: "2.0.1",
+      gitRef: "hotfix/2.0.1"
+    })).toMatchObject({
+      valid: true,
+      version: "2.0.1",
+      ref: "hotfix-2.0.1",
+      sourceRef: "hotfix/2.0.1"
+    });
+    expect(evaluateReleaseProvenance({
+      ...aligned,
+      eventName: "workflow_dispatch",
+      expectedVersion: "2.0.1",
+      gitRef: "release/2.0.2"
+    })).toMatchObject({ valid: false, eventValid: false });
+  });
+
   it("builds every promised release asset from the same local candidate", async () => {
     const workflow = await readFile(path.join(root, ".github", "workflows", "release-candidate.yml"), "utf8");
     const offlineBuilder = await readFile(path.join(root, "scripts", "build-offline-bundle.mjs"), "utf8");
@@ -183,6 +221,21 @@ describe("release gate pure function", () => {
     expect(evaluateReleaseGate({ ...aligned, expectedVersion: "0.3.0", gitRef: "codex/stinky-cobbler-0.3.1-hardening" }))
       .toMatchObject({ valid: false, dispatchRefMismatch: true });
     expect(evaluateReleaseGate({ ...aligned, expectedVersion: "0.3.0", gitRef: "feature/release" }))
+      .toMatchObject({ valid: false, dispatchRefMismatch: true });
+  });
+
+  it("accepts workflow_dispatch only from the exact release or hotfix line", () => {
+    expect(evaluateReleaseGate({ ...aligned, expectedVersion: "0.3.0", gitRef: "release/0.3.0" }))
+      .toMatchObject({ valid: true, version: "0.3.0" });
+    expect(evaluateReleaseGate({ ...aligned, expectedVersion: "0.3.0", gitRef: "hotfix/0.3.0" }))
+      .toMatchObject({ valid: true, version: "0.3.0" });
+    expect(evaluateReleaseGate({ ...aligned, expectedVersion: "0.3.0", gitRef: "release/0.3.1" }))
+      .toMatchObject({ valid: false, dispatchRefMismatch: true });
+    expect(evaluateReleaseGate({ ...aligned, expectedVersion: "0.3.0", gitRef: "hotfix/0.3.1" }))
+      .toMatchObject({ valid: false, dispatchRefMismatch: true });
+    expect(evaluateReleaseGate({ ...aligned, expectedVersion: "0.3.0", gitRef: "feature/release" }))
+      .toMatchObject({ valid: false, dispatchRefMismatch: true });
+    expect(evaluateReleaseGate({ ...aligned, expectedVersion: "0.3.0", gitRef: "develop" }))
       .toMatchObject({ valid: false, dispatchRefMismatch: true });
   });
 
