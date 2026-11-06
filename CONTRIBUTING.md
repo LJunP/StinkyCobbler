@@ -31,6 +31,22 @@ git diff --check
 
 这些结果只证明被执行的当前源码检查，不等于真实 Codex/ZCode 宿主验证，也不等于 npm/GitHub 已发布。
 
+## 分支模型
+
+- `main`：只放已发布代码。每次发布打标签 `v<version>`。这是 GitHub 默认分支。
+- `develop`：下一版本的集成分支。当前集成的是 `3.0.0-rc.1`。
+- `release/<version>`：发布准备。用 PR 合并进 `main`，再把 `main` 合并回 `develop`。
+- `hotfix/<version>`：从 `main` 切出的紧急修复。用 PR 合并进 `main`，再合并回 `develop`。
+- `feature/<name>`：从 `develop` 切出的短生命周期分支，用 PR 合并回 `develop`。
+
+`feature/*` 的 PR 目标是 `develop`。`release/*` 和 `hotfix/*` 的 PR 目标是 `main`，合并后再把 `main` 回合并进 `develop`。
+
+`main` 和 `develop` 受保护：必须走 PR，六项 CI 矩阵任务（Ubuntu / macOS / Windows × Node 22 / 24）通过，禁止 force push，禁止删除。
+
+打标签、GitHub Release 和 `npm publish` 只由作者执行。合并不自动授权这些发布动作。
+
+旧分支名 `codex/stinky-cobbler-<version>-hardening` 已停用。release-gate 仍接受这个与版本精确对应的旧 ref，只为复核 2.0.1 和 2.0.2 的历史 provenance。
+
 ## 变更原则
 
 1. 先写清问题、边界和验收条件，再修改实现。

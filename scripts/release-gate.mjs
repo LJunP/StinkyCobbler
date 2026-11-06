@@ -6,12 +6,29 @@ import { isDirectInvocation } from "./release-utils.mjs";
 const STRICT_SEMVER = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/;
 const RELEASE_GATE_OPTIONS = new Set(["--git-ref", "--expected"]);
 
+/**
+ * Legacy candidate branch `codex/stinky-cobbler-<version>-hardening`.
+ * That naming is retired. The exact ref stays accepted only so historical
+ * provenance for 2.0.1 and 2.0.2 can still be re-verified.
+ * New release preparation uses `release/<version>`.
+ */
 export function releaseCandidateRef(version) {
   return `codex/stinky-cobbler-${version}-hardening`;
 }
 
+/** Exact workflow_dispatch refs for one package version. Other versions of `release/` and `hotfix/` are absent. */
+export function allowedDispatchRefs(version) {
+  return [
+    "main",
+    `v${version}`,
+    `release/${version}`,
+    `hotfix/${version}`,
+    releaseCandidateRef(version)
+  ];
+}
+
 export function isAllowedDispatchRef(gitRef, version) {
-  return gitRef === "main" || gitRef === `v${version}` || gitRef === releaseCandidateRef(version);
+  return allowedDispatchRefs(version).includes(gitRef);
 }
 
 /**
@@ -24,7 +41,7 @@ export function isAllowedDispatchRef(gitRef, version) {
  * @param {unknown} input.lockfileVersion
  * @param {unknown} input.lockfileRootVersion
  * @param {unknown} input.sourceVersion
- * @param {string} [input.gitRef] Git ref such as a tag (`v0.3.0`) or a branch (`main`).
+ * @param {string} [input.gitRef] Git ref: `main`, `v<version>`, `release/<version>`, `hotfix/<version>`, or the legacy candidate branch.
  * @param {string} [input.expectedVersion] Explicit version declared by a workflow_dispatch run.
  * @returns {{valid: boolean, version?: string, actual: object, mismatches: string[], tagMismatch?: boolean, tagNotApplicable?: boolean, dispatchMismatch?: boolean, dispatchRefMismatch?: boolean}}
  */

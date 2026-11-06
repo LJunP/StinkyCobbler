@@ -12,6 +12,9 @@ export function evaluateReleaseProvenance(input) {
     ? input.gitRef === `v${result.version}`
     : input.eventName === "workflow_dispatch" && isAllowedDispatchRef(input.gitRef, result.version);
   const shaValid = typeof input.sha === "string" && /^[0-9a-f]{40}$/.test(input.sha);
+  // Artifact names reject '/'. Allowed refs add only that separator, including
+  // `release/<version>`, `hotfix/<version>`, and the legacy `codex/...` branch.
+  // The same slash-to-dash rewrite keeps the ref in [A-Za-z0-9.-].
   const artifactRef = typeof input.gitRef === "string" ? input.gitRef.replaceAll("/", "-") : input.gitRef;
   return {
     valid: result.valid && eventValid && shaValid,

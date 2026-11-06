@@ -248,11 +248,13 @@ npm run test:package
 node scripts/release-gate.mjs --expected "$PACKAGE_VERSION" --git-ref "$PACKAGE_REF"
 ```
 
-不带参数时，它只核对 `package.json`、`package-lock.json` 和 `src/version.ts` 的版本一致。同时传入 `--expected` 和 `--git-ref` 时，ref 只能是下面三类：`main`、精确版本标签 `v<版本>`、`codex/stinky-cobbler-<版本>-hardening`。其他 ref 会被 `dispatchRefMismatch` 拒绝。这些命令只检查当前源码候选的对应契约。绿测试、打包和 release gate 都不等于 npm publish、git tag 或 GitHub Release。
+不带参数时，它只核对 `package.json`、`package-lock.json` 和 `src/version.ts` 的版本一致。同时传入 `--expected` 和 `--git-ref` 时，ref 只能是：`main`、精确版本标签 `v<版本>`、`release/<版本>`、`hotfix/<版本>`，以及仅用于复核历史 provenance 的旧 ref `codex/stinky-cobbler-<版本>-hardening`（2.0.1、2.0.2）。其他 ref，包括另一个版本的 `release/` 或 `hotfix/`，会被 `dispatchRefMismatch` 拒绝。这些命令只检查当前源码候选的对应契约。绿测试、打包和 release gate 都不等于 npm publish、git tag 或 GitHub Release。
+
+分支怎么切、合进哪里，见 [CONTRIBUTING 的「分支模型」](./CONTRIBUTING.md#分支模型)。
 
 ## 版本与发布
 
-2.0.1 是已经发布的版本。2.0.2 要从 `codex/stinky-cobbler-2.0.2-hardening` 发布，不能把含有 3.x 的分支合并进 main 来发 2.0.2。该分支已补 Windows fsync 修复和依赖高危修复，2026-11-05 本地发布前验证全部通过；推送、六矩阵 CI、tag `v2.0.2`、`npm publish` 和 GitHub Release 还没有做。
+2.0.1 是已经发布的版本。2.0.2 要从 `release/2.0.2` 发布，不能把含有 3.x 的分支合并进 main 来发 2.0.2。该分支已补 Windows fsync 修复和依赖高危修复，2026-11-05 本地发布前验证全部通过；推送、六矩阵 CI、tag `v2.0.2`、`npm publish` 和 GitHub Release 还没有做。
 
 3.x 分支 `codex/stinky-cobbler-3.0-m0` 已推送，六矩阵 CI（Ubuntu / macOS / Windows × Node 22 / 24）通过；没有 tag，没有 `npm publish`，四个宿主的安装冒烟仍是 `UNKNOWN / PENDING`，GA 发布被挡住。最新状态以 [PROGRESS](./docs/PROGRESS.md) 为准。
 

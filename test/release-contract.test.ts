@@ -98,17 +98,37 @@ describe("release contract", () => {
       .toMatchObject({ valid: true, version: "2.0.1", ref: "main" });
     expect(evaluateReleaseProvenance({ ...aligned, eventName: "push", gitRef: "v2.0.1" }))
       .toMatchObject({ valid: true, version: "2.0.1", ref: "v2.0.1" });
-    expect(evaluateReleaseProvenance({
+    const legacyProvenance = evaluateReleaseProvenance({
       ...aligned,
       eventName: "workflow_dispatch",
       expectedVersion: "2.0.1",
       gitRef: "codex/stinky-cobbler-2.0.1-hardening"
-    })).toMatchObject({
+    });
+    expect(legacyProvenance).toMatchObject({
       valid: true,
       version: "2.0.1",
       ref: "codex-stinky-cobbler-2.0.1-hardening",
       sourceRef: "codex/stinky-cobbler-2.0.1-hardening"
     });
+    const releaseLine = {
+      packageJsonVersion: "0.3.0",
+      lockfileVersion: "0.3.0",
+      lockfileRootVersion: "0.3.0",
+      sourceVersion: "0.3.0",
+      sha: "b".repeat(40),
+      eventName: "workflow_dispatch",
+      expectedVersion: "0.3.0"
+    };
+    const safeArtifactRef = /^[A-Za-z0-9.-]+$/;
+    expect(legacyProvenance.ref).toMatch(safeArtifactRef);
+    for (const [gitRef, artifactRef] of [["release/0.3.0", "release-0.3.0"], ["hotfix/0.3.0", "hotfix-0.3.0"]]) {
+      const provenance = evaluateReleaseProvenance({ ...releaseLine, gitRef });
+      expect(provenance).toMatchObject({ valid: true, version: "0.3.0", ref: artifactRef, sourceRef: gitRef });
+      expect(provenance.ref).toMatch(safeArtifactRef);
+      expect(provenance.ref).not.toContain("/");
+    }
+    expect(evaluateReleaseProvenance({ ...releaseLine, gitRef: "release/3.0.0-rc.1" })).toMatchObject({ valid: false, eventValid: false });
+    expect(evaluateReleaseProvenance({ ...releaseLine, gitRef: "develop" })).toMatchObject({ valid: false, eventValid: false });
     expect(evaluateReleaseProvenance({
       ...aligned,
       eventName: "workflow_dispatch",
@@ -175,14 +195,32 @@ describe("release gate pure function", () => {
     expect(evaluateReleaseGate({ ...aligned, gitRef: "main" })).toMatchObject({ valid: true, tagNotApplicable: true });
   });
 
-  it("accepts workflow_dispatch only from main, its exact tag, or its version-bound candidate branch", () => {
+  it("accepts workflow_dispatch only from main, its exact tag, release/<version>, hotfix/<version>, or the legacy version-bound candidate branch", () => {
     expect(evaluateReleaseGate({ ...aligned, expectedVersion: "0.3.0", gitRef: "main" })).toMatchObject({ valid: true });
     expect(evaluateReleaseGate({ ...aligned, expectedVersion: "0.3.0", gitRef: "v0.3.0" })).toMatchObject({ valid: true });
+    expect(evaluateReleaseGate({ ...aligned, expectedVersion: "0.3.0", gitRef: "release/0.3.0" })).toMatchObject({ valid: true });
+    expect(evaluateReleaseGate({ ...aligned, expectedVersion: "0.3.0", gitRef: "hotfix/0.3.0" })).toMatchObject({ valid: true });
     expect(evaluateReleaseGate({ ...aligned, expectedVersion: "0.3.0", gitRef: "codex/stinky-cobbler-0.3.0-hardening" }))
       .toMatchObject({ valid: true });
     expect(evaluateReleaseGate({ ...aligned, expectedVersion: "0.3.0", gitRef: "codex/stinky-cobbler-0.3.1-hardening" }))
       .toMatchObject({ valid: false, dispatchRefMismatch: true });
+    expect(evaluateReleaseGate({ ...aligned, expectedVersion: "0.3.0", gitRef: "release/0.3.1" }))
+      .toMatchObject({ valid: false, dispatchRefMismatch: true });
+    expect(evaluateReleaseGate({ ...aligned, expectedVersion: "0.3.0", gitRef: "hotfix/0.3.1" }))
+      .toMatchObject({ valid: false, dispatchRefMismatch: true });
     expect(evaluateReleaseGate({ ...aligned, expectedVersion: "0.3.0", gitRef: "feature/release" }))
+      .toMatchObject({ valid: false, dispatchRefMismatch: true });
+    expect(evaluateReleaseGate({ ...aligned, expectedVersion: "0.3.0", gitRef: "develop" }))
+      .toMatchObject({ valid: false, dispatchRefMismatch: true });
+    const prerelease = {
+      packageJsonVersion: "3.0.0-rc.1",
+      lockfileVersion: "3.0.0-rc.1",
+      lockfileRootVersion: "3.0.0-rc.1",
+      sourceVersion: "3.0.0-rc.1"
+    };
+    expect(evaluateReleaseGate({ ...prerelease, expectedVersion: "3.0.0-rc.1", gitRef: "release/3.0.0-rc.1" })).toMatchObject({ valid: true });
+    expect(evaluateReleaseGate({ ...prerelease, expectedVersion: "3.0.0-rc.1", gitRef: "hotfix/3.0.0-rc.1" })).toMatchObject({ valid: true });
+    expect(evaluateReleaseGate({ ...prerelease, expectedVersion: "3.0.0-rc.1", gitRef: "release/3.0.0" }))
       .toMatchObject({ valid: false, dispatchRefMismatch: true });
   });
 
