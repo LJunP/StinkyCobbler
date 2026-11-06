@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { evaluateLease, evaluateTask } from "../src/policy/evaluate.js";
 import { assertTransition } from "../src/domain/task-state.js";
+import { asLegacyLease } from "./helpers/lease.js";
 
 const task = { id: "task-1", workspaceId: "ws", goal: "Test", requestedOutputs: ["document"], riskLevel: "L0" as const, state: "DRAFT" as const };
-const lease = { id: "lease-1", taskId: "task-1", agentId: "agent", role: "scout", capability: "repository-read", level: "L0" as const, workspace: "ws", readScope: ["docs"], writeSet: [], issuedAt: "2026-01-01T00:00:00Z", expiresAt: "2099-01-01T00:00:00Z", maxToolCalls: 1, status: "active" as const };
+const lease = asLegacyLease({ id: "lease-1", taskId: "task-1", agentId: "agent", role: "scout", capability: "repository-read", level: "L0" as const, workspace: "ws", readScope: ["docs"], writeSet: [], issuedAt: "2026-01-01T00:00:00Z", expiresAt: "2099-01-01T00:00:00Z", maxToolCalls: 1, status: "active" as const });
 
 function minutesAgo(minutes: number): string {
   return new Date(Date.now() - minutes * 60_000).toISOString();

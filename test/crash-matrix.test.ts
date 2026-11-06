@@ -57,7 +57,7 @@ async function truncateTail(workspace: any, count = 1): Promise<void> {
 async function corruptMiddleHash(workspace: any): Promise<void> {
   const lines = await ledgerLines(workspace);
   const index = Math.floor(lines.length / 2);
-  lines[index] = lines[index].replace(/"hash":"[^"]+"/, `"hash":"sha256:${"0".repeat(64)}"`);
+  lines[index] = lines[index]!.replace(/"hash":"[^"]+"/, `"hash":"sha256:${"0".repeat(64)}"`);
   await writeFile(path.join(workspace.directory, LEDGER_FILE), `${lines.join("\n")}\n`, "utf8");
 }
 
@@ -154,7 +154,7 @@ describe("crash consistency matrix", () => {
       await createRun(workspace, run("FAILED"));
       const pending = await import("../src/storage/audit-outbox.js").then(({ listAuditOutbox }) => listAuditOutbox(workspace));
       await corruptMiddleHash(workspace);
-      await expect(recoverMcpAudit(workspace, schemas, pending[0].id)).rejects.toBeTruthy();
+      await expect(recoverMcpAudit(workspace, schemas, pending[0]!.id)).rejects.toBeTruthy();
       await expect(reconcileRuntimeRun(workspace, schemas, "crash-run", { repair: true })).rejects.toBeTruthy();
     });
   });

@@ -225,6 +225,7 @@ export async function findRuntimeFinalization(workspace: LocalWorkspace, runId: 
 }
 
 export function injectRuntimeFinalizationFaultOnceForTest(workspace: LocalWorkspace, point: RuntimeFinalizationFaultPoint): void {
+  if (process.env.NODE_ENV !== "test") throw finalizationError("RUNTIME_FINALIZATION_TEST_FAULT_DENIED", "Runtime finalization fault injection is available only under the test runner.", {});
   injectedFaults.set(workspace.directory, point);
 }
 

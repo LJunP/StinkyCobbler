@@ -5,6 +5,7 @@ import path from "node:path";
 import { promisify } from "node:util";
 import { afterEach, describe, expect, it } from "vitest";
 import { hashTaskAuthority, TASK_AUTHORITY_POLICY_VERSION } from "../src/storage/task-authority.js";
+import type { TaskCharter } from "../src/contracts/types.js";
 
 const execFileAsync = promisify(execFile);
 const projectRoot = path.resolve(import.meta.dirname, "..");
@@ -69,7 +70,7 @@ describe("end-to-end user path (temporary HOME)", () => {
       subjectKind: "task-authority",
       subjectId: "e2e-task",
       subjectVersion: 1,
-      subjectHash: hashTaskAuthority(designedTask),
+      subjectHash: hashTaskAuthority(designedTask as TaskCharter),
       capability: "task-execution",
       budget: { maxToolCalls: 100, expiresAt },
       policyVersion: TASK_AUTHORITY_POLICY_VERSION,
@@ -91,7 +92,7 @@ describe("end-to-end user path (temporary HOME)", () => {
       subjectKind: "task-authority",
       subjectId: "e2e-task",
       subjectVersion: 1,
-      subjectHash: hashTaskAuthority(runningTask),
+      subjectHash: hashTaskAuthority(runningTask as TaskCharter),
       capability: "repository-write",
       budget: { maxToolCalls: 100, expiresAt },
       policyVersion: TASK_AUTHORITY_POLICY_VERSION,
@@ -173,7 +174,7 @@ describe("end-to-end user path (temporary HOME)", () => {
       subjectKind: "task-authority",
       subjectId: "e2e-task",
       subjectVersion: 1,
-      subjectHash: hashTaskAuthority(runningTask),
+      subjectHash: hashTaskAuthority(runningTask as TaskCharter),
       capability: "repository-write",
       budget: { maxToolCalls: 100, expiresAt },
       policyVersion: TASK_AUTHORITY_POLICY_VERSION,

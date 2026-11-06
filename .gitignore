@@ -15,3 +15,9 @@ sbom.cyclonedx.json
 
 # Offline bundle (built artifact)
 *-offline-full.zip
+
+# Local, SHA-bound release evidence; source commits remain artifact-free.
+/release-artifacts/
+
+# Archify architecture reports (generated locally)
+/.archify/

@@ -179,7 +179,7 @@ async function createCanonicalReadCases(): Promise<{ workspace: Awaited<ReturnTy
   });
   const reviewed = await recordCurrentReviewForTest(workspace, schemas, run.runId, subtask.subtaskId,
     reviewInput("ACCEPTED", 90, [], "canonical fixture accepted", ["checked"]));
-  const receiptId = reviewed.review.validatorReceiptIds[0]!;
+  const receiptId = reviewed.review.validatorReceiptIds![0]!;
   return {
     workspace,
     cases: [
@@ -592,7 +592,7 @@ describe("orchestration loop (storage)", () => {
     expect(dispatched.leases.length).toBe(1);
     // lease is bound to the subtask
     const leases = await import("../src/storage/leases.js").then((m) => m.listLeases(workspace));
-    expect(leases[0].subtaskRef).toBe(subtask.subtaskId);
+    expect(leases[0]!.subtaskRef).toBe(subtask.subtaskId);
 
     await beginCurrentAttemptForTest(workspace, run.runId, subtask.subtaskId);
     await writeFile(path.join(root, "docs", "guide.md"), "# Guide\n", "utf8");
@@ -834,7 +834,7 @@ describe("2.0 gap coverage", () => {
     const intent = await requestWrites(workspace, schemas, "-", "-", [{ target: "docs/existing.md", action: "modify", purpose: "worker change" }], {
       autoAllow: true, runRef: run.runId, subtaskRef: subtask.subtaskId
     });
-    await applyWrite(workspace, schemas, writeLease, intent, "docs/existing.md", "worker changed it\n");
+    await applyWrite(workspace, schemas, writeLease!, intent, "docs/existing.md", "worker changed it\n");
     await reportCurrentArtifactForTest(workspace, schemas, run.runId, subtask.subtaskId, { path: "docs/existing.md", kind: "file" });
     await recordCurrentReviewForTest(workspace, schemas, run.runId, subtask.subtaskId, reviewInput("REJECTED", 30, [{ location: "docs/existing.md", problem: "regressed", suggestion: "revert" }], "reviewed", ["good"]));
     // rollback restores the pre-write content (subtask-mode intent rollback)
@@ -1147,7 +1147,7 @@ describe("2.0.1 orchestration authority and completion gates", () => {
     });
     expect(result.review).not.toHaveProperty("validatorEvidence");
     expect(result.review.validatorReceiptIds).toHaveLength(1);
-    const receipt = await getValidatorReceipt(workspace, result.review.validatorReceiptIds[0]!);
+    const receipt = await getValidatorReceipt(workspace, result.review.validatorReceiptIds![0]!);
     expect(receipt).toMatchObject({
       source: "ENGINE_EXECUTED",
       validatorId: "artifact-bytes",

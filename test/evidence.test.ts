@@ -83,13 +83,13 @@ describe("persistent EvidenceRef metadata", () => {
     const saved = await recordEvidenceOwned(workspace, schemas, evidence({ id: "evidence-owned" }), {
       runId: owned.runId,
       ownerToken: owned.ownerToken!,
-      expectedEpoch: owned.fenceEpoch
+      expectedEpoch: owned.fenceEpoch!
     });
     expect(saved.id).toBe("evidence-owned");
     await expect(recordEvidenceOwned(workspace, schemas, evidence({ id: "evidence-owned" }), {
       runId: owned.runId,
       ownerToken: "b".repeat(64),
-      expectedEpoch: owned.fenceEpoch
+      expectedEpoch: owned.fenceEpoch!
     })).rejects.toMatchObject({ code: "RUNTIME_RUN_FENCED" });
     await expect(recordEvidenceOwned(workspace, schemas, evidence({ id: "evidence-epoch" }), {
       runId: owned.runId,
@@ -99,7 +99,7 @@ describe("persistent EvidenceRef metadata", () => {
     await expect(recordEvidenceOwned(workspace, schemas, evidence({ id: "evidence-terminal" }), {
       runId: terminal.runId,
       ownerToken: terminal.ownerToken!,
-      expectedEpoch: terminal.fenceEpoch
+      expectedEpoch: terminal.fenceEpoch!
     })).rejects.toMatchObject({ code: "RUNTIME_RUN_FENCED" });
 
     await expect(getEvidence(workspace, "evidence-epoch")).rejects.toMatchObject({ code: "EVIDENCE_NOT_FOUND" });
@@ -127,7 +127,7 @@ describe("persistent EvidenceRef metadata", () => {
     const persisted = recordEvidenceOwned(workspace, schemas, evidence({ id: "evidence-cancel-first" }), {
       runId: owned.runId,
       ownerToken: owned.ownerToken!,
-      expectedEpoch: owned.fenceEpoch
+      expectedEpoch: owned.fenceEpoch!
     });
     release.resolve();
     await holder;
@@ -152,7 +152,7 @@ describe("persistent EvidenceRef metadata", () => {
     const persisted = recordEvidenceOwned(workspace, schemas, evidence({ id: "evidence-evidence-first" }), {
       runId: owned.runId,
       ownerToken: owned.ownerToken!,
-      expectedEpoch: owned.fenceEpoch
+      expectedEpoch: owned.fenceEpoch!
     });
     const cancelled = transitionRun(workspace, owned.runId, "CANCELLED", {
       errorCode: "RUNTIME_CANCELLED",

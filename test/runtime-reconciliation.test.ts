@@ -57,7 +57,7 @@ describe("runtime Run/Receipt reconciliation", () => {
     expect(after.receipts[0]).toMatchObject({ status: "FAILED", runId: value.run.runId, facts: [] });
     const lifecycleEntries = (await listLedgerEntries(value.workspace)).filter((entry) => entry.runId === value.run.runId);
     expect(lifecycleEntries.map((entry) => entry.event)).toEqual(["run-created", "receipt-recorded"]);
-    await expect(reconcileRuntimeRun(value.workspace, value.schemas, value.run.runId, { repair: true })).resolves.toMatchObject({ repaired: false, receipts: [expect.objectContaining({ id: after.receipts[0].id })] });
+    await expect(reconcileRuntimeRun(value.workspace, value.schemas, value.run.runId, { repair: true })).resolves.toMatchObject({ repaired: false, receipts: [expect.objectContaining({ id: after.receipts[0]!.id })] });
   });
 
   it("recovers a completed Run without inventing the lost narrative", async () => {

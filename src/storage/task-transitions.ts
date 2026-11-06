@@ -288,6 +288,7 @@ export async function listTaskTransitionTransactions(workspace: LocalWorkspace, 
 }
 
 export function injectTaskTransitionFaultForTesting(workspace: LocalWorkspace, point: TaskTransitionFaultPoint): void {
+  if (process.env.NODE_ENV !== "test") throw transitionError("TASK_TRANSITION_TEST_FAULT_DENIED", "Task transition fault injection is available only under the test runner.", {});
   injectedFaults.set(workspace.directory, point);
 }
 

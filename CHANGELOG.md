@@ -2,6 +2,21 @@
 
 > 发布状态是实时事实：请查询官方 npm registry 与 GitHub tags/Releases。下面按版本保留的发布准备状态属于对应日期的历史记录，不能用于判断当前是否已发布或已完成真实宿主验证。
 
+## 2.0.2 (release candidate; verify npm and GitHub Releases for publication status)
+
+- MCP controlled tools now surface engine error codes (for example `WRITE_PREIMAGE_MISMATCH`, `WRITE_INTENT_NOT_CONFIRMED`) with their messages instead of a blanket `INVOCATION_FAILED`, and mark every denial or failure with MCP `isError: true`. Non-engine exceptions remain opaque.
+- Business-file writes, backups, deletes and rollback restores now fsync the file before its atomic rename and fsync the parent directory afterwards, so a crash can no longer leave an applied target whose backup never reached disk.
+- `entry preflight --host` rejects unknown hosts with `ENTRY_HOST_INVALID` (exit 2) instead of crashing; `entry install-host` exits with the new code 7 (`CONFLICT`) when it preserves user-edited managed content.
+- The two remaining fault-injection hooks without a test-runner guard now refuse to arm outside `NODE_ENV=test`.
+- Document how to diagnose and clear a leftover `.stinky-cobbler/workspace.lock/` after a crashed control-plane process.
+- Update locked dependencies flagged by the current npm advisory data: `@modelcontextprotocol/sdk` 1.12.x → 1.32.1 (GHSA-6qxp-vccf-f47h), `fast-uri` → 3.1.9, `smol-toml` → 1.9.1, and the transitive `ip-address`, `proxy-addr`, `source-map-js`; `npm audit --audit-level=low` reported 0 vulnerabilities on the resolved tree at that time. The public MCP entry is stdio-only, so the HTTP/OAuth advisories were not exploitable through this package, but the fix is cheap and keeps the candidate clean.
+- Development tooling (not shipped): ESLint 10 + typescript-eslint with file/function size, nesting and bare-`throw new Error` rules for new code, dependency-cruiser with a frozen baseline of the 15 known 2.x storage cycles (`npm run lint:deps`), Prettier config, `.editorconfig`, `.nvmrc`, husky/lint-staged hooks, Dependabot, and `@vitest/coverage-v8` (`npm run coverage`).
+- Windows: file fsync now opens the file read-write, because Windows `FlushFileBuffers` rejects a read-only handle with `EPERM`; a read-only attribute is cleared only around the flush and restored afterwards. POSIX keeps the read-only open. Previously every controlled write, delete and rollback failed on Windows.
+- Update locked dependencies for advisories published after the candidate was prepared: `zod` 4.4.3 → 4.6.7, `body-parser` 2.3.0 → 2.4.0, `qs` 6.16.0 → 6.17.1, `hono` and `@hono/node-server` patch releases, and the development `vite` 8.3.0 → 8.3.6, all within the declared ranges. `npm audit --omit=dev` reports 0 vulnerabilities; the remaining moderate advisories are in development tooling only (ESLint and typescript-eslint, which need a major upgrade).
+- Tests strip inherited `GIT_DIR` and other repository-locating Git variables and pin the global/system Git config to an empty file, so Git fixtures can no longer write the real repository when the suite runs from a Git hook in a linked worktree.
+- Keep the rollback backup when a `modify` write applies bytes identical to the current file. Previously both the pre-image and post-image predicates were true, so apply recovery discarded the backup and a later `write rollback` had nothing to restore from.
+- The release gate accepts `release/<version>` and `hotfix/<version>` for the exact package version (legacy `codex/stinky-cobbler-<version>-hardening` is kept so earlier provenance can be re-verified). CI push triggers follow `main`, `develop`, `release/**`, and `hotfix/**`.
+
 ## 2.0.1
 
 - Make Git-read test repositories quiescent by disabling their automatic maintenance before fixture commits. Git 2.55 background maintenance can remove `objects/maintenance.lock` during the fail-closed metadata scan; production traversal and its rejection behavior remain unchanged.

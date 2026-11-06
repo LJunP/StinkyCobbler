@@ -1,6 +1,6 @@
 {
   "name": "stinky-cobbler",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "description": "Verifiable permission and repository-change gate for local AI coding agents.",
   "type": "module",
   "repository": {
@@ -48,13 +48,21 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:integration": "npm run build && vitest run test/mcp-stdio.integration.test.ts",
+    "test:integration": "vitest run --project integration",
     "test:package": "npm run build && node scripts/package-smoke.mjs",
-    "lint": "npm run typecheck",
+    "lint": "npm run typecheck && npm run typecheck:tests && npm run lint:eslint && npm run lint:deps",
     "check:version": "node scripts/check-version.mjs",
     "prepack": "npm run build && npm run check:version",
     "dev": "tsx src/cli.ts",
-    "dev:mcp": "tsx src/mcp-server.ts"
+    "dev:mcp": "tsx src/mcp-server.ts",
+    "test:unit": "vitest run --project unit",
+    "typecheck:tests": "node scripts/check-test-types.mjs",
+    "lint:eslint": "eslint .",
+    "lint:deps": "depcruise src --config .dependency-cruiser.cjs --ignore-known",
+    "lint:deps:baseline": "depcruise src --config .dependency-cruiser.cjs --output-type baseline > .dependency-cruiser-known-violations.json",
+    "format": "prettier --write \"src/{core,hosts,io,app}/**/*.ts\"",
+    "coverage": "vitest run --project unit --coverage",
+    "prepare": "husky"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.1",
@@ -65,10 +73,21 @@
     "yaml": "^2.7.1"
   },
   "devDependencies": {
+    "@eslint/js": "10.0.1",
     "@types/node": "^22.15.3",
+    "@vitest/coverage-v8": "4.1.11",
+    "dependency-cruiser": "18.7.0",
+    "eslint": "10.13.0",
     "fflate": "0.8.3",
+    "husky": "9.1.7",
+    "lint-staged": "17.6.0",
+    "prettier": "3.9.10",
     "tsx": "^4.19.3",
     "typescript": "^5.8.3",
+    "typescript-eslint": "8.72.0",
     "vitest": "4.1.11"
+  },
+  "lint-staged": {
+    "*.{ts,mjs,cjs,js}": "eslint"
   }
 }

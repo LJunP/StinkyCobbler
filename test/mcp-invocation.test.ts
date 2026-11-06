@@ -21,6 +21,7 @@ import { issueLease, revokeLease } from "../src/storage/leases.js";
 import { addSubtask, beginSubtask, createContract, createRun, dispatchSubtask, recordReview, reportArtifact } from "../src/storage/orchestration.js";
 import { readFile } from "node:fs/promises";
 import { approvePlanConfirmation, approveTaskCapability, approveWriteIntent } from "./helpers/authority.js";
+import { ExitCode, StinkyCobblerError } from "../src/errors.js";
 
 const roots: string[] = [];
 afterEach(async () => { await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true }))); });
@@ -135,7 +136,7 @@ describe("controlled MCP invocation", () => {
     );
     expect(result).toMatchObject({ decision: { code: "WORKSPACE_CONFIG_INVALID" } });
     const reason = (result as { decision: { reasons: string[] } }).decision.reasons[0];
-    expect(reason.length).toBeLessThanOrEqual(200);
+    expect(reason!.length).toBeLessThanOrEqual(200);
     expect(reason).not.toMatch(/[\x00-\x1f]/);
     expect(called).toBe(false);
     await expect(getLeaseCallUsage(workspace, "lease")).resolves.toBe(0);
@@ -646,9 +647,32 @@ describe("controlled MCP invocation", () => {
       async (access) => writeRepositoryFile(access, schemas, { writeIntentId: intent.writeIntentId, target: "notes.md", content: "updated\n" }),
       dependencies
     );
-    expect(result).toMatchObject({ decision: { code: "INVOCATION_FAILED" } });
+    expect(result).toMatchObject({ decision: { allowed: false, code: "WRITE_INTENT_NOT_CONFIRMED" } });
     const stored = await import("node:fs/promises").then(({ readFile: rf }) => rf(path.join(root, "notes.md"), "utf8"));
     expect(stored).toBe("original\n");
     await expect(getLeaseCallUsage(workspace, writeLease.id)).resolves.toBe(1);
+  });
+  it("surfaces the engine error code when the capability throws, and keeps generic failures opaque", async () => {
+    const { root, workspace, schemas, issuedLease } = await setup();
+    const engine = await invokeControlled(
+      schemas,
+      { leaseId: issuedLease.id, taskId: "task", role: "scout", workspace: root },
+      "repository-read",
+      async () => { throw new StinkyCobblerError("WRITE_PREIMAGE_MISMATCH", ExitCode.VALIDATION, "Target bytes changed since the intent was requested.", { target: "notes.md" }); },
+      dependencies
+    );
+    expect(engine).toMatchObject({ decision: { allowed: false, code: "WRITE_PREIMAGE_MISMATCH", reasons: ["Target bytes changed since the intent was requested."] } });
+
+    const generic = await invokeControlled(
+      schemas,
+      { leaseId: issuedLease.id, taskId: "task", role: "scout", workspace: root },
+      "repository-read",
+      async () => { throw new Error("/private/path/leaked"); },
+      dependencies
+    );
+    expect(generic).toMatchObject({ decision: { allowed: false, code: "INVOCATION_FAILED" } });
+    expect(JSON.stringify(generic)).not.toContain("/private/path/leaked");
+    const receipts = await listReceipts(workspace, "task");
+    expect(receipts.filter((receipt) => receipt.status === "FAILED")).toHaveLength(2);
   });
 });

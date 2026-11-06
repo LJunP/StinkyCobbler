@@ -1,12 +1,13 @@
 # Stinky Cobbler
 
-> ### 必要维护模式（2026-09-21）· 新功能冻结
+> ### 3.x 方向声明（2026-10-20）· 2.x 进入维护
 >
-> 保留公开源码仓库和已发布 npm 包，仓库不归档；以后仅考虑已发布版本可复现的严重缺陷与必要安全修复。
-> 已实现 CLI/MCP 受控仓库访问、写前检查、条件回滚和本地审计；保证仍以 Cooperative Mode 为前提，不是操作系统级沙箱。
-> 历史测试、发布记录和未完成的真实双宿主验收分别保留；本次仅更新文档，未补验收、修改业务代码或发布新版本。
-> 不再增加模型接入、Agent 调度或平台功能；历史路线与提示词不作为恢复功能开发的入口。
-> 本项目已退出作者的 LLM 推理基础设施学习路线，不承担其里程碑；后续学习与新项目不依赖本仓库的代码、数据或运行环境。
+> 项目正转向 **AI agent 工具箱的包管理器**：一份 `toolkit.yaml` 描述你的 skill、MCP server、指令/记忆文件与知识源，
+> 由本工具安全地（预览 diff、hash 校验、冲突不覆盖、内容寻址备份、一键回滚、本地账本）落到 Codex / Claude Code / Cursor / ZCode。
+> 决策与理由见 [ADR-0002](./docs/decisions/ADR-0002-从权限门禁转向工具箱包管理器.md)，需求见 [PRD](./docs/PRD.md)，路线见 [PLAN](./docs/PLAN.md)。
+>
+> 下面描述的 2.x 权限门禁内核进入维护：只修已发布版本可复现的严重缺陷与必要安全修复，不再扩展；3.x 中以 `gate` 命令组保留并标记 deprecated。
+> 2.x 的全部保证仍以 Cooperative Mode 为前提，不是操作系统级沙箱；真实双宿主验收仍未完成。
 
 > **Codex / ZCode 本地仓库的可验证权限与变更门禁。**
 
@@ -247,13 +248,13 @@ npm audit --registry=https://registry.npmjs.org --audit-level=high
 git diff --check
 ```
 
-上述 dispatch 门禁接受 `main`、精确版本标签或 `codex/stinky-cobbler-<版本>-hardening` 分支；其他开发分支可运行 `npm run check:version`，准备候选时再使用允许的 ref。标签 checkout 应把 `PACKAGE_REF` 显式设置为对应标签。
+上述 dispatch 门禁接受 `main`、精确版本标签、`release/<版本>` 或 `hotfix/<版本>`，并仍接受历史分支 `codex/stinky-cobbler-<版本>-hardening`（仅用于复核更早 provenance）；其他开发分支可运行 `npm run check:version`，准备候选时再使用允许的 ref。标签 checkout 应把 `PACKAGE_REF` 显式设置为对应标签。
 
 这些命令只验证当前源码候选的相应契约。正式发布还需同一候选 bytes 的真实 Codex/ZCode 消费者 E2E、最终资产/checksum/SBOM 复核，以及单独授权的 commit、tag、GitHub Release 和 npm publish。
 
 ## 维护状态与历史阶段
 
-**2.0.1 已发布**（历史发布记录：npm `latest` = 2.0.1，tag `v2.0.1` → `cf7e1dc`，GitHub Release 2026-09-13）。受控执行内核已有实现和自动化回归；**真实双宿主验收仍未完成**，作为验证边界保留，不作为本次进入维护模式的前置。新功能冻结，只保留上述必要维护范围。
+**2.0.1 已发布**（历史发布记录：npm `latest` = 2.0.1，tag `v2.0.1` → `cf7e1dc`，GitHub Release 2026-09-13）。受控执行内核已有实现和自动化回归；**真实双宿主验收仍未完成**，作为验证边界保留。2.x 内核进入维护，只保留上述必要维护范围；新功能开发转入 3.x 方向（见顶部声明与 [PLAN](./docs/PLAN.md)）。
 
 | 阶段 | 历史状态 | 已有证据 / 保留边界 |
 |---|---|---|
@@ -262,7 +263,7 @@ git diff --check
 | 2.0.1 安全和分发加固 | **已完成** | 依赖安全更新与测试已提交；候选资产与校验和已随 Release 发布 |
 | 当前版本真实双宿主验收 | UNKNOWN / PENDING | Codex 和 ZCode 分别验证安装/重启发现、MCP 调用、读写删除回滚、取消/超时；绑定同一候选 bytes |
 | 2.0.1 正式发布 | **已完成**（2026-09-13） | npm / tag / GitHub Release 三者齐备；全新安装验证见下方[发布后验证记录](#发布后验证记录2026-09-19) |
-| 后续功能扩展 | 已停止 | 不再增加模型接入、Agent 调度或平台功能 |
+| 2.x 内核功能扩展 | 已停止 | 不再增加模型接入、Agent 调度或平台功能；3.x 工具箱方向见 [ADR-0002](./docs/decisions/ADR-0002-从权限门禁转向工具箱包管理器.md) |
 
 尚未实现的能力包括：自动创建和监督 worker 的统一 Host Adapter、可验证的 Provider token receipt、CAS、结构化 Context/Memory、跨会话检索，以及非开发 Pack 对应的外部执行器。这些不是当前 2.0.1 的交付承诺，不应仅为了凑齐功能而扩大范围。OS sandbox、真实身份与外部审计见证也不是现有引擎保证。
 

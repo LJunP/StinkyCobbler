@@ -8,6 +8,7 @@ import { buildSbom, integritySha512Hex, lockfilePackageName, SBOM_INVENTORY_SCOP
 import { compareSbomToLock, decodePurlName, readRegularNonLink, validateReleaseArtifactNames, validateReleaseManual, validateSbomApplication, validateSbomInventory } from "../scripts/verify-release-artifacts.mjs";
 import { checksumLine, writeChecksumExclusive } from "../scripts/generate-checksum.mjs";
 import { generateReleaseManual } from "../scripts/generate-release-manual.mjs";
+type SbomComponent = ReturnType<typeof buildSbom>["components"][number] & { hashes?: Array<{ alg: string; content: string }> };
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const tmpDirs: string[] = [];
@@ -33,7 +34,7 @@ describe("dependency SBOM generation", () => {
     const inventoryProperties = Object.fromEntries(sbom.metadata.properties.map(({ name, value }) => [name, value]));
     const entries = Object.entries(lockfile.packages).filter(([name, entry]) => name !== "" && typeof entry.version === "string");
     const expected = entries.length;
-    const expectedDevelopment = entries.filter(([, entry]) => entry.dev === true).length;
+    const expectedDevelopment = entries.filter(([, entry]) => (entry as { dev?: boolean }).dev === true).length;
     expect(inventoryProperties).toMatchObject({
       [SBOM_PROPERTY_NAMES.inventoryScope]: SBOM_INVENTORY_SCOPE,
       [SBOM_PROPERTY_NAMES.inventorySource]: "package-lock.json",
@@ -42,7 +43,7 @@ describe("dependency SBOM generation", () => {
       [SBOM_PROPERTY_NAMES.developmentComponentCount]: String(expectedDevelopment)
     });
     expect(sbom.components.length).toBe(expected);
-    for (const component of sbom.components) {
+    for (const component of sbom.components as SbomComponent[]) {
       expect(component.type).toBe("library");
       expect(component.name).toBeTruthy();
       expect(component.version).toBeTruthy();
@@ -74,14 +75,14 @@ describe("dependency SBOM generation", () => {
     };
     const sbom = buildSbom(packageJson, lockfile as never);
     expect(sbom.components).toHaveLength(2);
-    expect(sbom.components.find((item) => item.name === "plain")?.hashes).toBeUndefined();
+    expect((sbom.components as SbomComponent[]).find((item) => item.name === "plain")?.hashes).toBeUndefined();
     expect(sbom.components.find((item) => item.name === "no-version")).toBeUndefined();
   });
 
   it("URL-encodes scoped package names in purls", () => {
     const sbom = buildSbom({ name: "test", version: "1.0.0" }, { packages: { "node_modules/@scope/name": { version: "1.2.3" } } });
-    expect(sbom.components[0].purl).toBe("pkg:npm/%40scope/name@1.2.3");
-    expect(decodePurlName(sbom.components[0].purl)).toBe("@scope/name");
+    expect(sbom.components[0]!.purl).toBe("pkg:npm/%40scope/name@1.2.3");
+    expect(decodePurlName(sbom.components[0]!.purl)).toBe("@scope/name");
   });
 
   it("uses the real nested npm package name and preserves duplicate installation multiplicity", () => {
@@ -122,7 +123,7 @@ describe("release artifact one-to-one comparison", () => {
 
   it("rejects false inventory scope, count, and dependency-class claims", () => {
     const classifiedLockfile = structuredClone(lockfile);
-    classifiedLockfile.packages["node_modules/@scope/beta"].dev = true;
+    (classifiedLockfile.packages["node_modules/@scope/beta"] as { dev?: boolean }).dev = true;
     const matching = buildSbom({ name: "test", version: "1.0.0" }, classifiedLockfile as never);
 
     const wrongScope = structuredClone(matching);
@@ -151,7 +152,7 @@ describe("release artifact one-to-one comparison", () => {
     const duplicate = structuredClone(matching.components[0]);
     const extra = { type: "library", name: "extra", version: "1.0.0", purl: "pkg:npm/extra@1.0.0" };
     const malformed = structuredClone(matching.components[1]);
-    malformed.hashes = [{ alg: "SHA-512", content: Buffer.alloc(64).toString("base64") }];
+    (malformed as SbomComponent).hashes = [{ alg: "SHA-512", content: Buffer.alloc(64).toString("base64") }];
     const problems = compareSbomToLock({ components: [...matching.components, duplicate, extra, malformed] }, lockfile);
     expect(problems.some((problem) => problem.includes("duplicate"))).toBe(true);
     expect(problems.some((problem) => problem.includes("extra@1.0.0"))).toBe(true);

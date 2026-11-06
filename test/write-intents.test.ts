@@ -111,7 +111,7 @@ describe("controlled write authorization", () => {
       [[{ target: ".STINKY-COBBLER/workspace.json", action: "modify", purpose: "x" }], "WRITE_TARGET_FORBIDDEN"],
       [[{ target: "tool.exe", action: "modify", purpose: "x" }], "WRITE_TARGET_FORBIDDEN"],
       [[{ target: "../escape.md", action: "modify", purpose: "x" }], "WRITE_TARGET_INVALID"],
-      [[{ target: "docs/a.md", action: "rename", purpose: "x" } as WriteIntent], "WRITE_INTENT_INVALID"],
+      [[{ target: "docs/a.md", action: "rename", purpose: "x" } as unknown as WriteIntent], "WRITE_INTENT_INVALID"],
       [[{ target: "docs/a.md", action: "modify", purpose: "x" }, { target: "docs/b.md", action: "modify", purpose: "y" }], "WRITE_LIST_INVALID"]
     ];
     for (const [list, code] of forbidden) {

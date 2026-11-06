@@ -190,6 +190,22 @@ describe("controlled write execution", () => {
     await expect(stat(path.join(workspace.directory, backupPath))).rejects.toMatchObject({ code: "ENOENT" });
   });
 
+  it("keeps the rollback backup when a modify applies identical bytes", async () => {
+    const { workspace, schemas, planId, intent, lease } = await setup();
+    const target = "docs/guide.md";
+    const content = "original\n";
+    const result = await applyWrite(workspace, schemas, lease, intent, target, content);
+
+    expect(result.backupPath).toBeTruthy();
+    expect(await readFile(path.join(workspace.directory, result.backupPath!), "utf8")).toBe(content);
+    expect(await readFile(path.join(workspace.root, target), "utf8")).toBe(content);
+    await expect(getWriteIntent(workspace, intent.writeIntentId)).resolves.toMatchObject({ status: "APPLIED" });
+
+    const rolledBack = await rollbackWrite(workspace, schemas, planId, "step-1", intent.writeIntentId, "Revert identical modify.");
+    expect(rolledBack.status).toBe("ROLLED_BACK");
+    expect(await readFile(path.join(workspace.root, target), "utf8")).toBe(content);
+  });
+
   it("preserves RECOVERY_REQUIRED when the apply target is a third byte state", async () => {
     const { workspace, schemas, intent, lease } = await setup();
     const outside = await mkdtemp(path.join(os.tmpdir(), "stinky-write-recovery-conflict-"));

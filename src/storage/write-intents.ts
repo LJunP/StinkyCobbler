@@ -1,4 +1,4 @@
-import { lstat, mkdir, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
+import { lstat, mkdir, readFile, readdir } from "node:fs/promises";
 import { createHash, randomUUID } from "node:crypto";
 import path from "node:path";
 import type { EvidenceRef, WriteIntent } from "../contracts/types.js";
@@ -10,6 +10,7 @@ import { appendLedgerEntry, auditTextFingerprint, listLedgerEntries, prepareLedg
 import type { LocalWorkspace } from "./workspace.js";
 import { createWorkspaceJson, workspaceFile, writeWorkspaceJson } from "./workspace.js";
 import { withWorkspaceLock } from "./workspace-lock.js";
+import { publishFileDurably, removeFileDurably } from "./durability.js";
 import { assertCurrentPlanExecutionAuthority, assertCurrentPlanGeneration, getPlan } from "./plans.js";
 import { consumeApproval, listApprovals } from "./approvals.js";
 import { isApprovalExpired } from "../policy/approval.js";
@@ -567,7 +568,7 @@ async function completeRollbackRecovery(workspace: LocalWorkspace, schemas: Sche
     }
     if (journal.operation === "remove-created") {
       if (!resolved.exists) throw writeError("WRITE_ROLLBACK_CONFLICT", "Rollback target disappeared before the fenced removal.", { target: journal.target });
-      await rm(resolved.absolutePath);
+      await removeFileDurably(resolved.absolutePath);
     } else {
       if (journal.backupPath === null || journal.restoredHash === null) throw writeError("WRITE_ROLLBACK_JOURNAL_INVALID", "Rollback restore journal lacks a verified backup.", { writeIntentId: intent.writeIntentId });
       const backup = await readRollbackBackup(await workspaceFile(workspace, journal.backupPath), journal.target);
@@ -575,13 +576,7 @@ async function completeRollbackRecovery(workspace: LocalWorkspace, schemas: Sche
       if (backupHash !== journal.restoredHash) throw writeError("WRITE_ROLLBACK_JOURNAL_INVALID", "Rollback backup no longer matches the fenced restoration hash.", { writeIntentId: intent.writeIntentId });
       const absoluteTarget = await safeRollbackTarget(workspace, journal.target, true, cfg.sensitiveExtraPaths);
       await mkdir(path.dirname(absoluteTarget), { recursive: true });
-      const temporary = path.join(path.dirname(absoluteTarget), `.${path.basename(absoluteTarget)}.${randomUUID()}.tmp`);
-      try {
-        await writeFile(temporary, backup, { mode: 0o600 });
-        await rename(temporary, absoluteTarget);
-      } finally {
-        await rm(temporary, { force: true }).catch(() => undefined);
-      }
+      await publishFileDurably(absoluteTarget, backup, { mode: 0o600 });
     }
   }
 
