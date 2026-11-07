@@ -28,6 +28,13 @@ module.exports = {
       comment: "ADR-0002: only cli.ts, mcp-server.ts and the app command layer may import src/gate.",
       from: { pathNot: "^src/(gate/|cli\\.ts$|mcp-server\\.ts$|app/)" },
       to: { path: "^src/gate/" }
+    },
+    {
+      name: "app-has-no-fs",
+      severity: "error",
+      comment: "STANDARDS C9: app must go through src/io for file access; existing violations are baselined and may only shrink",
+      from: { path: "^src/app/" },
+      to: { path: "^(node:fs|fs|node:fs/promises|fs/promises)$" }
     }
   ],
   options: {

@@ -216,9 +216,10 @@ npm run lint
 npm test
 npm run test:integration
 npm run test:package
+npm run audit:release
 ```
 
-`npm run lint` 是 typecheck、测试类型基线、ESLint 和 dependency-cruiser。`npm test` 跑 Vitest。`npm run test:integration` 只跑 integration project。`npm run test:package` 会先 build，再做 pack 与安装冒烟。
+`npm run lint` 是 typecheck、测试类型基线、ESLint 和 dependency-cruiser。`npm test` 跑 Vitest。`npm run test:integration` 只跑 integration project。`npm run test:package` 会先 build，再做 pack 与安装冒烟。`npm run audit:release` 跑发布前自动审计（结构、密钥、依赖、垃圾、文档链接、工作区）。
 
 发布门禁：
 

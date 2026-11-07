@@ -1,5 +1,145 @@
 [
   {
+    "type": "dependency",
+    "from": "src/app/git-source.ts",
+    "to": "fs/promises",
+    "unresolvedTo": "fs/promises",
+    "dependencyTypes": [
+      "core",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "app-has-no-fs"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/app/memory-files.ts",
+    "to": "fs/promises",
+    "unresolvedTo": "fs/promises",
+    "dependencyTypes": [
+      "core",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "app-has-no-fs"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/app/memory-segment.ts",
+    "to": "fs/promises",
+    "unresolvedTo": "fs/promises",
+    "dependencyTypes": [
+      "core",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "app-has-no-fs"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/app/npm-source.ts",
+    "to": "fs/promises",
+    "unresolvedTo": "fs/promises",
+    "dependencyTypes": [
+      "core",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "app-has-no-fs"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/app/observe.ts",
+    "to": "fs/promises",
+    "unresolvedTo": "fs/promises",
+    "dependencyTypes": [
+      "core",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "app-has-no-fs"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/app/register-commands.ts",
+    "to": "fs/promises",
+    "unresolvedTo": "fs/promises",
+    "dependencyTypes": [
+      "core",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "app-has-no-fs"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/app/rollback.ts",
+    "to": "fs/promises",
+    "unresolvedTo": "fs/promises",
+    "dependencyTypes": [
+      "core",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "app-has-no-fs"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/app/toolkit-blobs.ts",
+    "to": "fs/promises",
+    "unresolvedTo": "fs/promises",
+    "dependencyTypes": [
+      "core",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "app-has-no-fs"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/app/toolkit-flow.ts",
+    "to": "fs",
+    "unresolvedTo": "fs",
+    "dependencyTypes": [
+      "core",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "app-has-no-fs"
+    }
+  },
+  {
+    "type": "dependency",
+    "from": "src/app/toolkit-flow.ts",
+    "to": "fs/promises",
+    "unresolvedTo": "fs/promises",
+    "dependencyTypes": [
+      "core",
+      "import"
+    ],
+    "rule": {
+      "severity": "error",
+      "name": "app-has-no-fs"
+    }
+  },
+  {
     "type": "cycle",
     "from": "src/gate/storage/leases.ts",
     "to": "src/gate/storage/orchestration.ts",

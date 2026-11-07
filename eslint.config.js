@@ -48,8 +48,8 @@ export default tseslint.config(
       "no-restricted-syntax": [
         "error",
         {
-          selector: "ThrowStatement > NewExpression[callee.name='Error']",
-          message: "Throw StinkyCobblerError with a registered code instead of a bare Error."
+          selector: "NewExpression[callee.name='Error']",
+          message: "Construct StinkyCobblerError with a registered code instead of a bare Error."
         }
       ]
     }
