@@ -4,8 +4,8 @@
  *
  * Usage:
  *   node scripts/build-offline-bundle.mjs
- *   node scripts/build-offline-bundle.mjs --tarball ./stinky-cobbler-2.0.1.tgz
- *   node scripts/build-offline-bundle.mjs --out ./stinky-cobbler-2.0.1-offline-full.zip
+ *   node scripts/build-offline-bundle.mjs --tarball ./stinky-cobbler-<version>.tgz
+ *   node scripts/build-offline-bundle.mjs --out ./stinky-cobbler-<version>-offline-full.zip
  *
  * This command never substitutes an already-published registry copy of the
  * package for the candidate being verified. Network access is used only once

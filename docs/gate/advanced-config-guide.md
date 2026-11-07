@@ -238,8 +238,8 @@ Contract 创建时会把 Profile 解析为不可变 `reviewPolicy`：`individual
 内置默认值减少初始化后的参数填写，但安装、宿主接入、workspace 初始化、Task/Approval/Lease 与真实宿主验证仍不可省略。高级用户按需覆盖，详见独立文档
 [`docs/gate/tiered-config-guide.md`](./tiered-config-guide.md)。核心要点：
 
-- **三层**：内置默认（包内 `policies/*.yaml`，勿改，会被更新覆盖），然后 `$XDG_CONFIG_HOME/stinky-cobbler/policies`（未设置时 `~/.config/stinky-cobbler/policies`），然后项目 `.stinky-cobbler/policies/*.yaml`（最后合并，可 git 审计）
-- **可自定义**：编排预算/规模上限/Lease 默认/写入大小、专才注册表（追加+覆盖+自定义名称）、审查自动否决阈值、话术/审查风格模板、契约模板库、敏感路径追加（只增不减）
+- **三层**：内置默认（包内 `resources/gate/policies/*.yaml`，勿改，会被更新覆盖），然后 `$XDG_CONFIG_HOME/stinky-cobbler/policies`（未设置时 `~/.config/stinky-cobbler/policies`），然后项目 `.stinky-cobbler/policies/*.yaml`（最后合并，可 git 审计）
+- **可自定义**：编排预算/规模上限/Lease 默认/写入大小、专才注册表（追加+覆盖+自定义名称）、审查自动否决阈值、契约模板库、敏感路径追加（只增不减）
 - **安全底线锁定**：内置敏感路径不可删、仓库文件 delete 不 auto-allow、L3 在当前版本始终拒绝且不能由确认解锁、审计不可关、收敛阈值只可收紧、`general` 专才回退不可消失
 - **只读查看**：`orchestration config show` / `specialist list` / `template list`
 - **Ledger 归档**：`ledger archive --before-days N` 后 `ledger verify` 仍跨归档可校验

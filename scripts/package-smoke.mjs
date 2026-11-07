@@ -355,7 +355,7 @@ function assertNoPublishedLibrarySurface(installDirectory, installedPackage) {
     execPortableSync(process.execPath, [
       "--input-type=module",
       "--eval",
-      "await import('stinky-cobbler/dist/storage/tasks.js')"
+      "await import('stinky-cobbler/dist/gate/storage/tasks.js')"
     ], { cwd: installDirectory, encoding: "utf8" });
   } catch (error) {
     const stderr = typeof error === "object" && error !== null && "stderr" in error ? String(error.stderr) : "";

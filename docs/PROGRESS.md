@@ -2,6 +2,46 @@
 
 > 只追加，最新在上。每条：日期 / 任务 / 做了什么 / 验证 / 待办与问题。
 
+## 2026-11-07 · ADR-0003 P7：全量审计与收尾
+
+- 审计：8 个只读 grok 分片覆盖全部 357 个跟踪文件（按 `git ls-files` 逐项对账，357/357，零遗漏），每个文件一条 KEEP/FIX/DELETE/ARCHIVE/MOVE_OUTPUT 判定加理由。结果：KEEP 323、FIX 31、DELETE 3、ARCHIVE 0、MOVE_OUTPUT 0。
+- 本批只做文案/配置类 FIX（不改行为、不改断言）：README（源码/测试清单、gate 引用规则、2.0.2 状态、根文件表、按 `git ls-files` 重生成目录树）、SECURITY（四宿主验收口径）、AGENTS（冻结规则与 §0.5 一致）、ADR-0002 修订注、两份 2.x 配置指南的内置层路径、迁移说明补 src/ 与 test/ 对照表、feature_request 模板措辞、CHANGELOG 3.0.0-rc.1 补 P3/P5/P6；dependabot 加 `target-branch: develop`；release-candidate 去掉重复的 `test:integration`（重复的 `npm audit` 步骤被 `test/scripts/release-contract.test.ts:80` 锁定，保留）；package-smoke 深层 import 探针指向 `dist/gate/storage/tasks.js`；build-offline-bundle 用法文本改为当前版本；`src/gate/entry/preflight.ts` 一句提示不再让 Claude Code/Cursor 用户跑 `entry install-host`（冻结区允许的"误导用户"修复，行数 16873 不变）；5 个无读者导出改为模块私有；`zod` 补进 dependencies（src 直接 import，此前只是 SDK 的间接依赖）。
+- 执行：grok 读模式 8 片 + 写模式 1 轮；evaluator PASS（14 项逐条对照 diff，README 树三级对账，去 export 的符号逐个 grep 无引用）。验证：build/lint 0；`npm test` 99 文件 / 904 项；`test:package` 410 项；`git diff --check` 干净。
+- ADR-0003 的 P1–P7 至此全部完成；STANDARDS 的状态表已随 P6/P7 更新。
+
+### 待办 / 问题（P7 全量审计，需作者决定；每条附审计给出的证据）
+
+**DELETE 候选（STANDARDS §7.3：删除先给作者确认）**
+- `resources/gate/examples/content-calendar/task.json`、`research-report/task.json`、`student-management-system/task.json`：`git grep` 显示无任何 src/test/CI/package.json 读者，只有 `docs/archive/domain-model-and-extensions.md` 的散文提及；`frameflow/task.json` 有 `test/gate/dogfood.test.ts` 读取，保留。README 目录表写着"四个 2.x task 样例"，删了要同步改成一个。
+
+**改测试断言（规则 ⛔ 不为通过而改断言，所以不代做；审计认为它们违反 T7 或测错了对象）**
+- `test/gate/config/registry.test.ts:14` 锁定 `role-extensions.yaml` 里的 displayName「研究员」（T7 文案探测）。
+- `test/gate/storage/orchestration.test.ts:1421/1437/1452`、`test/gate/storage/specialists.test.ts:40` 锁定 `specialists.yaml` 的标题文案（T7）。
+- `test/gate/mcp/git-read.test.ts:15-22` 没有 `await` `git --version`，`gitAvailable` 恒为 true，`skipIf` 失效；`:50-55` 只回读自己刚设置的 `maintenance.auto`/`gc.auto`。
+- `test/gate/mcp/read-scope.test.ts:14-39` 在 mcp 测试里断言 `policy/path-policy.ts` 的 `isSensitivePath`（T1 位置不对，应移到 `test/gate/policy/`）。
+- `test/gate/dogfood.test.ts:28-31` 只验证自己写的 README 能读回来，没有调用产品。
+- `test/gate/contracts/runtime-contracts.test.ts:37` 夹具 `locator` 还是旧路径 `src/contracts/types.ts`（只是字符串，不影响通过）。
+- `test/core/plan/plan.test.ts:57` 用例标题引用已归档评审的「section 3.3」。
+
+**3.x 产品缺陷（行为改动，需先写复现测试再修，建议单独任务）**
+- `src/app/toolkit-commands.ts:69-73`：`rollback` 有 `conflict`、`apply` 有 `stopped` 时退出码仍为 0（C7）。`src/app/register-commands.ts:178`：`entry install-host` 冲突退出 1，不在 ExitCode 表（C7）。
+- `src/app/observe.ts:41-46`：Cursor 的 `.cursor/rules` 是目录；存在时 `managed-file.ts:45` 抛错，不存在时 `plan.ts:130` 当文件写——非 md-segment 格式应跳过并标 unsupported。
+- `src/app/toolkit-flow.ts:54-63`：`plan` 用 `overlayLockedSources` 保留本地实时内容，`apply` 只用 `sourcesFromLock`，plan 可能显示 apply 不会写的改动；应统一来源策略。
+- `src/app/apply.ts:81`：只复制 MCP 的 `command`/`args`，`env` 引用没写进任何宿主文件；`hosts/host-adapter.ts:21` 与 `core/toolkit/spec.ts:19` 两个 `McpServerSpec` 类型不一致。
+- `src/app/apply.ts:55` 对 `action: "remove"` 抛 `TOOLKIT_OP_UNSUPPORTED`，而 `plan.ts` 的 `removeUnwanted` 仍会生成该 op，首个删除就中断整批。
+- `src/core/toolkit/lock.ts:9` 字面量 `["skill","instructions"]` 重复 `ARTIFACT_KINDS` 子集（C4）；`ARTIFACT_KINDS` 含 `command` 但 toolkit 规格里没有 command 条目。
+- `skills.sh:` 来源：`searchToolkit` 恒抛 `TOOLKIT_SEARCH_UNVERIFIED`，没有 fetcher 存储字节。
+
+**PRD 与代码的口径差（改 PRD 还是改代码由作者定）**
+- `docs/PRD.md:24` 说指令目标含 AGENTS.md 与 ZCode skill 段；适配器只写 Claude 的 CLAUDE.md 与 Cursor 项目规则。
+- `docs/PRD.md:28` 要求 builtin → user → project 按 id 合并；`toolkit` 只读一份 `toolkit.yaml`，PLAN M2 却已勾选（PROGRESS 早有记录）。
+
+**2.x 冻结区内发现（按 §0.5 不改，只记录）**
+- `src/gate/storage/specialists.ts:41-44` 在存储层拼中文前缀（§2 ⬜）；`orchestration-fence.ts:62/67/69`、`runtime-diagnostics.ts:198/218` 裸 `new Error`（C6 豁免）；`orchestration.ts:1912` 仍写「2.0.1 safety profile」；`leases.ts`/`orchestration.ts`/`write-intents.ts` 各自定义 PACKAGE_ROOT；`docs-index.ts` 与 `leases.ts` 重复字符串 `.stinky-cobbler/docs-index.json`；若干 `*ForTesting` 导出无调用方。
+- `scripts/package-smoke.mjs:53-60,368-372` 复制了 `release-utils.mjs` 的 `execPortableSync`/`isDirectInvocation` 而不是 import；`scripts/generate-sbom.mjs:82,85` 的 serialNumber/timestamp 不可重现（归档评审 D-42）。
+- `src/io/tiered-config.ts` 多处 message/fix 只有中文，`cli.ts` 无 zh/en 选择（§2 ⬜）。
+
+
 ## 2026-11-07 · ADR-0003 P6：结构守卫、链接/垃圾检查、audit:release、覆盖率地板
 
 - 新增 4 个检查器（`scripts/repo-structure.mjs`、`check-docs-links.mjs`、`repo-junk.mjs`、`audit-release.mjs`），各有合成失败用例（`test/scripts/*.test.ts`，33 例，断言具体问题字符串）和真实仓库用例（`test/repo/{structure,docs-links,junk}.test.ts` 断言 []）。结构守卫直接读 STANDARDS §1.2 的 yaml 块；命名例外（根目录点文件、10 个约定大写文件、`.github/`、宿主要求的 `SKILL.md`）写进 §2。

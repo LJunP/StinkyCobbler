@@ -3,7 +3,7 @@ import { ExitCode, StinkyCobblerError } from "../../errors.js";
 import { HOST_IDS, TRANSPORTS } from "./kinds.js";
 
 /** Whole value must be `${env:NAME}` or `${file:PATH}` with the plan's character class. */
-export const SECRET_REF_PATTERN = /^\$\{(env|file):[A-Z0-9_./-]+\}$/;
+const SECRET_REF_PATTERN = /^\$\{(env|file):[A-Z0-9_./-]+\}$/;
 
 const idSchema = z.string().regex(/^[a-z0-9][a-z0-9-]{0,63}$/);
 const hostIdSchema = z.enum(HOST_IDS);
@@ -61,7 +61,7 @@ export const toolkitSpecSchema = z
 export type SkillSpec = z.infer<typeof skillSchema>;
 export type McpServerSpec = z.infer<typeof mcpServerSchema>;
 export type InstructionsSpec = z.infer<typeof instructionsSchema>;
-export type BundleSpec = z.infer<typeof bundleSchema>;
+type BundleSpec = z.infer<typeof bundleSchema>;
 export interface ToolkitSpec {
   version: 1;
   hosts?: z.infer<typeof hostIdSchema>[];

@@ -24,7 +24,7 @@ export async function fetchGitSkills(spec: ToolkitSpec, root: string): Promise<R
   return fetched;
 }
 
-export async function readGitSkill(source: string, directory: string): Promise<string> {
+async function readGitSkill(source: string, directory: string): Promise<string> {
   const parsed = parseGitSource(source);
   const template = path.join(path.dirname(directory), ".template");
   await rm(directory, { recursive: true, force: true });
@@ -34,7 +34,7 @@ export async function readGitSkill(source: string, directory: string): Promise<s
   return runGit(parsed.protocol, ["--git-dir", directory, "cat-file", "blob", object], template, "TOOLKIT_GIT_SKILL_MISSING");
 }
 
-export function parseGitSource(source: string): GitSource {
+function parseGitSource(source: string): GitSource {
   const rest = source.slice("git+".length);
   const mark = rest.indexOf("#");
   const urlText = mark === -1 ? rest : rest.slice(0, mark);
