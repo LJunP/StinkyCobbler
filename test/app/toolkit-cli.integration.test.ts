@@ -881,6 +881,49 @@ describe("toolkit cli", () => {
     expect((JSON.parse((await run(env, "toolkit", "doctor", "--json")).stdout) as { drift: unknown[] }).drift).toEqual([]);
   });
 
+  it("reports a managed copy the spec no longer wants as an orphan and does not stop apply", async () => {
+    const home = await tempDir("stinky-orphan-home-");
+    const xdg = await tempDir("stinky-orphan-xdg-");
+    const source = await tempDir("stinky-orphan-source-");
+    const env = childEnv(home, xdg);
+    await writeFile(path.join(source, "SKILL.md"), "review the diff\n");
+    const specFor = (hosts: string) => [
+      "version: 1",
+      "scope: user",
+      "hosts:",
+      "  - codex",
+      "  - claude-code",
+      "skills:",
+      "  - id: review",
+      `    source: ${JSON.stringify(source)}`,
+      hosts,
+      "mcpServers: []",
+      "instructions: []",
+      "bundles: []",
+      ""
+    ].join("\n");
+    await run(env, "toolkit", "init", "--json");
+    const specFile = path.join(xdg, "stinky-cobbler", "toolkit.yaml");
+    await writeFile(specFile, specFor("    hosts: [codex, claude-code]"));
+    await run(env, "toolkit", "lock", "--json");
+    await run(env, "toolkit", "apply", "--yes", "--json");
+    const claudeSkill = path.join(home, ".claude", "skills", "review", "SKILL.md");
+    expect(await readFile(claudeSkill, "utf8")).toBe("review the diff\n");
+    await writeFile(specFile, specFor("    hosts: [codex]"));
+    const orphan = { host: "claude-code", kind: "skill", id: "review", path: claudeSkill };
+    const planned = JSON.parse((await run(env, "toolkit", "plan", "--json")).stdout) as { ops: unknown[]; conflicts: unknown[]; orphans: unknown[] };
+    expect(planned.ops).toEqual([]);
+    expect(planned.conflicts).toEqual([]);
+    expect(planned.orphans).toEqual([expect.objectContaining(orphan)]);
+    const before = await treeHash(home);
+    const applied = JSON.parse((await run(env, "toolkit", "apply", "--yes", "--json")).stdout) as { stopped: boolean; completed: unknown[] };
+    expect(applied).toMatchObject({ stopped: false, completed: [] });
+    expect(await treeHash(home)).toBe(before);
+    const doctor = JSON.parse((await run(env, "toolkit", "doctor", "--json")).stdout) as { drift: unknown[]; orphans: unknown[] };
+    expect(doctor.drift).toEqual([]);
+    expect(doctor.orphans).toEqual([expect.objectContaining(orphan)]);
+  });
+
 });
 
 function mcpSpec(command: string): string {

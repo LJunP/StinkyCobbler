@@ -37,7 +37,7 @@ export interface FileOp {
   kind: ArtifactKind;
   id: string;
   path: string;
-  action: "create" | "replace" | "upsert-segment" | "merge-mcp" | "remove";
+  action: "create" | "replace" | "upsert-segment" | "merge-mcp";
   bytes?: string;
   segment?: string;
   mcpEntry?: RenderedMcpEntry;
@@ -59,10 +59,20 @@ export interface PlanSkip {
   reason: string;
 }
 
+/** A managed artifact the spec no longer targets. The toolkit never deletes host files; it reports these. */
+export interface PlanOrphan {
+  host: string;
+  kind: ArtifactKind;
+  id: string;
+  path: string;
+  hash?: string;
+}
+
 export interface ToolkitPlan {
   ops: FileOp[];
   conflicts: PlanConflict[];
   skipped: PlanSkip[];
+  orphans: PlanOrphan[];
 }
 
 interface Draft {
@@ -74,6 +84,7 @@ interface Draft {
   ops: FileOp[];
   conflicts: PlanConflict[];
   skipped: PlanSkip[];
+  orphans: PlanOrphan[];
 }
 
 export function plan(spec: ToolkitSpec, observations: readonly PlanObservation[], options: PlanOptions = {}): ToolkitPlan {
@@ -85,14 +96,15 @@ export function plan(spec: ToolkitSpec, observations: readonly PlanObservation[]
     wanted: new Set<string>(),
     ops: [],
     conflicts: [],
-    skipped: []
+    skipped: [],
+    orphans: []
   };
   expandBundles(draft, new Set(options.resolvedIds ?? []));
   for (const skill of spec.skills) planSkill(draft, skill);
   for (const server of spec.mcpServers) planMcp(draft, server);
   for (const item of spec.instructions) planInstruction(draft, item);
-  removeUnwanted(draft);
-  return { ops: draft.ops, conflicts: draft.conflicts, skipped: draft.skipped };
+  reportOrphans(draft);
+  return { ops: draft.ops, conflicts: draft.conflicts, skipped: draft.skipped, orphans: draft.orphans };
 }
 
 function planSkill(draft: Draft, skill: SkillSpec): void {
@@ -195,17 +207,16 @@ function skillOp(id: string, host: string, found: PlanObservation, body: string)
   };
 }
 
-function removeUnwanted(draft: Draft): void {
+function reportOrphans(draft: Draft): void {
   for (const found of draft.observations) {
     if (found.state !== "managed" || !selectedHosts(draft.spec).includes(found.host)) continue;
     if (draft.wanted.has(key(found.host, found.kind, found.id))) continue;
-    draft.ops.push({
+    draft.orphans.push({
       host: found.host,
       kind: found.kind,
       id: found.id,
       path: found.path,
-      action: "remove",
-      ...(found.hash === undefined ? {} : { priorHash: found.hash })
+      ...(found.hash === undefined ? {} : { hash: found.hash })
     });
   }
 }

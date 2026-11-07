@@ -26,7 +26,7 @@ node dist/cli.js toolkit doctor --json
 
 `plan` 不修改宿主目录。没有变更时，`apply` 可以直接运行。有变更时必须加上 `--yes`。冲突不会覆盖手改过的受管文件。
 
-`doctor` 列出漂移。规格里的 `${env:NAME}` 只报告变量名是否出现在当前进程中，不打印值。Claude Code 的已核实文档展开 `${VAR}`，Codex 的已核实文档使用字面量 `env` 和按名字转发。这两种都会得到 `SECRET_NEEDS_SHELL_ENV`，并建议用 wrapper 脚本先导出变量。Cursor 的文档使用 `${env:NAME}`，不给这条提示。ZCode 的展开没有写在已核对的官方页上，doctor 给出 `SECRET_EXPANSION_UNKNOWN`。这些是文档结论，不是对四个宿主二进制做的展开实验。
+`doctor` 列出漂移和 `orphans`（受管、但规格已不再指向的文件；`plan` 也列出它们）。toolkit 不删除宿主文件，是否删除由用户决定。规格里的 `${env:NAME}` 只报告变量名是否出现在当前进程中，不打印值。Claude Code 的已核实文档展开 `${VAR}`，Codex 的已核实文档使用字面量 `env` 和按名字转发。这两种都会得到 `SECRET_NEEDS_SHELL_ENV`，并建议用 wrapper 脚本先导出变量。Cursor 的文档使用 `${env:NAME}`，不给这条提示。ZCode 的展开没有写在已核对的官方页上，doctor 给出 `SECRET_EXPANSION_UNKNOWN`。这些是文档结论，不是对四个宿主二进制做的展开实验。
 
 `toolkit rollback --last` 恢复最后一次 apply。账本为空时命令失败。
 

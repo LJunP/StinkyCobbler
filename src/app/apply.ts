@@ -52,7 +52,6 @@ export async function apply(toolkitPlan: ToolkitPlan, options: { dryRun?: boolea
 async function executeOp(op: FileOp, adapters: readonly HostAdapter[]): Promise<AppliedHashes> {
   if (op.action === "merge-mcp") return applyMcp(op, adapters);
   if (op.action === "upsert-segment") return applySegment(op);
-  if (op.action === "remove") throw applyError("TOOLKIT_OP_UNSUPPORTED", "Remove is recorded for rollback, not applied as a forward write.");
   return applyBytes(op);
 }
 

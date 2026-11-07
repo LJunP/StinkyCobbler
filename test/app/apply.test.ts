@@ -124,5 +124,5 @@ function createOp(target: string, bytes: string): FileOp {
 }
 
 function planOf(...ops: FileOp[]): ToolkitPlan {
-  return { ops, conflicts: [], skipped: [] };
+  return { ops, conflicts: [], skipped: [], orphans: [] };
 }

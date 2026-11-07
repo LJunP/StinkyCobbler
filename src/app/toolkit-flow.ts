@@ -31,6 +31,8 @@ export interface SecretHint {
 
 export interface ToolkitDoctorReport {
   drift: ToolkitPlan["conflicts"];
+  /** Managed artifacts the spec no longer targets. Nothing deletes them; the user decides. */
+  orphans: ToolkitPlan["orphans"];
   env: Array<{ name: string; present: boolean }>;
   commands: Array<{ command: string; present: boolean }>;
   secrets: SecretHint[];
@@ -65,8 +67,10 @@ export async function applyToolkit(options: { scope?: string | undefined; yes?: 
 
 export async function doctorToolkit(scopeFlag?: string, toolResponses: readonly KnowledgeToolResponse[] = []): Promise<ToolkitDoctorReport> {
   const loaded = await loadToolkit(scopeFlag);
+  const toolkitPlan = await planLoaded(loaded);
   return {
-    drift: (await planLoaded(loaded)).conflicts,
+    drift: toolkitPlan.conflicts,
+    orphans: toolkitPlan.orphans,
     env: envPresence(loaded.spec),
     commands: await commandPresence(loaded.spec),
     secrets: secretHints(loaded.spec),
