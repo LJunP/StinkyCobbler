@@ -77,7 +77,7 @@ init, plan, apply, rollback, doctor, list, lock, update, search <query>, memory
 
 作用域是 `user` 或 `project`。`user` 读 `$XDG_CONFIG_HOME/stinky-cobbler/toolkit.yaml`（未设置时是 `~/.config/stinky-cobbler/toolkit.yaml`）。`project` 读当前目录 `.stinky-cobbler/toolkit.yaml`。一次命令只读这一份，不把两份按 `id` 合并。PRD 写过 builtin → user → project 的按 `id` 合并，当前 `toolkit` 命令没有做这层合并。
 
-冻结的 2.x 策略才是分层配置：包内 `policies/`，然后 `$XDG_CONFIG_HOME/stinky-cobbler/policies/`，然后项目 `.stinky-cobbler/policies/`。见 [分层配置指南](./docs/gate/tiered-config-guide.md)。
+冻结的 2.x 策略才是分层配置：包内 `resources/gate/policies/`，然后 `$XDG_CONFIG_HOME/stinky-cobbler/policies/`，然后项目 `.stinky-cobbler/policies/`。见 [分层配置指南](./docs/gate/tiered-config-guide.md)。
 
 密钥只允许整段值为 `${env:NAME}` 或 `${file:PATH}`。明文会被拒绝（`SECRET_LITERAL_FORBIDDEN`）。`doctor` 对 Claude Code 和 Codex 给出 `SECRET_NEEDS_SHELL_ENV`（按已核实文档，它们的展开语法不是 `${env:NAME}`）。Cursor 的文档使用 `${env:NAME}`，不给这条提示。ZCode 的展开没有写在已核对的官方页上，`doctor` 给出 `SECRET_EXPANSION_UNKNOWN`。这些是文档结论，不是对四个宿主二进制做的展开实验。
 
@@ -118,16 +118,12 @@ init, plan, apply, rollback, doctor, list, lock, update, search <query>, memory
 
 ```text
 .
-├── .codex/skills/
 ├── .github/
 │   ├── ISSUE_TEMPLATE/
 │   ├── workflows/
 │   ├── dependabot.yml
 │   └── pull_request_template.md
 ├── .husky/                    pre-commit, pre-push
-├── .zcode/
-│   ├── commands/
-│   └── skills/
 ├── docs/
 │   ├── adr/                   NNNN-kebab-title.md
 │   ├── archive/               已被取代的历史文档
@@ -140,24 +136,17 @@ init, plan, apply, rollback, doctor, list, lock, update, search <query>, memory
 │   ├── PLAN.md  PRD.md  PROGRESS.md  STANDARDS.md
 │   ├── compatibility-policy.md
 │   └── support-matrix.md
-├── examples/
-│   ├── content-calendar/      2.x 示例 task：内容日历
-│   ├── frameflow/             2.x 示例 task：角色与授权边界
-│   ├── research-report/       2.x 示例 task：行业研究摘要
-│   └── student-management-system/
 ├── output/README.md           其余内容 gitignore
-├── packs/
-│   ├── business-operations/
-│   ├── creative-production/
-│   ├── data-analysis/
-│   ├── education/
-│   ├── knowledge-work/
-│   ├── regulated-work/
-│   └── software-engineering/
-├── plugins/builtin.yaml
-├── policies/                  2.x 策略 YAML
-├── profiles/                  individual, team, organization, regulated
-├── schemas/                   JSON Schema，含 toolkit 与 2.x 契约
+├── resources/
+│   ├── toolkit/               3.x：toolkit.schema.json
+│   └── gate/                  冻结 2.x：schemas、policies、profiles、packs、plugins、examples、skills
+│       ├── schemas/
+│       ├── policies/
+│       ├── profiles/
+│       ├── packs/
+│       ├── plugins/
+│       ├── examples/
+│       └── skills/            templates/ 与渲染好的 Codex/ZCode skill 和 command
 ├── scripts/                   构建、打包、发布门禁、skill 渲染
 ├── src/
 │   ├── app/                   toolkit 用例与 2.x 命令注册
@@ -170,9 +159,6 @@ init, plan, apply, rollback, doctor, list, lock, update, search <query>, memory
 │   ├── io/                    有界读写、受管文件、段落、分层合并、toolkit 账本
 │   ├── security/              工作区路径策略门面
 │   ├── cli.ts  mcp-server.ts  errors.ts  version.ts
-├── templates/
-│   ├── hosts/
-│   └── skill-core.md
 ├── test/
 │   ├── app/  core/  helpers/  hosts/  io/  setup/
 │   └── *.test.ts
@@ -208,21 +194,14 @@ init, plan, apply, rollback, doctor, list, lock, update, search <query>, memory
 
 | 路径 | 归属 | 用途 |
 |---|---|---|
-| `.codex/` | 冻结 2.x | Codex skill 模板，由 `templates/` 渲染到 `.codex/skills/`。随 npm 包发布。 |
 | `.github/` | 构建/发布 | `workflows/ci.yml` 与 `workflows/release-candidate.yml`（Ubuntu / macOS / Windows × Node 22 / 24），以及 `ISSUE_TEMPLATE/`、`pull_request_template.md`、`dependabot.yml`。 |
 | `.husky/` | 构建/发布 | `pre-commit` 跑 lint-staged。`pre-push` 跑 lint 与 unit。 |
-| `.zcode/` | 冻结 2.x | ZCode skill 与 command 模板，在 `.zcode/skills/` 和 `.zcode/commands/`。随 npm 包发布。 |
 | `docs/` | 文档 | 产品与使用文档。`STANDARDS.md` 是项目总规范。`PRD.md`、`PLAN.md`、`PROGRESS.md` 是当前事实来源。`compatibility-policy.md` 与 `support-matrix.md` 是兼容承诺与支持矩阵。`adr/` 是架构决定。`guides/` 是 3.x 上手文档。`hosts/` 是四宿主路径。`presets/` 是已核实的 preset。`migration/` 是 2.x 到 3.x。`release/` 是宿主验收与安全审查清单。`gate/` 是冻结的 2.x 手册与威胁模型。`archive/` 只保留已被取代的历史设计，不是当前规范。 |
-| `examples/` | 冻结 2.x | 四个 2.x task 样例：`content-calendar/`、`frameflow/`、`research-report/`、`student-management-system/`。不是 `toolkit.yaml` 示例。 |
 | `output/` | 不入库 | 临时或生成产物。只有 `output/README.md` 入库。`src/`、`test/`、`scripts/` 不得从这里读取。 |
-| `packs/` | 冻结 2.x | 2.x 领域包声明：`business-operations/`、`creative-production/`、`data-analysis/`、`education/`、`knowledge-work/`、`regulated-work/`、`software-engineering/`。声明不等于执行器。 |
-| `plugins/` | 冻结 2.x | `builtin.yaml`：repository-read、git-read、docs-index、test-run 等内置插件声明。 |
-| `policies/` | 冻结 2.x | 2.x 策略：`roles.yaml`、`role-tools.yaml`、`role-extensions.yaml`、`orchestration.yaml`、`specialists.yaml`、`contract-templates.yaml`。 |
-| `profiles/` | 冻结 2.x | 2.x workspace profile：`individual.yaml`、`team.yaml`、`organization.yaml`、`regulated.yaml`。 |
-| `schemas/` | 混合 | JSON Schema。`toolkit.schema.json` 属于 3.x，其余是 2.x 的 task、approval、lease、write-intent、orchestration 等契约。 |
+| `resources/toolkit/` | 3.x | `toolkit.schema.json`。 |
+| `resources/gate/` | 冻结 2.x | schemas、policies、profiles、packs、plugins、examples、skills——skills 下是 `templates/` 与渲染好的 Codex/ZCode skill 和 command 文件；随 npm 包发布。 |
 | `scripts/` | 构建/发布 | `build.mjs`、`package-smoke.mjs`、`release-gate.mjs`、`release-provenance.mjs`、离线包与 SBOM、`render-skills.mjs`、校验和。 |
 | `src/` | 混合 | TypeScript 源码。3.x 在 `core/`（`plan/`、`render/`、`toolkit/`）、`hosts/`（含 `conformance/`）、`io/`，以及 `app/` 里的 toolkit 用例。冻结 2.x 在 `gate/`（`domain/`、`mcp/`、`policy/`、`runtime/`、`storage/`）。`config/`、`contracts/`、`entry/`、`security/` 为 2.x 入口与配置仍在使用。根上有 `cli.ts`、`mcp-server.ts`、`errors.ts`、`version.ts`。 |
-| `templates/` | 冻结 2.x | `skill-core.md` 与 `templates/hosts/`。渲染成 `.codex` 和 `.zcode` 的 skill，不在模板里写宿主名。 |
 | `test/` | 混合 | Vitest。`app/`、`core/`、`hosts/`、`io/` 覆盖 3.x。根上大量 `*.test.ts` 覆盖冻结的 2.x 门禁。`helpers/`、`setup/` 是夹具与集成测试的 dist 新鲜度检查。 |
 | `dist/` | 不入库 | `npm run build` 的输出。不作为源码事实。 |
 | `node_modules/` | 不入库 | 依赖安装目录。 |

@@ -4,6 +4,7 @@ import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { SchemaRegistry } from "../../src/contracts/schema-registry.js";
 import { loadRegistries } from "../../src/config/registry.js";
+import { gateResource } from "../../src/io/resources.js";
 import { recommendTask } from "../../src/gate/domain/recommend.js";
 import { evaluateLease } from "../../src/gate/policy/evaluate.js";
 import { asLegacyLease } from "../helpers/lease.js";
@@ -15,7 +16,7 @@ afterEach(async () => { await Promise.all(paths.splice(0).map((entry) => rm(entr
 describe("FrameFlow read-only dogfood", () => {
   it("validates and recommends the FrameFlow sample without touching FrameFlow", async () => {
     const schemas = await SchemaRegistry.create(projectRoot);
-    const frameFlowTask = JSON.parse(await (await import("node:fs/promises")).readFile(path.join(projectRoot, "examples/frameflow/task.json"), "utf8"));
+    const frameFlowTask = JSON.parse(await (await import("node:fs/promises")).readFile(gateResource(projectRoot, "examples", "frameflow", "task.json"), "utf8"));
     schemas.validate("task", frameFlowTask);
     const registries = await loadRegistries(projectRoot, schemas);
     const proposal = recommendTask(frameFlowTask, registries.packs);

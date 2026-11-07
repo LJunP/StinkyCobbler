@@ -2,6 +2,14 @@
 
 > 只追加，最新在上。每条：日期 / 任务 / 做了什么 / 验证 / 待办与问题。
 
+## 2026-11-07 · ADR-0003 P4：resources/ 与资源路径模块
+
+- 根目录 9 个数据目录（schemas、policies、profiles、packs、plugins、examples、templates、.codex、.zcode，66 个文件）迁入 `resources/`：`resources/toolkit/toolkit.schema.json` 是 3.x；其余进 `resources/gate/`，宿主 skill/command 模板与渲染产物放 `resources/gate/skills/`。git 全部识别为 100% 相似的 rename。
+- 新增 `src/io/resources.ts`（`PACKAGE_ROOT`、`gateResource`、`toolkitResource`）作为资源路径唯一来源；`config/registry.ts`、`config/tiered.ts`、`contracts/schema-registry.ts`、`contracts/default-schema-registry.ts`、`hosts/{codex,zcode}.ts` 改走它。`src/gate` 零改动，冻结基线不变。
+- `package.json` files 改为发布 `resources/`；package-smoke 的必需路径、render-skills 的读写位置同步；6 个测试只改路径。README 目录树与目录表、CHANGELOG 3.0.0-rc.1、迁移说明新表、STANDARDS C11、安全审查清单一处路径更新。
+- 执行：grok 1 轮（44 turns）；全量测试暴露 8 个失败——`test/gate/entry/` 三个测试仍按旧路径读打包模板（brief 让 worker 自行判断 `.codex/` 命中，它误判为宿主侧路径），由 Claude 改为 `gateResource(...)` 并让 `config-liveness` 也走中心模块；evaluator 复核 PASS（66 个 R100 对账、路径语义、打包清单、文档）。验证：lint 0；`npm test` 92 文件 / 862 项；`test:package` 410 项（真实 tarball 装进 fake HOME 跑 `entry install-host`）；`render-skills --check` 0；`src/gate` 零改动。
+- 遗留（不改行为）：`src/config/tiered.ts` 的错误标签字符串仍写 `policies/orchestration.yaml (内置)` 等，是展示标签不是路径；包内实际位置已是 `resources/gate/policies/`，是否改标签由作者定（属 2.x 行为）。
+
 ## 2026-11-07 · ADR-0003 P3：test/ 镜像 src/
 
 - 79 个根目录文件按引用的 src 模块归位（git 全部识别为 rename）：2.x 测试进 `test/gate/{storage 39, runtime 4, mcp 6, policy 2, config 5, contracts 3, entry 3}`，跨模块的 2.x 端到端测试（dogfood、e2e-user-path）放 `test/gate/` 根；3.x CLI 测试进 `test/app/`；仓库级守卫（gate-frozen、config-liveness 两个、typecheck-baseline.json）进 `test/repo/`；脚本测试进 `test/scripts/`；两个辅助文件进 `test/helpers/`。`src/config`、`contracts`、`entry` 的测试直接放到 `test/gate/` 下，P5 搬源码时不用再搬测试。

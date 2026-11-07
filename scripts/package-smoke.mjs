@@ -13,21 +13,22 @@ const npm = process.platform === "win32" ? "npm.cmd" : "npm";
 const requiredPaths = [
   "dist/cli.js",
   "dist/mcp-server.js",
-  "schemas",
-  "profiles",
-  "packs",
-  "policies",
-  "plugins",
-  ".codex/skills",
-  ".zcode/skills",
-  ".zcode/commands",
+  "resources/toolkit/toolkit.schema.json",
+  "resources/gate/schemas",
+  "resources/gate/profiles",
+  "resources/gate/packs",
+  "resources/gate/policies",
+  "resources/gate/plugins",
+  "resources/gate/examples",
+  "resources/gate/skills/codex/SKILL.md",
+  "resources/gate/skills/zcode/SKILL.md",
+  "resources/gate/skills/zcode/commands/stinky-cobbler.md",
   "README.md",
   "LICENSE",
   "SECURITY.md",
   "CHANGELOG.md",
   "CONTRIBUTING.md",
-  "docs",
-  "examples"
+  "docs"
 ];
 
 const forbiddenPathPatterns = [

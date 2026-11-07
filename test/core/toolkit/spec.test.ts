@@ -52,7 +52,7 @@ describe("toolkit spec", () => {
   });
 
   it("keeps the committed toolkit schema equal to the zod export", async () => {
-    const file = path.resolve(import.meta.dirname, "../../../schemas/toolkit.schema.json");
+    const file = path.resolve(import.meta.dirname, "../../../resources/toolkit/toolkit.schema.json");
     const committed = JSON.parse(await readFile(file, "utf8")) as unknown;
     expect(committed).toEqual(toolkitJsonSchema());
   });

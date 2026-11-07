@@ -16,22 +16,22 @@ describe("host skill documentation contract", () => {
   it("regenerates Codex and ZCode skills from one core plus host fragments", async () => {
     const check = await execFileAsync(process.execPath, ["scripts/render-skills.mjs", "--check"], { cwd: projectRoot });
     expect(check.stderr).toBe("");
-    const core = await readRepoFile("templates/skill-core.md");
+    const core = await readRepoFile("resources/gate/skills/templates/skill-core.md");
     expect(core).not.toMatch(/Codex|ZCode/);
-    const codex = renderSkill(core, parseSlots(await readRepoFile("templates/hosts/codex.md")));
-    const zcode = renderSkill(core, parseSlots(await readRepoFile("templates/hosts/zcode.md")));
-    expect(codex).toBe(await readRepoFile(".codex/skills/stinky-cobbler/SKILL.md"));
-    expect(zcode).toBe(await readRepoFile(".zcode/skills/stinky-cobbler/SKILL.md"));
+    const codex = renderSkill(core, parseSlots(await readRepoFile("resources/gate/skills/templates/hosts/codex.md")));
+    const zcode = renderSkill(core, parseSlots(await readRepoFile("resources/gate/skills/templates/hosts/zcode.md")));
+    expect(codex).toBe(await readRepoFile("resources/gate/skills/codex/SKILL.md"));
+    expect(zcode).toBe(await readRepoFile("resources/gate/skills/zcode/SKILL.md"));
     expect(codex).not.toBe(zcode);
   });
 
   it("renders CRLF templates to the same LF bytes as the checked-in skills", async () => {
     const [core, codexHost, zcodeHost, codexSkill, zcodeSkill] = await Promise.all([
-      readRepoFile("templates/skill-core.md"),
-      readRepoFile("templates/hosts/codex.md"),
-      readRepoFile("templates/hosts/zcode.md"),
-      readRepoFile(".codex/skills/stinky-cobbler/SKILL.md"),
-      readRepoFile(".zcode/skills/stinky-cobbler/SKILL.md")
+      readRepoFile("resources/gate/skills/templates/skill-core.md"),
+      readRepoFile("resources/gate/skills/templates/hosts/codex.md"),
+      readRepoFile("resources/gate/skills/templates/hosts/zcode.md"),
+      readRepoFile("resources/gate/skills/codex/SKILL.md"),
+      readRepoFile("resources/gate/skills/zcode/SKILL.md")
     ]);
     const crlf = (text: string) => text.replace(/\n/g, "\r\n");
     const codex = renderSkill(crlf(core), parseSlots(crlf(codexHost)));
@@ -44,9 +44,9 @@ describe("host skill documentation contract", () => {
 
   it("keeps eight shared skill invariants and the ZCode via choice", async () => {
     const [codex, zcode, command] = await Promise.all([
-      readRepoFile(".codex/skills/stinky-cobbler/SKILL.md"),
-      readRepoFile(".zcode/skills/stinky-cobbler/SKILL.md"),
-      readRepoFile(".zcode/commands/stinky-cobbler.md")
+      readRepoFile("resources/gate/skills/codex/SKILL.md"),
+      readRepoFile("resources/gate/skills/zcode/SKILL.md"),
+      readRepoFile("resources/gate/skills/zcode/commands/stinky-cobbler.md")
     ]);
     for (const skill of [codex, zcode]) {
       expect(skill).toContain("Never auto-approve");

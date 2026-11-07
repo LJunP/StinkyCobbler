@@ -2,6 +2,7 @@ import { execFile } from "node:child_process";
 import { mkdtemp, rm, mkdir, writeFile, realpath, access, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { gateResource } from "../../../src/io/resources.js";
 import { promisify } from "node:util";
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -66,7 +67,7 @@ describe("entry CLI black-box", () => {
     expect(second.skill.action).toBe("ready");
     await access(path.join(home, ".zcode", "commands", "stinky-cobbler.md"));
     const installedSkill = await readFile(path.join(home, ".zcode", "skills", "stinky-cobbler", "SKILL.md"), "utf8");
-    const bundledSkill = await readFile(path.join(projectRoot, ".zcode", "skills", "stinky-cobbler", "SKILL.md"), "utf8");
+    const bundledSkill = await readFile(gateResource(projectRoot, "skills", "zcode", "SKILL.md"), "utf8");
     expect(installedSkill).toBe(bundledSkill);
   });
 
