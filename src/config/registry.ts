@@ -5,6 +5,7 @@ import type { Pack, PluginDiagnostic, PluginManifest, Profile, RoleRegistry } fr
 import { discoverBuiltinPlugins } from "./plugin-discovery.js";
 import { SchemaRegistry } from "../contracts/schema-registry.js";
 import { ExitCode, StinkyCobblerError } from "../errors.js";
+import { gateResource } from "../io/resources.js";
 
 export interface Registries {
   profiles: Map<string, Profile>;
@@ -30,22 +31,22 @@ export function validateRoleTools(tools: Record<string, string[]>, roles: RoleRe
 }
 
 export async function loadRegistries(projectRoot: string, schemas: SchemaRegistry): Promise<Registries> {
-  const profiles = await loadDirectory<Profile>(path.join(projectRoot, "profiles"), schemas, "profile", (item) => item.id);
+  const profiles = await loadDirectory<Profile>(gateResource(projectRoot, "profiles"), schemas, "profile", (item) => item.id);
   const packs = await loadPackDirectory(projectRoot, schemas);
-  const coreRoles = await loadYaml<RoleRegistry>(path.join(projectRoot, "policies", "roles.yaml"));
-  const extensions = await loadYaml<RoleRegistry>(path.join(projectRoot, "policies", "role-extensions.yaml"));
+  const coreRoles = await loadYaml<RoleRegistry>(gateResource(projectRoot, "policies", "roles.yaml"));
+  const extensions = await loadYaml<RoleRegistry>(gateResource(projectRoot, "policies", "role-extensions.yaml"));
   schemas.validate("role", coreRoles);
   schemas.validate("role", extensions);
   const roles: RoleRegistry = { version: 1, roles: { ...coreRoles.roles, ...extensions.roles } };
   schemas.validate("role", roles);
-  const roleToolsValue = await loadYaml<unknown>(path.join(projectRoot, "policies", "role-tools.yaml"));
+  const roleToolsValue = await loadYaml<unknown>(gateResource(projectRoot, "policies", "role-tools.yaml"));
   schemas.validate("role-tools-policy", roleToolsValue);
   const roleToolsFile = roleToolsValue as { version: 1; tools: Record<string, string[]> };
   if (roleToolsFile.version !== 1 || typeof roleToolsFile.tools !== "object" || roleToolsFile.tools === null || Array.isArray(roleToolsFile.tools)) {
     throw missing("ROLE_TOOLS_INVALID", "role-tools.yaml must be version 1 with a tools map.");
   }
   validateRoleTools(roleToolsFile.tools, roles, KNOWN_TOOLS);
-  const pluginValue = await loadYaml<unknown>(path.join(projectRoot, "plugins", "builtin.yaml"));
+  const pluginValue = await loadYaml<unknown>(gateResource(projectRoot, "plugins", "builtin.yaml"));
   schemas.validate("plugin-registry-policy", pluginValue);
   const pluginFile = pluginValue as { version: 2; plugins: PluginManifest[] };
   for (const plugin of pluginFile.plugins) schemas.validate("plugin", plugin);
@@ -73,8 +74,8 @@ async function loadDirectory<T>(directory: string, schemas: SchemaRegistry, kind
 
 async function loadPackDirectory(projectRoot: string, schemas: SchemaRegistry): Promise<Map<string, Pack>> {
   const result = new Map<string, Pack>();
-  for (const directory of await readdir(path.join(projectRoot, "packs"))) {
-    const item = await loadYaml<Pack>(path.join(projectRoot, "packs", directory, "pack.yaml"));
+  for (const directory of await readdir(gateResource(projectRoot, "packs"))) {
+    const item = await loadYaml<Pack>(gateResource(projectRoot, "packs", directory, "pack.yaml"));
     schemas.validate("pack", item);
     if (item.id !== directory) {
       throw missing("PACK_IDENTITY_MISMATCH", `Pack ${item.id} does not match its directory ${directory}.`);

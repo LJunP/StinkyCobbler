@@ -4,8 +4,8 @@ import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const HOSTS = {
-  codex: ".codex/skills/stinky-cobbler/SKILL.md",
-  zcode: ".zcode/skills/stinky-cobbler/SKILL.md"
+  codex: "resources/gate/skills/codex/SKILL.md",
+  zcode: "resources/gate/skills/zcode/SKILL.md"
 };
 
 function toLf(text) {
@@ -54,10 +54,10 @@ export function renderSkill(core, slots) {
 
 async function main() {
   const check = process.argv.includes("--check");
-  const core = await readFile(path.join(root, "templates/skill-core.md"), "utf8");
+  const core = await readFile(path.join(root, "resources/gate/skills/templates/skill-core.md"), "utf8");
   const drifted = [];
   for (const [host, relative] of Object.entries(HOSTS)) {
-    const slots = parseSlots(await readFile(path.join(root, "templates/hosts", `${host}.md`), "utf8"));
+    const slots = parseSlots(await readFile(path.join(root, "resources/gate/skills/templates/hosts", `${host}.md`), "utf8"));
     const rendered = renderSkill(core, slots);
     const target = path.join(root, relative);
     const current = toLf(await readFile(target, "utf8"));

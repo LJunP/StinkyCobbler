@@ -1,7 +1,6 @@
-import path from "node:path";
+import { PACKAGE_ROOT } from "../io/resources.js";
 import { SchemaRegistry } from "./schema-registry.js";
 
-const PACKAGE_ROOT = path.resolve(import.meta.dirname, "../..");
 let registryPromise: Promise<SchemaRegistry> | undefined;
 
 /**

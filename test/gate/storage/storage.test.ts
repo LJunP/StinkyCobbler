@@ -4,6 +4,7 @@ import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { loadRegistries } from "../../../src/config/registry.js";
 import { SchemaRegistry } from "../../../src/contracts/schema-registry.js";
+import { gateResource } from "../../../src/io/resources.js";
 import { appendLedgerEntry, verifyLedger } from "../../../src/gate/storage/ledger.js";
 import { initWorkspace, workspaceFile } from "../../../src/gate/storage/workspace.js";
 
@@ -19,7 +20,7 @@ async function createProject(): Promise<string> {
 async function copyRegistryProject(): Promise<string> {
   const root = await createProject();
   await Promise.all(["profiles", "packs", "policies", "plugins"].map((directory) =>
-    cp(path.join(projectRoot, directory), path.join(root, directory), { recursive: true })
+    cp(gateResource(projectRoot, directory), gateResource(root, directory), { recursive: true })
   ));
   return root;
 }
@@ -69,7 +70,7 @@ describe("workspace storage", () => {
 describe("registry storage identity", () => {
   it("binds Profile IDs to YAML basenames", async () => {
     const root = await copyRegistryProject();
-    const profile = path.join(root, "profiles", "individual.yaml");
+    const profile = gateResource(root, "profiles", "individual.yaml");
     await writeFile(profile, (await readFile(profile, "utf8")).replace("id: individual", "id: team"));
 
     await expect(loadRegistries(root, await SchemaRegistry.create(projectRoot))).rejects.toMatchObject({
@@ -79,7 +80,7 @@ describe("registry storage identity", () => {
 
   it("binds Pack IDs to their containing directory", async () => {
     const root = await copyRegistryProject();
-    const pack = path.join(root, "packs", "software-engineering", "pack.yaml");
+    const pack = gateResource(root, "packs", "software-engineering", "pack.yaml");
     await writeFile(pack, (await readFile(pack, "utf8")).replace("id: software-engineering", "id: knowledge-work"));
 
     await expect(loadRegistries(root, await SchemaRegistry.create(projectRoot))).rejects.toMatchObject({
@@ -89,8 +90,8 @@ describe("registry storage identity", () => {
 
   it("validates each Role registry layer before merging", async () => {
     const root = await copyRegistryProject();
-    const coreFile = path.join(root, "policies", "roles.yaml");
-    const extensionFile = path.join(root, "policies", "role-extensions.yaml");
+    const coreFile = gateResource(root, "policies", "roles.yaml");
+    const extensionFile = gateResource(root, "policies", "role-extensions.yaml");
     await writeFile(coreFile, (await readFile(coreFile, "utf8")).replace("displayName: 总控", "displayName: \"\""));
     await writeFile(extensionFile, (await readFile(extensionFile, "utf8")).replace(
       "roles:\n",
@@ -102,13 +103,13 @@ describe("registry storage identity", () => {
 
   it("validates role-tools and built-in plugin envelopes before item/reference checks", async () => {
     const roleToolsRoot = await copyRegistryProject();
-    const roleToolsFile = path.join(roleToolsRoot, "policies", "role-tools.yaml");
+    const roleToolsFile = gateResource(roleToolsRoot, "policies", "role-tools.yaml");
     await writeFile(roleToolsFile, `${await readFile(roleToolsFile, "utf8")}unexpected: true\n`);
     await expect(loadRegistries(roleToolsRoot, await SchemaRegistry.create(projectRoot)))
       .rejects.toMatchObject({ code: "SCHEMA_INVALID", details: { kind: "role-tools-policy" } });
 
     const pluginsRoot = await copyRegistryProject();
-    const pluginsFile = path.join(pluginsRoot, "plugins", "builtin.yaml");
+    const pluginsFile = gateResource(pluginsRoot, "plugins", "builtin.yaml");
     await writeFile(pluginsFile, `${await readFile(pluginsFile, "utf8")}unexpected: true\n`);
     await expect(loadRegistries(pluginsRoot, await SchemaRegistry.create(projectRoot)))
       .rejects.toMatchObject({ code: "SCHEMA_INVALID", details: { kind: "plugin-registry-policy" } });

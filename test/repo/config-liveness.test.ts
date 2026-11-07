@@ -1,5 +1,6 @@
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
+import { gateResource, toolkitResource } from "../../src/io/resources.js";
 import { describe, expect, it } from "vitest";
 
 const projectRoot = path.resolve(import.meta.dirname, "..", "..");
@@ -37,11 +38,13 @@ async function sourceText(): Promise<string> {
 
 describe("schema property liveness", () => {
   it("rejects a schema property name that src never references", async () => {
-    const schemaDir = path.join(projectRoot, "schemas");
-    const entries = (await readdir(schemaDir)).filter((name) => name.endsWith(".json"));
+    const schemaDirs = [gateResource(projectRoot, "schemas"), toolkitResource(projectRoot)];
     const names = new Set<string>();
-    for (const entry of entries) {
-      collectPropertyNames(JSON.parse(await readFile(path.join(schemaDir, entry), "utf8")) as unknown, names);
+    for (const schemaDir of schemaDirs) {
+      const entries = (await readdir(schemaDir)).filter((name) => name.endsWith(".json"));
+      for (const entry of entries) {
+        collectPropertyNames(JSON.parse(await readFile(path.join(schemaDir, entry), "utf8")) as unknown, names);
+      }
     }
     const source = await sourceText();
     const orphans = [...names].filter((name) => {

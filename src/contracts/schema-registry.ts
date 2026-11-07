@@ -3,6 +3,7 @@ import { createRequire } from "node:module";
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import { StinkyCobblerError, ExitCode } from "../errors.js";
+import { gateResource } from "../io/resources.js";
 
 export type ContractKind = "task" | "task-transition" | "artifact" | "capsule" | "lease" | "lease-issuance" | "receipt" | "runtime-finalization" | "approval" | "audit" | "config" | "profile" | "pack" | "role" | "plugin" | "policy-decision" | "evidence-ref" | "agent-run" | "tool-call-record" | "plan" | "write-intent" | "orchestration-contract" | "orchestration-subtask" | "orchestration-artifact" | "orchestration-review" | "orchestration-run" | "orchestration-validator-receipt" | "orchestration-transaction" | "orchestration-policy" | "specialists-policy" | "contract-templates-policy" | "cancellation-fence" | "lease-usage" | "audit-outbox" | "docs-index" | "role-tools-policy" | "plugin-registry-policy";
 
@@ -61,7 +62,7 @@ export class SchemaRegistry {
     const addFormats = require("ajv-formats").default as (instance: unknown) => void;
     const ajv = new Ajv2020({ allErrors: true, strict: false });
     addFormats(ajv);
-    const schemasDir = path.join(projectRoot, "schemas");
+    const schemasDir = gateResource(projectRoot, "schemas");
     const entries = await readdir(schemasDir);
     const parsedSchemas = new Map(await Promise.all(entries.filter((entry) => entry.endsWith(".json")).map(async (entry) => {
       return [entry, JSON.parse(await readFile(path.join(schemasDir, entry), "utf8")) as unknown] as const;

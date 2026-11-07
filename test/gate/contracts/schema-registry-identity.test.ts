@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { SchemaRegistry } from "../../../src/contracts/schema-registry.js";
+import { gateResource } from "../../../src/io/resources.js";
 
 const roots: string[] = [];
 const projectRoot = path.resolve(import.meta.dirname, "..", "..", "..");
@@ -15,10 +16,10 @@ describe("schema registry canonical identities", () => {
   it("rejects canonical schema files whose contents and $ids were swapped", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "stinky-schema-identity-"));
     roots.push(root);
-    await cp(path.join(projectRoot, "schemas"), path.join(root, "schemas"), { recursive: true });
+    await cp(gateResource(projectRoot, "schemas"), gateResource(root, "schemas"), { recursive: true });
 
-    const taskFile = path.join(root, "schemas", "task.schema.json");
-    const artifactFile = path.join(root, "schemas", "artifact.schema.json");
+    const taskFile = gateResource(root, "schemas", "task.schema.json");
+    const artifactFile = gateResource(root, "schemas", "artifact.schema.json");
     const [taskSchema, artifactSchema] = await Promise.all([
       readFile(taskFile, "utf8"),
       readFile(artifactFile, "utf8")
@@ -34,8 +35,8 @@ describe("schema registry canonical identities", () => {
   it("binds every aggregate kind to its exact canonical filename and $id", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "stinky-schema-aggregate-identity-"));
     roots.push(root);
-    await cp(path.join(projectRoot, "schemas"), path.join(root, "schemas"), { recursive: true });
-    const target = path.join(root, "schemas", "cancellation-fence.schema.json");
+    await cp(gateResource(projectRoot, "schemas"), gateResource(root, "schemas"), { recursive: true });
+    const target = gateResource(root, "schemas", "cancellation-fence.schema.json");
     const schema = JSON.parse(await readFile(target, "utf8")) as Record<string, unknown>;
     schema.$id = "https://stinkycobbler.dev/schemas/docs-index.schema.json";
     await writeFile(target, JSON.stringify(schema), "utf8");
