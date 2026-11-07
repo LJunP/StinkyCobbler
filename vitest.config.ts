@@ -10,6 +10,16 @@ export default defineConfig({
     environment: "node",
     setupFiles: ["test/setup/isolate-xdg.ts", "test/setup/isolate-git.ts"],
     ...timeouts,
+    coverage: {
+      provider: "v8",
+      include: ["src/**/*.ts"],
+      exclude: ["src/gate/**"],
+      thresholds: {
+        "src/core/**": { lines: 90 },
+        "src/io/**": { lines: 85 },
+        "src/hosts/**": { lines: 85 }
+      }
+    },
     projects: [
       {
         extends: true,

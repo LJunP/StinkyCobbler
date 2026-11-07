@@ -1,5 +1,6 @@
 import path from "node:path";
 import { directoryExists } from "../io/directory-exists.js";
+import { gateResourceRelative } from "../io/resources.js";
 import { located, type ArtifactKind, type HostAdapter, type HostRoots, type HostScope } from "./host-adapter.js";
 import { mergeJsonMcp, readJsonMcp } from "./json-mcp.js";
 
@@ -10,8 +11,8 @@ export const zcodeHost = {
   id: "zcode",
   presenceDirectory: ".zcode",
   documentedEnvExpansion: "unknown",
-  bundledSkillTemplate: path.join("resources", "gate", "skills", "zcode", "SKILL.md"),
-  bundledCommandTemplate: path.join("resources", "gate", "skills", "zcode", "commands", "stinky-cobbler.md"),
+  bundledSkillTemplate: gateResourceRelative("skills", "zcode", "SKILL.md"),
+  bundledCommandTemplate: gateResourceRelative("skills", "zcode", "commands", "stinky-cobbler.md"),
   detect: (home) => directoryExists(path.join(home, ".zcode")),
   supports: (kind) => kind !== "instructions",
   locate: (kind, scope, roots) => locateZcode(kind, scope, roots),

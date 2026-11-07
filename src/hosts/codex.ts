@@ -1,5 +1,6 @@
 import path from "node:path";
 import { directoryExists } from "../io/directory-exists.js";
+import { gateResourceRelative } from "../io/resources.js";
 import { located, unsupported, type ArtifactKind, type HostAdapter, type HostRoots, type HostScope } from "./host-adapter.js";
 import { mergeTomlMcp, readTomlMcp } from "./toml-mcp.js";
 
@@ -10,7 +11,7 @@ export const codexHost = {
   id: "codex",
   presenceDirectory: ".codex",
   documentedEnvExpansion: "name-forwarding",
-  bundledSkillTemplate: path.join("resources", "gate", "skills", "codex", "SKILL.md"),
+  bundledSkillTemplate: gateResourceRelative("skills", "codex", "SKILL.md"),
   detect: (home) => directoryExists(path.join(home, ".codex")),
   supports: (kind) => !UNSUPPORTED_KIND.has(kind),
   locate: (kind, scope, roots) => locateCodex(kind, scope, roots),

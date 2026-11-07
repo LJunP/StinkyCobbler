@@ -2,6 +2,21 @@
 
 > 只追加，最新在上。每条：日期 / 任务 / 做了什么 / 验证 / 待办与问题。
 
+## 2026-11-07 · ADR-0003 P6：结构守卫、链接/垃圾检查、audit:release、覆盖率地板
+
+- 新增 4 个检查器（`scripts/repo-structure.mjs`、`check-docs-links.mjs`、`repo-junk.mjs`、`audit-release.mjs`），各有合成失败用例（`test/scripts/*.test.ts`，33 例，断言具体问题字符串）和真实仓库用例（`test/repo/{structure,docs-links,junk}.test.ts` 断言 []）。结构守卫直接读 STANDARDS §1.2 的 yaml 块；命名例外（根目录点文件、10 个约定大写文件、`.github/`、宿主要求的 `SKILL.md`）写进 §2。
+- `npm run audit:release`：仓库守卫、全仓密钥样式/本机路径扫描（只报路径与模式名）、`npm audit` 全量与仅运行时依赖、工作区干净（无未忽略文件、无空目录）；release-candidate 工作流接入。
+- 规则升级：dependency-cruiser `app-has-no-fs`（现有 10 处基线只减不增，基线 15→25）；ESLint 拦 3.x 代码里任何 `new Error(...)`；vitest 覆盖率阈值 core 90 / io 85 / hosts 85（行），CI 加 `npm run coverage`。宿主适配器的打包模板路径改走 `gateResourceRelative()`。STANDARDS 相应状态升为 ✅/🟡 并点名强制文件。
+- 执行：grok 1 轮到 80 turn 上限中断（最后在修 dependency-cruiser 对 `fs/promises` 的匹配，已完成），Claude 撤回它为 worktree 符号链接而改的 `.gitignore`。evaluator 第一轮 NEEDS_WORK（TODO 正则漏 markdown 列表项、C11 未披露豁免、T1 过期、缺失败用例），修后 PASS。reviewer（代码审查）：0 CRITICAL/HIGH、5 MEDIUM、10 LOW；已修 4 个 MEDIUM——`".codex")` 闭括号写法漏报、资源段字面量只在 `join(`/`resolve(` 行内才算（避免误伤枚举）、链接检查支持根相对路径/HTML 注释/缩进围栏/短 setext 下划线、`audit:release` 的 repo guards 限定 `--project unit`（不再隐式 build）。验证：lint 0；`npm test` 99 文件 / 904 项；`npm run coverage` 阈值通过；`test:package` 410 项；`audit:release` 本机除两步 `npm audit`（镜像问题）外全 PASS。
+
+### 待办 / 问题（P6 审查遗留，均不影响当前仓库通过）
+- 链接检查（LOW）：标题含链接或多空格时 slug 与 GitHub 不一致；重复标题撞上已有 `-1` 后缀；徽章嵌套链接只查内层；引用式链接 `[text][ref]` 不查；macOS/Windows 文件名大小写不敏感（Linux CI 兜底）。
+- 结构守卫（LOW）：`checkIgnored` 只认 `name`、`name/`、`/name/` 三种写法；非根目录点文件（如 `.gitkeep`）一律不合规。
+- 垃圾检查（LOW）：console 检查对注释和字符串也生效；行尾 `# TODO`、小写 `todo` 不拦。
+- audit:release（LOW）：空目录检查会报被 gitignore 的本地空目录；`readdir` 权限错误会让审计崩溃；`.env.example` 会被当密钥文件；`npm audit` 的网络/ENOAUDIT 错误与真实漏洞同为非零退出，CI 上可能偶发红。
+- CI 成本：每个矩阵格 unit 套件跑两遍（`npm test` + `npm run coverage`）。
+- 已知：本机 npm 镜像不提供安全通告接口，`audit:release` 的两步 `npm audit` 在本机报 FAIL（`[NOT_IMPLEMENTED] /-/npm/v1/security/*`）；CI 的 registry 正常。C14 的「无引用文件」与「注释掉的代码」仍 ⬜。
+
 ## 2026-11-07 · ADR-0003 P5：src/config、contracts、entry、security 并入 src/gate
 
 - 14 个文件（2828 个非空行）搬进 `src/gate/{config,contracts,entry,security}`，git 识别为 rename。搬动文件与 44 个既有 gate 文件只改 import/export 说明符；唯一非说明符改动是 `src/gate/entry/install-host.ts` 的包根表达式多爬一层（`../../..`），否则打包模板路径失效，`test:package` 真实安装验证过。`src/app/register-commands.ts`、`src/mcp-server.ts`、52 个测试文件跟着改路径。

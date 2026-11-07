@@ -46,7 +46,7 @@
 
 ## 正式发布门禁
 
-1. 对最终候选快照重跑 Node.js `>=22` 下的 typecheck、build、全量测试、版本一致性与 `git diff --check`。
+1. `npm run audit:release`（结构、密钥、依赖、垃圾、链接、工作区）；对最终候选快照重跑 Node.js `>=22` 下的 typecheck、build、全量测试、版本一致性与 `git diff --check`。
 2. 从真实 `.tgz` 安装，验证 CLI、MCP stdio、package-smoke、SBOM 一对一对账与 checksum。
 3. 在支持的 ZCode/Codex 宿主中重新验证注册、重启后发现、受控读/写/删除/回滚、cancel/retry/artifact/review/round-complete 的消费者 E2E。
 4. 审查完整未提交差异，保留用户文件；提交、tag、npm 发布、GitHub Release 与 provenance 分别形成可核验证据。
