@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import type { HostAdapter, HostRoots, HostScope } from "../hosts/host-adapter.js";
+import { rendersInstructionSegment, type HostAdapter, type HostRoots, type HostScope } from "../hosts/host-adapter.js";
 import { inspectManagedFile, type ManagedInspection, type ManagedObservationState } from "../io/managed-file.js";
 import { HOST_IDS, type ArtifactKind, type ToolkitHostId } from "../core/toolkit/kinds.js";
 import type { McpServerSpec, ToolkitSpec } from "../core/toolkit/spec.js";
@@ -39,7 +39,7 @@ async function observeInstructions(adapter: HostAdapter, spec: ToolkitSpec, scop
   const host = hostId(adapter.id);
   if (host === undefined) return [];
   const target = adapter.locate("instructions", scope, roots);
-  if (target.unsupported !== undefined || target.path.length === 0) return [];
+  if (!rendersInstructionSegment(target)) return [];
   const observations: HostObservation[] = [];
   for (const item of spec.instructions) {
     if (item.render?.[host] === undefined) continue;

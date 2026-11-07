@@ -49,3 +49,19 @@ export function located(file: string, format: ArtifactFormat): LocatedArtifact {
 export function unsupported(format: ArtifactFormat, reason: string): LocatedArtifact {
   return { path: "", format, unsupported: reason };
 }
+
+/**
+ * Instructions are written as one managed segment inside a markdown file. A target in any other
+ * format (for example Cursor's `.cursor/rules` directory of `.mdc` files) has no renderer yet, so it
+ * must be skipped rather than inspected or written as a file.
+ */
+export function rendersInstructionSegment(target: LocatedArtifact): boolean {
+  return target.unsupported === undefined && target.path.length > 0 && target.format === "md-segment";
+}
+
+/** Why an instruction target is skipped, or undefined when it renders. */
+export function instructionSkipReason(host: string, target: LocatedArtifact): string | undefined {
+  if (rendersInstructionSegment(target)) return undefined;
+  if (target.unsupported !== undefined) return target.unsupported;
+  return `${host} instructions target is a ${target.format} target; only md-segment targets are rendered.`;
+}

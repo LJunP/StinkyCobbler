@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import process from "node:process";
 import { ExitCode, StinkyCobblerError } from "../errors.js";
-import type { HostScope } from "../hosts/host-adapter.js";
+import { rendersInstructionSegment, type HostScope } from "../hosts/host-adapter.js";
 import { requireHost } from "../hosts/registry.js";
 import { installManagedBytes, readRegularHostFile } from "../io/managed-file.js";
 import { readSegment, upsertSegment } from "../io/segment-file.js";
@@ -38,7 +38,7 @@ function memoryPath(host: string | undefined, scope: string | undefined): string
   const adapter = requireHost(host);
   if (!adapter.supports("instructions")) throw unsupported(adapter.id);
   const located = adapter.locate("instructions", parseScope(scope), { home: homedir(), cwd: process.cwd() });
-  if (located.unsupported !== undefined || located.format !== "md-segment" || located.path.length === 0) throw unsupported(adapter.id);
+  if (!rendersInstructionSegment(located)) throw unsupported(adapter.id);
   return located.path;
 }
 

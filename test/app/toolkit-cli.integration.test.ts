@@ -22,16 +22,20 @@ interface CliFailure {
 }
 
 async function run(env: NodeJS.ProcessEnv, ...args: string[]): Promise<{ stdout: string; stderr: string }> {
-  return execFileAsync(process.execPath, [path.join(projectRoot, "dist/cli.js"), ...args], {
-    cwd: projectRoot,
-    env,
-    maxBuffer: 1024 * 1024
-  });
+  return runIn(projectRoot, env, ...args);
+}
+
+async function runIn(cwd: string, env: NodeJS.ProcessEnv, ...args: string[]): Promise<{ stdout: string; stderr: string }> {
+  return execFileAsync(process.execPath, [path.join(projectRoot, "dist/cli.js"), ...args], { cwd, env, maxBuffer: 1024 * 1024 });
 }
 
 async function fail(env: NodeJS.ProcessEnv, ...args: string[]): Promise<CliFailure> {
+  return failIn(projectRoot, env, ...args);
+}
+
+async function failIn(cwd: string, env: NodeJS.ProcessEnv, ...args: string[]): Promise<CliFailure> {
   try {
-    const result = await run(env, ...args);
+    const result = await runIn(cwd, env, ...args);
     return { code: 0, stdout: result.stdout, stderr: result.stderr };
   } catch (error: unknown) {
     return error as CliFailure;
@@ -747,6 +751,50 @@ describe("toolkit cli", () => {
     expect(failure.code).toBe(6);
     expect(JSON.parse(failure.stdout ?? "{}")).toMatchObject({ stopped: true, completed: [], hint: "toolkit rollback --last", error: { code: expect.any(String) } });
     expect(await readFile(path.join(home, ".codex", "skills"), "utf8")).toBe("not a directory\n");
+  });
+
+  it("skips Cursor project rules instead of treating the rules directory as a segment file", async () => {
+    const home = await tempDir("stinky-cursor-rules-home-");
+    const xdg = await tempDir("stinky-cursor-rules-xdg-");
+    const cwd = await tempDir("stinky-cursor-rules-cwd-");
+    const env = childEnv(home, xdg);
+    const source = path.join(cwd, "my-style.md");
+    await writeFile(source, "Use short paragraphs.\n");
+    await runIn(cwd, env, "toolkit", "init", "--scope", "project", "--json");
+    await writeFile(path.join(cwd, ".stinky-cobbler", "toolkit.yaml"), [
+      "version: 1",
+      "scope: project",
+      "hosts:",
+      "  - cursor",
+      "skills: []",
+      "mcpServers: []",
+      "instructions:",
+      "  - id: my-style",
+      `    source: ${JSON.stringify(source)}`,
+      "    render:",
+      "      cursor: .cursor/rules/my-style.mdc",
+      "bundles: []",
+      ""
+    ].join("\n"));
+    await runIn(cwd, env, "toolkit", "lock", "--scope", "project", "--json");
+    const skip = expect.objectContaining({ host: "cursor", kind: "instructions", id: "my-style", reason: expect.stringContaining("md-segment") });
+    const absent = JSON.parse((await runIn(cwd, env, "toolkit", "plan", "--scope", "project", "--json")).stdout) as { ops: unknown[]; conflicts: unknown[]; skipped: unknown[] };
+    expect(absent.ops).toEqual([]);
+    expect(absent.conflicts).toEqual([]);
+    expect(absent.skipped).toEqual([skip]);
+    const rules = path.join(cwd, ".cursor", "rules");
+    await mkdir(rules, { recursive: true });
+    await writeFile(path.join(rules, "existing.mdc"), "keep\n");
+    const before = await treeHash(cwd);
+    const present = JSON.parse((await runIn(cwd, env, "toolkit", "plan", "--scope", "project", "--json")).stdout) as { ops: unknown[]; conflicts: unknown[]; skipped: unknown[] };
+    expect(present.ops).toEqual([]);
+    expect(present.conflicts).toEqual([]);
+    expect(present.skipped).toEqual([skip]);
+    const applied = JSON.parse((await runIn(cwd, env, "toolkit", "apply", "--yes", "--scope", "project", "--json")).stdout) as { stopped: boolean; completed: unknown[] };
+    expect(applied).toMatchObject({ stopped: false, completed: [] });
+    const doctor = JSON.parse((await runIn(cwd, env, "toolkit", "doctor", "--scope", "project", "--json")).stdout) as { drift: unknown[] };
+    expect(doctor.drift).toEqual([]);
+    expect(await treeHash(cwd)).toBe(before);
   });
 
 });

@@ -10,7 +10,7 @@ import { ARTIFACT_KINDS, type ArtifactKind } from "../core/toolkit/kinds.js";
 import { buildToolkitLock, isRemoteToolkitSource, parseToolkitLock, type LockBodies, type ToolkitLock } from "../core/toolkit/lock.js";
 import { parseToolkitSpec, type ToolkitSpec } from "../core/toolkit/spec.js";
 import { ExitCode, StinkyCobblerError } from "../errors.js";
-import type { DocumentedEnvExpansion, HostScope } from "../hosts/host-adapter.js";
+import { instructionSkipReason, type DocumentedEnvExpansion, type HostAdapter, type HostRoots, type HostScope } from "../hosts/host-adapter.js";
 import { hostAdapters } from "../hosts/registry.js";
 import { readToolkitEvents } from "../io/ledger.js";
 import { resolveConfigHome } from "../io/tiered-config.js";
@@ -113,10 +113,11 @@ async function buildPlan(scopeFlag?: string): Promise<ToolkitPlan> {
 }
 
 async function planLoaded(loaded: LoadedToolkit, sources?: PlanSources): Promise<ToolkitPlan> {
-  const observations = await observe(observationInput(loaded));
+  const input = observationInput(loaded);
+  const observations = await observe(input);
   const lock = await readLockIfPresent(loaded.specPath);
   return plan(loaded.spec, observations, {
-    support: kindSupport(),
+    support: kindSupport(input.scope, input.roots),
     sources: sources ?? (await overlayLockedSources(loaded, lock)),
     resolvedIds: resolvedLockIds(lock)
   });
@@ -238,17 +239,19 @@ function parseDocument(text: string): unknown {
   }
 }
 
-function kindSupport(): KindSupport[] {
+function kindSupport(scope: HostScope, roots: HostRoots): KindSupport[] {
   const rows: KindSupport[] = [];
   for (const adapter of hostAdapters) {
-    for (const kind of ARTIFACT_KINDS) rows.push(supportRow(adapter.id, kind, adapter.supports(kind)));
+    for (const kind of ARTIFACT_KINDS) rows.push(supportRow(adapter, kind, scope, roots));
   }
   return rows;
 }
 
-function supportRow(host: string, kind: ArtifactKind, supported: boolean): KindSupport {
-  if (supported) return { host, kind, supported };
-  return { host, kind, supported, reason: `${host} does not support ${kind}.` };
+function supportRow(adapter: HostAdapter, kind: ArtifactKind, scope: HostScope, roots: HostRoots): KindSupport {
+  const host = adapter.id;
+  if (!adapter.supports(kind)) return { host, kind, supported: false, reason: `${host} does not support ${kind}.` };
+  const reason = kind === "instructions" ? instructionSkipReason(host, adapter.locate(kind, scope, roots)) : undefined;
+  return reason === undefined ? { host, kind, supported: true } : { host, kind, supported: false, reason };
 }
 
 async function lockBodies(spec: ToolkitSpec): Promise<LockBodies> {
