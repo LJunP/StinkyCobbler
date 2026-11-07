@@ -3,6 +3,11 @@ export const ARTIFACT_KINDS = ["skill", "mcp-server", "instructions", "command"]
 
 export type ArtifactKind = (typeof ARTIFACT_KINDS)[number];
 
+/** The kinds whose bytes `toolkit lock` stores. Must stay a subset of `ARTIFACT_KINDS`. */
+export const LOCKED_KINDS = ["skill", "instructions"] as const satisfies readonly ArtifactKind[];
+
+export type LockedKind = (typeof LOCKED_KINDS)[number];
+
 /**
  * Host ids in `hostAdapters` order.
  * Core cannot import `src/hosts` (STANDARDS C2, enforced by dependency-cruiser core-has-no-io), so the
