@@ -4,7 +4,7 @@
 
 ## 2026-11-07 · 3.x 行为缺陷修复（P7 审计待办中的 7 条）
 
-- 分支 `feature/rc1-defect-fixes`，叠在 `feature/p7-audit`（PR #10，尚未合并）之上；7 个提交各修一个缺陷，每个都先写复现测试（用修复前的 `dist/` 或改前代码确认红灯）再修，不改 `src/gate/`：
+- 分支 `feature/rc1-defect-fixes`，从 `feature/p7-audit` 切出（PR #10 在本分支推送时已合并进 develop，本分支相对 develop 正好是下列 8 个提交）；7 个提交各修一个缺陷，每个都先写复现测试（用修复前的 `dist/` 或改前代码确认红灯）再修，不改 `src/gate/`：
   1. `19fdd6c` `toolkit rollback` 有 `conflict` 退出 7、`toolkit apply` `stopped: true` 退出 6（`ExitCode.INTERNAL`，固定码，JSON 不变；op 自己的退出码没有透传，见待办）。
   2. `28be634` `entry install-host` 冲突退出 7：`release/2.0.2` 的代码与测试早已是 7，3.x 分支漏了这项；两条锁定 1 的测试改为 7，CHANGELOG rc.1 标为相对 alpha.1 的破坏性变化。
   3. `def575b` Cursor `.cursor/rules` 不再当段落文件：`host-adapter.ts` 新增 `rendersInstructionSegment` / `instructionSkipReason`，observe、plan 的 support 行、`toolkit memory` 共用；非 `md-segment` 目标进 `plan.skipped` 并带原因。
@@ -20,7 +20,6 @@
 - `${file:PATH}` 引用四个宿主都没有文档语法，apply 不写、doctor 也不提示；建议 doctor 加一条提示。
 - Codex 只能按名转发：`KEY: ${env:NAME}` 且 KEY≠NAME 时服务进程拿到的变量名是 NAME；doctor 的 wrapper 提示仍是正确做法。Claude Code 的 `${VAR}` 只在 `.mcp.json` 文档里核实过，用户级 `~/.claude.json` 按同一语法写。
 - apply 中途停止固定退出 6；若作者希望透传 op 自身的退出码（例如 managed-file 的 3），需要在 JSON 报告里加 `exitCode` 字段。
-- 本分支叠在 PR #10 上，PR #10 先合并。
 
 ## 2026-11-07 · ADR-0003 P7：全量审计与收尾
 
