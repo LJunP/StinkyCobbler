@@ -3,13 +3,13 @@ import { ExitCode, StinkyCobblerError } from "../../errors.js";
 import { DOCS_INDEX_WRITE_SET, loadDocumentationIndex, saveDocumentationIndex, type DocumentationIndex, type DocumentationIndexEntry } from "../storage/docs-index.js";
 import { openWorkspace } from "../storage/workspace.js";
 import { assertReadScope, authorize, denied, resolveReadablePath, type ToolAccess, type ToolOutcome } from "./shared.js";
-import { loadOrchestrationConfig } from "../../config/tiered.js";
+import { loadOrchestrationConfig } from "../config/tiered.js";
 import {
   assertWorkspacePathPolicy,
   readBoundedWorkspaceFile,
   visitWorkspaceDirectory,
   WorkspaceReadBoundaryError
-} from "../../security/workspace-path.js";
+} from "../security/workspace-path.js";
 
 export { type DocumentationIndex, type DocumentationIndexEntry } from "../storage/docs-index.js";
 

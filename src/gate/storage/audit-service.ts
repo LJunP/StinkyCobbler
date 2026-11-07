@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import type { SchemaRegistry } from "../../contracts/schema-registry.js";
+import type { SchemaRegistry } from "../contracts/schema-registry.js";
 import { ExitCode, StinkyCobblerError } from "../../errors.js";
 import { appendLedgerEntry, listLedgerEntries } from "./ledger.js";
 import { createAuditOutbox, finalizeAuditOutboxOutcome, findAuditByCallId, getAuditOutbox, listPendingAuditOutbox, updateAuditOutbox, type AuditOutcome, type AuditOutboxRecord } from "./audit-outbox.js";

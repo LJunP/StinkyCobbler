@@ -1,4 +1,4 @@
-import type { CapabilityLease, PolicyDecision } from "../../contracts/types.js";
+import type { CapabilityLease, PolicyDecision } from "../contracts/types.js";
 
 /** Internal orchestration workers derive tools from an active, attempt-bound subtask. */
 export const ORCHESTRATION_WORKER_ROLE = "worker";

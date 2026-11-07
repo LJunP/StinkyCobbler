@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
-import type { SchemaRegistry } from "../../src/contracts/schema-registry.js";
-import type { Approval, OrchestrationPlan, TaskCharter } from "../../src/contracts/types.js";
+import type { SchemaRegistry } from "../../src/gate/contracts/schema-registry.js";
+import type { Approval, OrchestrationPlan, TaskCharter } from "../../src/gate/contracts/types.js";
 import { decideApproval, requestApproval } from "../../src/gate/storage/approvals.js";
 import type { WriteIntentRecord } from "../../src/gate/storage/write-intents.js";
 import { hashTaskAuthority, TASK_AUTHORITY_POLICY_VERSION } from "../../src/gate/storage/task-authority.js";

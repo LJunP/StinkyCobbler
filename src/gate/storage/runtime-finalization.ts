@@ -1,9 +1,9 @@
 import { createHash } from "node:crypto";
 import { lstat, mkdir, readFile } from "node:fs/promises";
 import path from "node:path";
-import { defaultSchemaRegistry } from "../../contracts/default-schema-registry.js";
-import type { SchemaRegistry } from "../../contracts/schema-registry.js";
-import type { AgentRun } from "../../contracts/types.js";
+import { defaultSchemaRegistry } from "../contracts/default-schema-registry.js";
+import type { SchemaRegistry } from "../contracts/schema-registry.js";
+import type { AgentRun } from "../contracts/types.js";
 import { ExitCode, StinkyCobblerError } from "../../errors.js";
 import { appendLedgerEntry, listLedgerEntries, prepareLedgerEntry, type AppendLedgerEntry, type LedgerEntry } from "./ledger.js";
 import {

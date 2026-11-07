@@ -1,6 +1,6 @@
 import path from "node:path";
-import { StinkyCobblerError } from "../errors.js";
-import { containsShellMetacharacter, isSensitivePath } from "../gate/policy/path-policy.js";
+import { StinkyCobblerError } from "../../errors.js";
+import { containsShellMetacharacter, isSensitivePath } from "../policy/path-policy.js";
 import {
   readBounded,
   resolveBounded,
@@ -9,7 +9,7 @@ import {
   type BoundedFile,
   type BoundedPath,
   type WorkspaceReadBoundaryReason
-} from "../io/fs-boundary.js";
+} from "../../io/fs-boundary.js";
 import type { Dirent } from "node:fs";
 
 export { WorkspaceReadBoundaryError, type WorkspaceReadBoundaryReason };

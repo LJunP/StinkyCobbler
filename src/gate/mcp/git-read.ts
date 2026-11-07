@@ -4,8 +4,8 @@ import { lstat, opendir, readFile, readdir, realpath } from "node:fs/promises";
 import { promisify } from "node:util";
 import path from "node:path";
 import { authorize, denied, validateCommandArgument, type ToolAccess, type ToolOutcome } from "./shared.js";
-import { loadOrchestrationConfig } from "../../config/tiered.js";
-import { assertWorkspacePathPolicy, resolveWorkspacePath, workspacePathInScopes } from "../../security/workspace-path.js";
+import { loadOrchestrationConfig } from "../config/tiered.js";
+import { assertWorkspacePathPolicy, resolveWorkspacePath, workspacePathInScopes } from "../security/workspace-path.js";
 import { openWorkspace } from "../storage/workspace.js";
 
 const execFileAsync = promisify(execFile);

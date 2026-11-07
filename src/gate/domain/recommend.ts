@@ -1,4 +1,4 @@
-import type { Pack, TaskCharter } from "../../contracts/types.js";
+import type { Pack, TaskCharter } from "../contracts/types.js";
 
 export interface Recommendation {
   minimalDag: string[];

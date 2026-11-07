@@ -1,9 +1,9 @@
 import { createHash } from "node:crypto";
 import { mkdir, readFile } from "node:fs/promises";
 import path from "node:path";
-import type { SchemaRegistry } from "../../contracts/schema-registry.js";
-import { defaultSchemaRegistry } from "../../contracts/default-schema-registry.js";
-import type { ValidatorArtifactObservation, ValidatorReceipt } from "../../contracts/orchestration.js";
+import type { SchemaRegistry } from "../contracts/schema-registry.js";
+import { defaultSchemaRegistry } from "../contracts/default-schema-registry.js";
+import type { ValidatorArtifactObservation, ValidatorReceipt } from "../contracts/orchestration.js";
 import { ExitCode, StinkyCobblerError } from "../../errors.js";
 import type { LocalWorkspace } from "./workspace.js";
 import { createWorkspaceJson, workspaceFile } from "./workspace.js";

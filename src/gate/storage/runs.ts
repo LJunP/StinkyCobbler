@@ -1,7 +1,7 @@
 import { mkdir, readFile, readdir } from "node:fs/promises";
 import path from "node:path";
-import { defaultSchemaRegistry } from "../../contracts/default-schema-registry.js";
-import type { AgentRun, RuntimeBudgetUsage } from "../../contracts/types.js";
+import { defaultSchemaRegistry } from "../contracts/default-schema-registry.js";
+import type { AgentRun, RuntimeBudgetUsage } from "../contracts/types.js";
 import { ExitCode, StinkyCobblerError } from "../../errors.js";
 import type { LocalWorkspace } from "./workspace.js";
 import { createWorkspaceJson, workspaceFile, writeWorkspaceJson } from "./workspace.js";

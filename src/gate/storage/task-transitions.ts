@@ -1,9 +1,9 @@
 import { createHash } from "node:crypto";
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
-import { defaultSchemaRegistry } from "../../contracts/default-schema-registry.js";
-import type { SchemaRegistry } from "../../contracts/schema-registry.js";
-import type { TaskCharter, TaskState } from "../../contracts/types.js";
+import { defaultSchemaRegistry } from "../contracts/default-schema-registry.js";
+import type { SchemaRegistry } from "../contracts/schema-registry.js";
+import type { TaskCharter, TaskState } from "../contracts/types.js";
 import { assertTransition } from "../domain/task-state.js";
 import { ExitCode, StinkyCobblerError } from "../../errors.js";
 import { consumeApproval, getApproval } from "./approvals.js";

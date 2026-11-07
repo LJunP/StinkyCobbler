@@ -1,4 +1,4 @@
-import type { TaskState } from "../../contracts/types.js";
+import type { TaskState } from "../contracts/types.js";
 import { ExitCode, StinkyCobblerError } from "../../errors.js";
 
 const ALLOWED_TRANSITIONS: Record<TaskState, TaskState[]> = {

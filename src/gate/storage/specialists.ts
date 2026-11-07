@@ -1,8 +1,8 @@
 /** Specialist worker registry: domain profiles injected into subtask packages (2.0 domain routing). */
 
-import { loadSpecialistsPolicy } from "../../config/tiered.js";
-import { GENERAL_DOMAIN } from "../../contracts/orchestration.js";
-import type { WorkerProfile } from "../../contracts/orchestration.js";
+import { loadSpecialistsPolicy } from "../config/tiered.js";
+import { GENERAL_DOMAIN } from "../contracts/orchestration.js";
+import type { WorkerProfile } from "../contracts/orchestration.js";
 import { ExitCode, StinkyCobblerError } from "../../errors.js";
 import type { LocalWorkspace } from "./workspace.js";
 

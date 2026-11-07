@@ -2,6 +2,13 @@
 
 > 只追加，最新在上。每条：日期 / 任务 / 做了什么 / 验证 / 待办与问题。
 
+## 2026-11-07 · ADR-0003 P5：src/config、contracts、entry、security 并入 src/gate
+
+- 14 个文件（2828 个非空行）搬进 `src/gate/{config,contracts,entry,security}`，git 识别为 rename。搬动文件与 44 个既有 gate 文件只改 import/export 说明符；唯一非说明符改动是 `src/gate/entry/install-host.ts` 的包根表达式多爬一层（`../../..`），否则打包模板路径失效，`test:package` 真实安装验证过。`src/app/register-commands.ts`、`src/mcp-server.ts`、52 个测试文件跟着改路径。
+- 守卫同步：`test/repo/gate-frozen.test.ts` 清单 62 个文件、基线 16873（实测；= 旧 14045 + 14 个文件原有的 2828，用测试同一算法独立核过）；ESLint FROZEN_KERNEL 收口为 `src/gate/**` + `cli.ts`、`mcp-server.ts`；dependency-cruiser 的 gate 豁免只剩 `cli.ts`、`mcp-server.ts`、`src/app`，15 条已知违规基线不变。
+- 文档：STANDARDS §1.1 的 gate 清单补 `security`，C1/C2/C3/C6/C9 与 §3.1 ESLint 行按收口后的范围改写；安全审查清单三处路径。
+- 执行：grok 1 轮（29 turns），evaluator 复核 PASS（14 R + 103 M 对账、536 条相对说明符全部解析、基线算术独立复算）。验证：build/lint 0；`npm test` 92 文件 / 862 项；`test:package` 410 项；`git diff --check` 干净。
+
 ## 2026-11-07 · ADR-0003 P4：resources/ 与资源路径模块
 
 - 根目录 9 个数据目录（schemas、policies、profiles、packs、plugins、examples、templates、.codex、.zcode，66 个文件）迁入 `resources/`：`resources/toolkit/toolkit.schema.json` 是 3.x；其余进 `resources/gate/`，宿主 skill/command 模板与渲染产物放 `resources/gate/skills/`。git 全部识别为 100% 相似的 rename。

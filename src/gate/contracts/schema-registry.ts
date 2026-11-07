@@ -2,8 +2,8 @@ import { type ErrorObject, type ValidateFunction } from "ajv";
 import { createRequire } from "node:module";
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
-import { StinkyCobblerError, ExitCode } from "../errors.js";
-import { gateResource } from "../io/resources.js";
+import { StinkyCobblerError, ExitCode } from "../../errors.js";
+import { gateResource } from "../../io/resources.js";
 
 export type ContractKind = "task" | "task-transition" | "artifact" | "capsule" | "lease" | "lease-issuance" | "receipt" | "runtime-finalization" | "approval" | "audit" | "config" | "profile" | "pack" | "role" | "plugin" | "policy-decision" | "evidence-ref" | "agent-run" | "tool-call-record" | "plan" | "write-intent" | "orchestration-contract" | "orchestration-subtask" | "orchestration-artifact" | "orchestration-review" | "orchestration-run" | "orchestration-validator-receipt" | "orchestration-transaction" | "orchestration-policy" | "specialists-policy" | "contract-templates-policy" | "cancellation-fence" | "lease-usage" | "audit-outbox" | "docs-index" | "role-tools-policy" | "plugin-registry-policy";
 

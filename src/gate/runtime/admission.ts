@@ -1,12 +1,12 @@
-import type { CapabilityLease, RoleRegistry, TaskCapsule, TaskCharter } from "../../contracts/types.js";
+import type { CapabilityLease, RoleRegistry, TaskCapsule, TaskCharter } from "../contracts/types.js";
 import { evaluateLease } from "../policy/evaluate.js";
-import { SchemaRegistry } from "../../contracts/schema-registry.js";
+import { SchemaRegistry } from "../contracts/schema-registry.js";
 import { ExitCode, StinkyCobblerError } from "../../errors.js";
 import { openWorkspace, type LocalWorkspace } from "../storage/workspace.js";
 import { getTask } from "../storage/tasks.js";
 import { getLease } from "../storage/leases.js";
 import { evaluateLeaseSubtaskBinding } from "../storage/lease-usage.js";
-import { normalizeWorkspaceRelativePath, workspacePathInScopes } from "../../security/workspace-path.js";
+import { normalizeWorkspaceRelativePath, workspacePathInScopes } from "../security/workspace-path.js";
 import { admitPersistedLeaseAuthority } from "../storage/task-authority.js";
 
 export const READONLY_RUNTIME_TOOLS = new Set(["repository-read", "repository-list"]);

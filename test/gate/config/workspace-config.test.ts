@@ -2,14 +2,14 @@ import { afterEach, describe, expect, it } from "vitest";
 import { mkdtemp, readFile, readdir, rm, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { SchemaRegistry } from "../../../src/contracts/schema-registry.js";
-import { loadRegistries } from "../../../src/config/registry.js";
+import { SchemaRegistry } from "../../../src/gate/contracts/schema-registry.js";
+import { loadRegistries } from "../../../src/gate/config/registry.js";
 import {
   migrateWorkspaceConfig,
   resolveWorkspaceConfig,
   validateWorkspaceConfig,
   type WorkspaceConfig
-} from "../../../src/config/workspace.js";
+} from "../../../src/gate/config/workspace.js";
 import { initWorkspace, workspaceFile } from "../../../src/gate/storage/workspace.js";
 
 const projectRoot = path.resolve(import.meta.dirname, "..", "..", "..");

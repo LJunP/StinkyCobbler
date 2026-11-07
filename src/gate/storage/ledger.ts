@@ -2,7 +2,7 @@ import { open, readFile, readdir, rename, unlink } from "node:fs/promises";
 import { createHash, randomUUID } from "node:crypto";
 import path from "node:path";
 import { ExitCode, StinkyCobblerError } from "../../errors.js";
-import { defaultSchemaRegistry } from "../../contracts/default-schema-registry.js";
+import { defaultSchemaRegistry } from "../contracts/default-schema-registry.js";
 import type { LocalWorkspace } from "./workspace.js";
 import { createWorkspaceDirectory, createWorkspaceJson, workspaceFile } from "./workspace.js";
 import { withWorkspaceLock } from "./workspace-lock.js";

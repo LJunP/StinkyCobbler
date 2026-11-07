@@ -2,8 +2,8 @@ import { afterEach, describe, expect, it } from "vitest";
 import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { SchemaRegistry } from "../../../src/contracts/schema-registry.js";
-import { loadRegistries } from "../../../src/config/registry.js";
+import { SchemaRegistry } from "../../../src/gate/contracts/schema-registry.js";
+import { loadRegistries } from "../../../src/gate/config/registry.js";
 import { initWorkspace } from "../../../src/gate/storage/workspace.js";
 import { createTask } from "../../../src/gate/storage/tasks.js";
 import { requestApproval } from "../../../src/gate/storage/approvals.js";
@@ -20,7 +20,7 @@ import { recordReceipt, getReceipt } from "../../../src/gate/storage/receipts.js
 import { inspectEvidence } from "../../../src/gate/storage/evidence.js";
 import { requestWrites, confirmWrites, getWriteIntent } from "../../../src/gate/storage/write-intents.js";
 import { applyWriteForMatrix, prepareConfirmedWrite } from "../../helpers/crash-matrix-helpers.js";
-import type { AgentRun } from "../../../src/contracts/types.js";
+import type { AgentRun } from "../../../src/gate/contracts/types.js";
 
 const roots: string[] = [];
 const projectRoot = path.resolve(import.meta.dirname, "..", "..", "..");

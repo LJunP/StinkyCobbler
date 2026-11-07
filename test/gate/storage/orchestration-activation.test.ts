@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { SchemaRegistry } from "../../../src/contracts/schema-registry.js";
+import { SchemaRegistry } from "../../../src/gate/contracts/schema-registry.js";
 import { createTask } from "../../../src/gate/storage/tasks.js";
 import { initWorkspace } from "../../../src/gate/storage/workspace.js";
 import {

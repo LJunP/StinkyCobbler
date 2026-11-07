@@ -4,17 +4,11 @@ import tseslint from "typescript-eslint";
 
 /**
  * Architecture rules C1 (size/nesting) and C6 (no bare Error) from docs/STANDARDS.md §3.
- * The 2.x governance kernel now lives under src/gate and stays frozen.
- * config, entry, security, contracts, cli.ts and mcp-server.ts are still the
- * unsplit 2.x shape. The exemption stays until they are split out or stop violating the size rules.
- * Size limits apply in full to new code under src/core, src/hosts, src/io and src/app.
+ * The whole 2.x kernel lives under src/gate and stays frozen (ADR-0002, ADR-0003 P5); cli.ts and mcp-server.ts are still the unsplit 2.x entry points.
+ * Size limits apply in full to src/core, src/hosts, src/io and src/app.
  */
 const FROZEN_KERNEL = [
   "src/gate/**",
-  "src/config/**",
-  "src/entry/**",
-  "src/security/**",
-  "src/contracts/**",
   "src/cli.ts",
   "src/mcp-server.ts"
 ];

@@ -1,4 +1,4 @@
-import { PACKAGE_ROOT } from "../io/resources.js";
+import { PACKAGE_ROOT } from "../../io/resources.js";
 import { SchemaRegistry } from "./schema-registry.js";
 
 let registryPromise: Promise<SchemaRegistry> | undefined;

@@ -1,4 +1,4 @@
-import type { AdapterDescriptor } from "../../contracts/types.js";
+import type { AdapterDescriptor } from "../contracts/types.js";
 import { ExitCode, StinkyCobblerError } from "../../errors.js";
 import { runScriptedReadonly, type ReadonlyRunResult, type ScriptedReadonlyInput } from "./scripted-readonly.js";
 import type { BudgetSupervisor } from "./budget.js";

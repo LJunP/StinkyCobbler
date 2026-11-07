@@ -1,4 +1,4 @@
-import type { Approval, TaskCharter } from "../../contracts/types.js";
+import type { Approval, TaskCharter } from "../contracts/types.js";
 import { ExitCode, StinkyCobblerError } from "../../errors.js";
 
 export interface ApprovalPreflight {

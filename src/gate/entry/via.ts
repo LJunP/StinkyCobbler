@@ -1,4 +1,4 @@
-import { StinkyCobblerError, ExitCode } from "../errors.js";
+import { StinkyCobblerError, ExitCode } from "../../errors.js";
 
 export type EntryVia = "skill" | "mcp" | "auto";
 export const ENTRY_VIA_VALUES: readonly EntryVia[] = ["skill", "mcp", "auto"] as const;

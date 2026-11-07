@@ -1,9 +1,9 @@
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { SchemaRegistry } from "../../../src/contracts/schema-registry.js";
-import type { PluginManifest } from "../../../src/contracts/types.js";
-import { discoverBuiltinPlugins } from "../../../src/config/plugin-discovery.js";
-import { loadRegistries } from "../../../src/config/registry.js";
+import { SchemaRegistry } from "../../../src/gate/contracts/schema-registry.js";
+import type { PluginManifest } from "../../../src/gate/contracts/types.js";
+import { discoverBuiltinPlugins } from "../../../src/gate/config/plugin-discovery.js";
+import { loadRegistries } from "../../../src/gate/config/registry.js";
 import { createAdapterRegistry } from "../../../src/gate/runtime/adapters.js";
 
 const root = path.resolve(import.meta.dirname, "..", "..", "..");

@@ -1,10 +1,10 @@
 import { lstat, mkdir, readFile, readdir } from "node:fs/promises";
 import { createHash, randomUUID } from "node:crypto";
 import path from "node:path";
-import type { EvidenceRef, WriteIntent } from "../../contracts/types.js";
-import type { TaskContract } from "../../contracts/orchestration.js";
-import { SchemaRegistry } from "../../contracts/schema-registry.js";
-import { defaultSchemaRegistry } from "../../contracts/default-schema-registry.js";
+import type { EvidenceRef, WriteIntent } from "../contracts/types.js";
+import type { TaskContract } from "../contracts/orchestration.js";
+import { SchemaRegistry } from "../contracts/schema-registry.js";
+import { defaultSchemaRegistry } from "../contracts/default-schema-registry.js";
 import { ExitCode, StinkyCobblerError } from "../../errors.js";
 import { appendLedgerEntry, auditTextFingerprint, listLedgerEntries, prepareLedgerEntry } from "./ledger.js";
 import type { LocalWorkspace } from "./workspace.js";
@@ -16,9 +16,9 @@ import { assertCurrentPlanExecutionAuthority, assertCurrentPlanGeneration, getPl
 import { consumeApproval, listApprovals } from "./approvals.js";
 import { isApprovalExpired } from "../policy/approval.js";
 import { isSensitivePath, isForbiddenWriteTarget } from "../policy/path-policy.js";
-import { loadOrchestrationConfig } from "../../config/tiered.js";
+import { loadOrchestrationConfig } from "../config/tiered.js";
 import { recordEvidence } from "./evidence.js";
-import { assertWorkspacePathPolicy, resolveWorkspacePath } from "../../security/workspace-path.js";
+import { assertWorkspacePathPolicy, resolveWorkspacePath } from "../security/workspace-path.js";
 import { admitTaskCapability, TASK_AUTHORITY_POLICY_VERSION } from "./task-authority.js";
 
 const DIRECTORY = "write-intents";

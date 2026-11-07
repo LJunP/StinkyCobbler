@@ -1,6 +1,6 @@
 import { readFile, readdir } from "node:fs/promises";
-import type { AgentReceipt, AgentRun } from "../../contracts/types.js";
-import type { SchemaRegistry } from "../../contracts/schema-registry.js";
+import type { AgentReceipt, AgentRun } from "../contracts/types.js";
+import type { SchemaRegistry } from "../contracts/schema-registry.js";
 import { verifyLedger, listLedgerEntries, type LedgerEntry } from "./ledger.js";
 import { TERMINAL_RUN_STATUSES, classifyRunStaleness } from "./runs.js";
 import type { LocalWorkspace } from "./workspace.js";

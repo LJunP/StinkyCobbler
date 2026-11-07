@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import type { EvidenceRef, ToolCallRecord } from "../../contracts/types.js";
+import type { EvidenceRef, ToolCallRecord } from "../contracts/types.js";
 import { readRepositoryFile, listRepositoryDirectory } from "../mcp/repo-read.js";
 import type { RepositoryFile } from "../mcp/repo-read.js";
 import type { ScriptedToolRequest, RuntimeToolBroker } from "./scripted-readonly.js";

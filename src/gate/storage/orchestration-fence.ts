@@ -1,6 +1,6 @@
 import { mkdir, readFile } from "node:fs/promises";
 import path from "node:path";
-import { defaultSchemaRegistry } from "../../contracts/default-schema-registry.js";
+import { defaultSchemaRegistry } from "../contracts/default-schema-registry.js";
 import type { LocalWorkspace } from "./workspace.js";
 import { workspaceFile, writeWorkspaceJson } from "./workspace.js";
 

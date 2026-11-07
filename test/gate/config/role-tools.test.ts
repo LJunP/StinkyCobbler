@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { validateRoleTools, KNOWN_TOOLS } from "../../../src/config/registry.js";
-import type { RoleRegistry } from "../../../src/contracts/types.js";
+import { validateRoleTools, KNOWN_TOOLS } from "../../../src/gate/config/registry.js";
+import type { RoleRegistry } from "../../../src/gate/contracts/types.js";
 
 const roles: RoleRegistry = { version: 1, roles: { scout: { displayName: "侦察", canWrite: false }, reviewer: { displayName: "审查", canWrite: false } } };
 

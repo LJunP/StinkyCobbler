@@ -4,7 +4,7 @@ import { homedir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse as parseToml, stringify as stringifyToml } from "smol-toml";
-import { ExitCode, StinkyCobblerError } from "../errors.js";
+import { ExitCode, StinkyCobblerError } from "../../errors.js";
 import {
   atomicReplace,
   backupManagedFile,
@@ -16,12 +16,12 @@ import {
   relativeHostPath,
   sha256,
   writeManagedMetadata
-} from "../io/managed-file.js";
-import { appendTomlDocument } from "../io/toml-edit.js";
-import { STINKY_COBBLER_VERSION } from "../version.js";
+} from "../../io/managed-file.js";
+import { appendTomlDocument } from "../../io/toml-edit.js";
+import { STINKY_COBBLER_VERSION } from "../../version.js";
 import { MCP_SERVER_COMMAND, HOST_CONFIG_FILE, hostConfigHasMcpServer } from "./preflight.js";
-import type { HostAdapter } from "../hosts/host-adapter.js";
-import { hostById, type HostId } from "../hosts/registry.js";
+import type { HostAdapter } from "../../hosts/host-adapter.js";
+import { hostById, type HostId } from "../../hosts/registry.js";
 
 export type HostScope = "user" | "workspace";
 export const COMMAND_FILE_NAME = "stinky-cobbler.md";
@@ -572,7 +572,7 @@ function defaultTemplatePath(host: HostAdapter, kind: string): string {
   if (relative === undefined) {
     throw new StinkyCobblerError("ENTRY_TEMPLATE_MISSING", ExitCode.VALIDATION, `The bundled ${kind} template is not available for this host.`, { host: host.id });
   }
-  return path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..", relative);
+  return path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..", relative);
 }
 
 
