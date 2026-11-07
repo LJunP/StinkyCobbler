@@ -128,7 +128,7 @@ describe("entry CLI black-box", () => {
     expect(JSON.parse(failure!.stderr)).toMatchObject({ error: "ENTRY_HOST_INVALID" });
   });
 
-  it("exits non-zero when install-host refuses to overwrite a user-edited managed file", async () => {
+  it("exits 7 (CONFLICT) when install-host refuses to overwrite a user-edited managed file", async () => {
     const home = await realpath(await mkdtemp(path.join(tmpdir(), "stinky-entry-conflict-")));
     roots.push(home);
     const env = fakeHomeEnv(home);
@@ -137,7 +137,7 @@ describe("entry CLI black-box", () => {
     await writeFile(commandFile, `${await readFile(commandFile, "utf8")}\n<!-- user edit -->\n`, "utf8");
     const failure = await cli(env, "entry", "install-host", "--host", "zcode", "--scope", "user", "--json").then(() => null, (error: unknown) => error as { code: number; stdout: string });
     expect(failure).not.toBeNull();
-    expect(failure!.code).toBe(1);
+    expect(failure!.code).toBe(7);
     expect(JSON.parse(failure!.stdout)).toMatchObject({ command: { action: "conflict" } });
     expect(await readFile(commandFile, "utf8")).toContain("<!-- user edit -->");
   });
