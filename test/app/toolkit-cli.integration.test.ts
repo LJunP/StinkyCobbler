@@ -797,6 +797,40 @@ describe("toolkit cli", () => {
     expect(await treeHash(cwd)).toBe(before);
   });
 
+  it("previews the same locked bytes that apply writes after the local source changes", async () => {
+    const home = await tempDir("stinky-plan-lock-home-");
+    const xdg = await tempDir("stinky-plan-lock-xdg-");
+    const source = await tempDir("stinky-plan-lock-source-");
+    const env = childEnv(home, xdg);
+    const locked = "locked body\n";
+    const skillFile = path.join(source, "SKILL.md");
+    await writeFile(skillFile, locked);
+    await run(env, "toolkit", "init", "--json");
+    await writeFile(path.join(xdg, "stinky-cobbler", "toolkit.yaml"), [
+      "version: 1",
+      "scope: user",
+      "hosts:",
+      "  - codex",
+      "skills:",
+      "  - id: review",
+      `    source: ${JSON.stringify(source)}`,
+      "mcpServers: []",
+      "instructions: []",
+      "bundles: []",
+      ""
+    ].join("\n"));
+    await run(env, "toolkit", "lock", "--json");
+    await writeFile(skillFile, "edited after lock\n");
+    const planned = JSON.parse((await run(env, "toolkit", "plan", "--json")).stdout) as { ops: Array<{ bytes?: string }>; diffs: string[] };
+    expect(planned.ops.map((op) => op.bytes)).toEqual([locked]);
+    expect(planned.diffs.join("\n")).toContain("locked body");
+    expect(planned.diffs.join("\n")).not.toContain("edited after lock");
+    const applied = JSON.parse((await run(env, "toolkit", "apply", "--yes", "--json")).stdout) as { completed: Array<{ bytes?: string }> };
+    expect(applied.completed.map((op) => op.bytes)).toEqual(planned.ops.map((op) => op.bytes));
+    expect(await readFile(path.join(home, ".codex", "skills", "review", "SKILL.md"), "utf8")).toBe(locked);
+    expect(JSON.parse((await run(env, "toolkit", "plan", "--json")).stdout)).toMatchObject({ ops: [], conflicts: [] });
+  });
+
 });
 
 function mcpSpec(command: string): string {

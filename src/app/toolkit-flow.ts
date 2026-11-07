@@ -118,7 +118,7 @@ async function planLoaded(loaded: LoadedToolkit, sources?: PlanSources): Promise
   const lock = await readLockIfPresent(loaded.specPath);
   return plan(loaded.spec, observations, {
     support: kindSupport(input.scope, input.roots),
-    sources: sources ?? (await overlayLockedSources(loaded, lock)),
+    sources: sources ?? (await lockedOrLiveSources(loaded, lock)),
     resolvedIds: resolvedLockIds(lock)
   });
 }
@@ -144,22 +144,19 @@ async function refreshedSources(loaded: LoadedToolkit): Promise<PlanSources> {
   return { ...live, skills: { ...(live.skills ?? {}), ...fetched } };
 }
 
-async function overlayLockedSources(loaded: LoadedToolkit, lock: ToolkitLock | undefined): Promise<PlanSources> {
-  const live = await sourceBodies(loaded.spec);
-  if (lock === undefined) return live;
-  const locked = await sourcesFromLock(blobDirectory(loaded.specPath), loaded.spec, lock);
-  const skills = live.skills ?? {};
-  for (const skill of loaded.spec.skills) {
-    const remote = skill.source.startsWith("git+") || skill.source.startsWith("npm:");
-    const body = remote ? locked.skills?.[skill.id] : undefined;
-    if (body !== undefined) skills[skill.id] = body;
-  }
-  return { ...live, skills };
+/**
+ * One source policy for plan, doctor and apply: once a lock exists, every body comes from the
+ * locked blobs, so `plan` previews exactly the bytes `apply` writes. Without a lock, `plan`
+ * previews the live local files and `apply` refuses with TOOLKIT_LOCK_REQUIRED.
+ */
+async function lockedOrLiveSources(loaded: LoadedToolkit, lock: ToolkitLock | undefined): Promise<PlanSources> {
+  if (lock === undefined) return sourceBodies(loaded.spec);
+  return sourcesFromLock(blobDirectory(loaded.specPath), loaded.spec, lock);
 }
 
 async function applySources(loaded: LoadedToolkit): Promise<PlanSources> {
   if (loaded.spec.skills.length === 0 && loaded.spec.instructions.length === 0) return {};
-  return sourcesFromLock(blobDirectory(loaded.specPath), loaded.spec, await readToolkitLock(loaded.specPath));
+  return lockedOrLiveSources(loaded, await readToolkitLock(loaded.specPath));
 }
 
 async function readToolkitLock(specPath: string): Promise<ToolkitLock> {
