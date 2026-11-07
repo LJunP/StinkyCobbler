@@ -26,7 +26,7 @@ Stinky Cobbler 是 **AI agent 工具箱的包管理器**：用户用一份声明
 
 - 同一仓库、同一 npm 包名 `stinky-cobbler`，主版本升到 3。
 - 评审中列出的资产提取为新内核：`src/io/`（受管文件、有界读写、分层配置、密钥引用、账本）、`src/hosts/`（HostAdapter 及各宿主实现）、`src/core/`（toolkit 领域模型、纯函数计划器、渲染器）、`src/app/`（命令即用例、Presenter）。
-- 2.x 治理内核（storage / runtime / policy / domain / mcp）整体搬入 `src/gate/`。2.x 治理命令保持顶层命令（`validate`、`recommend`、`doctor`、`config`、`init`、`task`、`approval`、`evidence`、`receipt`、`runtime`、`audit`、`ledger`、`lease`、`plan`、`write`、`orchestration`），在 `--help` 标记 `[deprecated 2.x]`，**冻结**：只修会丢数据或误导用户的 P0 缺陷，不再扩展，不增加行数（CI 守卫 `test/gate-frozen.test.ts`）。`entry` 与 `toolkit` 不标 deprecated。4.0 再决定删除或拆独立包。
+- 2.x 治理内核（storage / runtime / policy / domain / mcp）整体搬入 `src/gate/`。2.x 治理命令保持顶层命令（`validate`、`recommend`、`doctor`、`config`、`init`、`task`、`approval`、`evidence`、`receipt`、`runtime`、`audit`、`ledger`、`lease`、`plan`、`write`、`orchestration`），在 `--help` 标记 `[deprecated 2.x]`，**冻结**：只修会丢数据或误导用户的 P0 缺陷，不再扩展，不增加行数（CI 守卫 `test/repo/gate-frozen.test.ts`）。`entry` 与 `toolkit` 不标 deprecated。4.0 再决定删除或拆独立包。
 - 首批宿主：Codex、Claude Code、Cursor、ZCode。Gemini CLI 不在 3.0，3.0 GA 后再议。
 
 ### 删除
@@ -58,4 +58,4 @@ Stinky Cobbler 是 **AI agent 工具箱的包管理器**：用户用一份声明
 - [ADR-0001](./0001-product-scope-and-version-boundaries.md)
 - [PRD](../PRD.md) · [PLAN](../PLAN.md) · [PROGRESS](../PROGRESS.md)
 
-> 2026-11-05 修订：两处措辞与代码对齐，决策实质未改。Gemini CLI 不在 3.0，3.0 GA 后再议，不再写「放 M3」。2.x 治理命令保持顶层命令，`--help` 标记 `[deprecated 2.x]` 并冻结，不另设命令组；行数由 `test/gate-frozen.test.ts` 守卫。`entry` 与 `toolkit` 不标 deprecated。
+> 2026-11-05 修订：两处措辞与代码对齐，决策实质未改。Gemini CLI 不在 3.0，3.0 GA 后再议，不再写「放 M3」。2.x 治理命令保持顶层命令，`--help` 标记 `[deprecated 2.x]` 并冻结，不另设命令组；行数由 `test/repo/gate-frozen.test.ts` 守卫。`entry` 与 `toolkit` 不标 deprecated。

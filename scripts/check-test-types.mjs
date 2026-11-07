@@ -2,7 +2,7 @@
 /**
  * Type-check src/ and test/ together (tsconfig.test.json) and enforce a
  * ratchet: the number of errors under test/ may only go down. The baseline
- * lives in test/typecheck-baseline.json; lower it in the same change that
+ * lives in test/repo/typecheck-baseline.json; lower it in the same change that
  * fixes errors, never raise it.
  */
 import { execFile } from "node:child_process";
@@ -14,7 +14,7 @@ import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const baselinePath = path.join(projectRoot, "test", "typecheck-baseline.json");
+const baselinePath = path.join(projectRoot, "test", "repo", "typecheck-baseline.json");
 const tscBin = path.join(projectRoot, "node_modules", "typescript", "bin", "tsc");
 
 async function runTsc() {

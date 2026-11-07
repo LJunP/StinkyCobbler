@@ -49,4 +49,4 @@ AI 编程工具（Codex、Claude Code、Cursor、ZCode、Gemini CLI…）各有�
 
 ## 6. 兼容承诺
 
-2.x 记录可读可终止；2.x 治理命令保持顶层命令，`--help` 标记 `[deprecated 2.x]` 并冻结（CI 守卫 `test/gate-frozen.test.ts`）；2.x 分支只修 P0 至 3.0 GA 后 6 个月；受管文件 sidecar 格式字节级兼容。
+2.x 记录可读可终止；2.x 治理命令保持顶层命令，`--help` 标记 `[deprecated 2.x]` 并冻结（CI 守卫 `test/repo/gate-frozen.test.ts`）；2.x 分支只修 P0 至 3.0 GA 后 6 个月；受管文件 sidecar 格式字节级兼容。

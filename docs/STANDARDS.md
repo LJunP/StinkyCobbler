@@ -122,7 +122,7 @@ managed:
 | 文件名中的版本片段 | kebab-case 里的版本号可以含点，例如 `v0.1-scope-and-security-boundaries.md`、`2.x-to-3.x.md`；其余仍小写 kebab-case | `v0.1-…`、`2.x-to-3.x.md` | ⬜（P6 结构守卫） |
 | 约定大写文件 | 只限 README、CHANGELOG、CONTRIBUTING、SECURITY、LICENSE、AGENTS、PRD、PLAN、PROGRESS、STANDARDS | | ⬜（P6 结构守卫） |
 | ADR | `docs/adr/NNNN-kebab-title.md` | `0003-repository-structure-and-standards.md` | ⬜ |
-| 测试 | 单测 `<模块>.test.ts`，集成 `<模块>.integration.test.ts`，路径镜像 `src/` | `test/io/fs-boundary.test.ts` | ⬜（P3 迁移，P6 结构守卫） |
+| 测试 | 单测 `<模块>.test.ts`，集成 `<模块>.integration.test.ts`，路径镜像 `src/` | `test/io/fs-boundary.test.ts` | ⬜（P6 结构守卫） |
 | 标识符、错误码、日志 | 英文；面向用户的文案经 Presenter 输出；面向用户的 message/fix 提供 zh/en 两套文案，由 Presenter 选择；存储与领域层不拼中文 | `TOOLKIT_SCOPE_INVALID` | ⬜ |
 | 分支 | `main` `develop` `release/<版本>` `hotfix/<版本>` `feature/<名字>` | `feature/standards-adr-0003` | 🟡（main/develop 受保护；release-gate 接受的分支 ref 只有与版本对应的 `release/<版本>`、`hotfix/<版本>` 和历史 `codex/stinky-cobbler-<版本>-hardening`，另接受 `main` 与 `v<版本>`；feature/ 命名无检查） |
 | 提交 | Conventional Commits：`feat fix refactor docs test chore perf ci` | `docs: ...` | ⬜ |
@@ -135,9 +135,9 @@ managed:
 |---|---|---|
 | C1 | 新代码文件 ≤ 400 行、函数 ≤ 50 行、嵌套 ≤ 4 层；`src/gate` 豁免但冻结 | 🟡（ESLint 只对 `src/core`、`io`、`hosts`、`app` 与 `errors.ts`、`version.ts` 生效；`eslint.config.js` 的 FROZEN_KERNEL 还豁免了 P5 才并入 gate 的 `config`、`entry`、`security`、`contracts`，以及 `cli.ts`、`mcp-server.ts`） |
 | C2 | 依赖方向白名单、无循环（`core` 不依赖 `io/hosts/app`；`gate` 只被入口引用）；不得用动态 `import()` 隐藏循环 | 🟡（dependency-cruiser 已拦：新的循环（包括用动态 `import()` 藏起来的环；`.dependency-cruiser-known-violations.json` 里已知的 15 条除外）、`core` 依赖 `io/hosts/app`；依赖方向白名单还不存在；`gate` 目前还允许被 `app`、`config`、`entry`、`security`、`contracts` 引用） |
-| C3 | `src/gate` 不加新行为，文件清单与非空行数有基线 | 🟡（`test/gate-frozen.test.ts` 只拦新增 `.ts` 文件和非空行总数超过 14045 基线；删文件允许，非 `.ts` 文件不查；「不加新行为」靠评审） |
+| C3 | `src/gate` 不加新行为，文件清单与非空行数有基线 | 🟡（`test/repo/gate-frozen.test.ts` 只拦新增 `.ts` 文件和非空行总数超过 14045 基线；删文件允许，非 `.ts` 文件不查；「不加新行为」靠评审） |
 | C4 | 宿主、artifact 种类等枚举只在 `core/toolkit/kinds.ts` 定义一次 | 🟡（`test/core/toolkit/spec.test.ts` 断言宿主注册表、适配器的种类与 `kinds.ts` 一致；别处另行定义枚举无检查，现有 `core/toolkit/lock.ts` 用字面量 `["skill", "instructions"]` 重复了 artifact 种类的子集，见 PROGRESS 待办） |
-| C5 | 每个 schema 属性在 `src/` 有消费点，没有读者的配置键不准存在 | 🟡（`test/config-liveness.test.ts` 只检查 `schemas/*.json` 的属性名在 `src/` 文本里出现过，不检查真实读取点；`toolkit.schema.json` 的键都写在 `core/toolkit/spec.ts` 的 zod 定义里，所以对 3.x 实际拦不住） |
+| C5 | 每个 schema 属性在 `src/` 有消费点，没有读者的配置键不准存在 | 🟡（`test/repo/config-liveness.test.ts` 只检查 `schemas/*.json` 的属性名在 `src/` 文本里出现过，不检查真实读取点；`toolkit.schema.json` 的键都写在 `core/toolkit/spec.ts` 的 zod 定义里，所以对 3.x 实际拦不住） |
 | C6 | 错误码集中注册，附退出码与可读修复提示；禁止裸 `new Error` | 🟡（ESLint 只拦 C1 生效范围内直接写的 `throw new Error(...)`；2.x 目录与 `cli.ts`、`mcp-server.ts` 豁免，`return new Error()`、`reject(new Error())`、`throw Error()` 等写法都不拦；集中注册表 ⬜） |
 | C7 | 每个命令同时支持人类输出与 `--json`；非零退出码对应错误码；`conflict` 类结果非零退出；一文件一命令（`app/commands/<name>.ts`） | 🟡（`toolkit init`、`toolkit apply` 的冲突退出 7，以及 `TOOLKIT_LEDGER_EMPTY`、`TOOLKIT_CONFIRM_REQUIRED`、`TOOLKIT_LOCK_BLOB_MISSING`、`TOOLKIT_SEARCH_UNVERIFIED`、`SEGMENT_INVALID`、`ENTRY_HOST_INVALID` 的退出 2 有集成测试，部分命令的 `--json` 有集成测试；其余命令的退出码无测试；现状不符：`toolkit rollback` 遇冲突仍退出 0，`entry install-host` 遇冲突退出未注册的 1，见 PROGRESS 待办；人类输出与一文件一命令 ⬜） |
 | C8 | 宿主适配器必须通过 `hosts/conformance/`；宿主特定逻辑只在自己的文件 | 🟡（`test/hosts/conformance.test.ts` 对注册表里每个适配器跑共享检查；宿主特定逻辑放在哪里无检查） |
@@ -165,7 +165,7 @@ managed:
 
 | # | 规则 | 状态 |
 |---|---|---|
-| T1 | 测试位置镜像源码；夹具放 `test/fixtures/`，辅助放 `test/helpers/` | ⬜（P3 迁移，P6 结构守卫） |
+| T1 | 测试位置镜像源码；夹具放 `test/fixtures/`，辅助放 `test/helpers/` | ⬜（P6 结构守卫） |
 | T2 | 修 bug 先写能复现的失败测试 | ⬜ |
 | T3 | 禁止为了通过而删除、跳过测试或放松断言；平台差异要分别断言 | ⬜（评审） |
 | T4 | 测试与真实环境隔离：XDG 配置、`GIT_*` 环境变量、全局 git 配置都指向临时位置 | ✅ `test/setup/isolate-*.ts` |
@@ -180,7 +180,7 @@ managed:
 | # | 规则 | 状态 |
 |---|---|---|
 | D1 | PRD、PLAN、PROGRESS 是唯一事实来源；需求变了先改 PRD 再改代码；进度只写 PROGRESS | ⬜（评审） |
-| D2 | 删除一个能力，同一 PR 删它的 schema、配置、文档 | 🟡（只有 schema 这一半有工具：`test/core/toolkit/spec.test.ts` 锁定 `schemas/toolkit.schema.json` 与 zod 定义一致，`test/config-liveness.test.ts` 发现 `schemas/` 里在 `src/` 文本中不再出现的属性名；配置文件与文档无检查） |
+| D2 | 删除一个能力，同一 PR 删它的 schema、配置、文档 | 🟡（只有 schema 这一半有工具：`test/core/toolkit/spec.test.ts` 锁定 `schemas/toolkit.schema.json` 与 zod 定义一致，`test/repo/config-liveness.test.ts` 发现 `schemas/` 里在 `src/` 文本中不再出现的属性名；配置文件与文档无检查） |
 | D3 | 仓库内相对链接必须有效 | ⬜（P6 链接检查） |
 | D4 | 不写编造的验证结果；未验证写 `UNKNOWN / PENDING` | ⬜（评审） |
 | D5 | ADR 门槛：难逆转、未来会疑惑、存在真实取舍三项同时满足 | ⬜ |
