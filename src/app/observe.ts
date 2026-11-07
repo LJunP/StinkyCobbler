@@ -1,8 +1,9 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { rendersInstructionSegment, type HostAdapter, type HostRoots, type HostScope } from "../hosts/host-adapter.js";
+import { hostMcpEntry, rendersInstructionSegment, sameMcpEntry, type HostAdapter, type HostRoots, type HostScope } from "../hosts/host-adapter.js";
 import { inspectManagedFile, type ManagedInspection, type ManagedObservationState } from "../io/managed-file.js";
 import { HOST_IDS, type ArtifactKind, type ToolkitHostId } from "../core/toolkit/kinds.js";
+import { renderMcpEntry } from "../core/render/render.js";
 import type { McpServerSpec, ToolkitSpec } from "../core/toolkit/spec.js";
 
 export interface HostObservation {
@@ -62,15 +63,10 @@ async function observeMcp(adapter: HostAdapter, server: McpServerSpec, scope: Ho
   }
   const installed = adapter.readMcp(await readFile(file, "utf8"))[server.id];
   if (installed === undefined) return observation(adapter.id, "mcp-server", server.id, file, { state: "absent" });
-  if (inspection.state === "managed" && commandDiffers(installed, server)) {
+  if (inspection.state === "managed" && !sameMcpEntry(installed, hostMcpEntry(adapter, renderMcpEntry(server)))) {
     return observation(adapter.id, "mcp-server", server.id, file, drifted(inspection));
   }
   return observation(adapter.id, "mcp-server", server.id, file, inspection);
-}
-
-function commandDiffers(installed: { command: string; args: readonly string[] }, server: McpServerSpec): boolean {
-  const args = server.args ?? [];
-  return installed.command !== server.command || installed.args.length !== args.length || installed.args.some((arg, index) => arg !== args[index]);
 }
 
 function drifted(inspection: ManagedInspection): ManagedInspection {

@@ -82,8 +82,8 @@ describe("toolkit apply and rollback", () => {
         mcpEntry: { command: "npx", args: ["-y", "server"], env: { API_TOKEN: "${env:FS_TOKEN}" } }
       })
     );
-    const written = JSON.parse(await readFile(target, "utf8")) as { mcpServers: { filesystem: { command: string; args: string[] } } };
-    expect(written.mcpServers.filesystem).toEqual({ command: "npx", args: ["-y", "server"] });
+    const written = JSON.parse(await readFile(target, "utf8")) as { mcpServers: { filesystem: { command: string; args: string[]; env?: Record<string, string> } } };
+    expect(written.mcpServers.filesystem).toEqual({ command: "npx", args: ["-y", "server"], env: { API_TOKEN: "${env:FS_TOKEN}" } });
     await rollbackLast();
     await expect(readFile(target, "utf8")).rejects.toThrow();
   });

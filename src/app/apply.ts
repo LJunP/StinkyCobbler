@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { hostAdapters } from "../hosts/registry.js";
-import type { HostAdapter, McpServerSpec } from "../hosts/host-adapter.js";
+import { hostMcpEntry, type HostAdapter } from "../hosts/host-adapter.js";
 import type { FileOp, ToolkitPlan } from "../core/plan/plan.js";
 import { ExitCode, StinkyCobblerError } from "../errors.js";
 import { appendToolkitEvent } from "../io/ledger.js";
@@ -78,8 +78,7 @@ async function applyMcp(op: FileOp, adapters: readonly HostAdapter[]): Promise<A
   if (adapter === undefined) throw applyError("TOOLKIT_HOST_UNKNOWN", `host must be one of: ${hostAdapters.map((item) => item.id).join(", ")}.`);
   const existing = await readRegularHostFile(op.path);
   const beforeHash = existing === undefined ? null : sha256(existing);
-  const server: McpServerSpec = { command: op.mcpEntry.command, args: op.mcpEntry.args };
-  const merged = adapter.mergeMcp(existing ?? "", op.id, server);
+  const merged = adapter.mergeMcp(existing ?? "", op.id, hostMcpEntry(adapter, op.mcpEntry));
   if (merged.status !== "merged" && merged.status !== "unchanged") {
     throw applyError("TOOLKIT_MCP_CONFLICT", `MCP merge for ${op.id} returned ${merged.status}.`);
   }

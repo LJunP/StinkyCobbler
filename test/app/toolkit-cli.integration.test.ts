@@ -4,6 +4,7 @@ import { mkdir, mkdtemp, readFile, readdir, realpath, rm, writeFile } from "node
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
+import { parse as parseToml } from "smol-toml";
 import { afterEach, describe, expect, it } from "vitest";
 
 const execFileAsync = promisify(execFile);
@@ -829,6 +830,55 @@ describe("toolkit cli", () => {
     expect(applied.completed.map((op) => op.bytes)).toEqual(planned.ops.map((op) => op.bytes));
     expect(await readFile(path.join(home, ".codex", "skills", "review", "SKILL.md"), "utf8")).toBe(locked);
     expect(JSON.parse((await run(env, "toolkit", "plan", "--json")).stdout)).toMatchObject({ ops: [], conflicts: [] });
+  });
+
+  it("renders the env reference in each host's documented syntax and never the value", async () => {
+    const home = await tempDir("stinky-mcp-env-home-");
+    const xdg = await tempDir("stinky-mcp-env-xdg-");
+    const env = childEnv(home, xdg, { STINKY_TEST_FS_TOKEN: secret });
+    await run(env, "toolkit", "init", "--json");
+    await writeFile(path.join(xdg, "stinky-cobbler", "toolkit.yaml"), [
+      "version: 1",
+      "scope: user",
+      "hosts:",
+      "  - zcode",
+      "  - codex",
+      "  - claude-code",
+      "  - cursor",
+      "skills: []",
+      "mcpServers:",
+      "  - id: filesystem",
+      "    transport: stdio",
+      "    command: stinky-cobbler-missing-cmd",
+      "    env:",
+      '      FS_TOKEN: "${env:STINKY_TEST_FS_TOKEN}"',
+      "instructions: []",
+      "bundles: []",
+      ""
+    ].join("\n"));
+    const appliedText = (await run(env, "toolkit", "apply", "--yes", "--json")).stdout;
+    expect(JSON.parse(appliedText)).toMatchObject({ stopped: false });
+    expect((JSON.parse(appliedText) as { completed: unknown[] }).completed).toHaveLength(4);
+    const files = {
+      zcode: path.join(home, ".zcode", "cli", "config.json"),
+      codex: path.join(home, ".codex", "config.toml"),
+      "claude-code": path.join(home, ".claude.json"),
+      cursor: path.join(home, ".cursor", "mcp.json")
+    };
+    const cursor = JSON.parse(await readFile(files.cursor, "utf8")) as { mcpServers: { filesystem: { env?: Record<string, string> } } };
+    expect(cursor.mcpServers.filesystem.env).toEqual({ FS_TOKEN: "${env:STINKY_TEST_FS_TOKEN}" });
+    const claude = JSON.parse(await readFile(files["claude-code"], "utf8")) as { mcpServers: { filesystem: { env?: Record<string, string> } } };
+    expect(claude.mcpServers.filesystem.env).toEqual({ FS_TOKEN: "${STINKY_TEST_FS_TOKEN}" });
+    const codex = parseToml(await readFile(files.codex, "utf8")) as { mcp_servers: { filesystem: { env?: unknown; env_vars?: string[] } } };
+    expect(codex.mcp_servers.filesystem.env_vars).toEqual(["STINKY_TEST_FS_TOKEN"]);
+    expect(codex.mcp_servers.filesystem.env).toBeUndefined();
+    const zcode = JSON.parse(await readFile(files.zcode, "utf8")) as { mcp: { servers: { filesystem: Record<string, unknown> } } };
+    expect(zcode.mcp.servers.filesystem).toEqual({ command: "stinky-cobbler-missing-cmd", args: [] });
+    for (const file of Object.values(files)) expect(await readFile(file, "utf8")).not.toContain(secret);
+    expect(appliedText).not.toContain(secret);
+    const planned = JSON.parse((await run(env, "toolkit", "plan", "--json")).stdout) as { ops: unknown[]; conflicts: unknown[] };
+    expect(planned).toMatchObject({ ops: [], conflicts: [] });
+    expect((JSON.parse((await run(env, "toolkit", "doctor", "--json")).stdout) as { drift: unknown[] }).drift).toEqual([]);
   });
 
 });
