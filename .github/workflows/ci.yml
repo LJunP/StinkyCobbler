@@ -32,6 +32,9 @@ jobs:
       - run: npm run lint
       - run: npm run build
       - run: npm test
+      # Coverage floors (STANDARDS T6) are platform-independent; one cell is enough, and the
+      # v8 instrumentation pushes the slow Windows fsync tests past their 30 s timeout.
       - run: npm run coverage
+        if: matrix.os == 'ubuntu-latest' && matrix.node == 22
       - run: npm run test:package
       - run: npm audit --audit-level=high

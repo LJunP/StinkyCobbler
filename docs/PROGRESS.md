@@ -8,6 +8,7 @@
 - 本批只做文案/配置类 FIX（不改行为、不改断言）：README（源码/测试清单、gate 引用规则、2.0.2 状态、根文件表、按 `git ls-files` 重生成目录树）、SECURITY（四宿主验收口径）、AGENTS（冻结规则与 §0.5 一致）、ADR-0002 修订注、两份 2.x 配置指南的内置层路径、迁移说明补 src/ 与 test/ 对照表、feature_request 模板措辞、CHANGELOG 3.0.0-rc.1 补 P3/P5/P6；dependabot 加 `target-branch: develop`；release-candidate 去掉重复的 `test:integration`（重复的 `npm audit` 步骤被 `test/scripts/release-contract.test.ts:80` 锁定，保留）；package-smoke 深层 import 探针指向 `dist/gate/storage/tasks.js`；build-offline-bundle 用法文本改为当前版本；`src/gate/entry/preflight.ts` 一句提示不再让 Claude Code/Cursor 用户跑 `entry install-host`（冻结区允许的"误导用户"修复，行数 16873 不变）；5 个无读者导出改为模块私有；`zod` 补进 dependencies（src 直接 import，此前只是 SDK 的间接依赖）。
 - 执行：grok 读模式 8 片 + 写模式 1 轮；evaluator PASS（14 项逐条对照 diff，README 树三级对账，去 export 的符号逐个 grep 无引用）。验证：build/lint 0；`npm test` 99 文件 / 904 项；`test:package` 410 项；`git diff --check` 干净。
 - ADR-0003 的 P1–P7 至此全部完成；STANDARDS 的状态表已随 P6/P7 更新。
+- CI 修正：P6 把 `npm run coverage` 放进六个矩阵格后，Windows/Node 24 格子的 `test/gate/storage/writes.test.ts` 硬链接用例在 v8 插桩下跑到 30.8 秒超时（该用例在 Windows 本来就慢，PR #2 也超时过一次）。改为只在 ubuntu / Node 22 格子跑覆盖率门禁（阈值与平台无关，也不再让其余格子重复跑 unit 套件）；T6 文案同步。
 
 ### 待办 / 问题（P7 全量审计，需作者决定；每条附审计给出的证据）
 
