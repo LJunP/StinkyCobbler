@@ -123,7 +123,9 @@ init, plan, apply, rollback, doctor, list, lock, update, search <query>, memory
 │   ├── workflows/
 │   ├── dependabot.yml
 │   └── pull_request_template.md
-├── .husky/                    pre-commit, pre-push
+├── .husky/
+│   ├── pre-commit             lint-staged
+│   └── pre-push               lint 与 unit
 ├── docs/
 │   ├── adr/                   NNNN-kebab-title.md
 │   ├── archive/               已被取代的历史文档
@@ -147,21 +149,33 @@ init, plan, apply, rollback, doctor, list, lock, update, search <query>, memory
 │       ├── plugins/
 │       ├── examples/
 │       └── skills/            templates/ 与渲染好的 Codex/ZCode skill 和 command
-├── scripts/                   构建、打包、发布门禁、skill 渲染
+├── scripts/                   构建、打包、发布门禁、审计与 skill 渲染（*.mjs）
 ├── src/
-│   ├── app/                   toolkit 用例与 2.x 命令注册
-│   ├── config/                2.x 注册表与 workspace 配置
-│   ├── contracts/             schema registry 与共享契约类型
+│   ├── app/                   3.x 命令即用例；也注册冻结的 2.x 命令
 │   ├── core/                  plan/、render/、toolkit/（3.x，不直接碰 fs）
-│   ├── entry/                 preflight 与 install-host
-│   ├── gate/                  冻结 2.x：domain/、mcp/、policy/、runtime/、storage/
+│   ├── gate/                  冻结的 2.x 内核
+│   │   ├── config/            注册表、分层 YAML、workspace 配置
+│   │   ├── contracts/         schema registry 与共享契约类型
+│   │   ├── entry/             preflight 与 install-host
+│   │   ├── security/          工作区路径策略门面
+│   │   ├── domain/
+│   │   ├── mcp/
+│   │   ├── policy/
+│   │   ├── runtime/
+│   │   └── storage/
 │   ├── hosts/                 四宿主适配与 conformance/
 │   ├── io/                    有界读写、受管文件、段落、分层合并、toolkit 账本
-│   ├── security/              工作区路径策略门面
 │   ├── cli.ts  mcp-server.ts  errors.ts  version.ts
 ├── test/
-│   ├── app/  core/  helpers/  hosts/  io/  setup/
-│   └── *.test.ts
+│   ├── app/                   3.x 命令
+│   ├── core/                  3.x 纯逻辑
+│   ├── gate/                  冻结的 2.x 门禁
+│   ├── helpers/               测试辅助
+│   ├── hosts/                 宿主适配与 conformance
+│   ├── io/                    磁盘边界
+│   ├── repo/                  结构、链接、垃圾守卫
+│   ├── scripts/               scripts/ 的测试
+│   └── setup/                 集成测试的 dist 新鲜度检查
 ├── dist/                      不入库，build 产物
 ├── node_modules/              不入库
 └── （根目录文件见下表）
@@ -171,13 +185,15 @@ init, plan, apply, rollback, doctor, list, lock, update, search <query>, memory
 
 | 路径 | 归属 | 用途 |
 |---|---|---|
-| `.dependency-cruiser-known-violations.json` | 构建/发布 | dependency-cruiser 已知循环基线，只降不升。 |
-| `.dependency-cruiser.cjs` | 构建/发布 | 依赖方向规则。`src/core` 不碰 fs，`src/gate` 只能被入口引用。 |
+| `.dependency-cruiser-known-violations.json` | 构建/发布 | dependency-cruiser 基线，覆盖 2.x 已知循环和 `app-has-no-fs` 的既有边，只降不升。 |
+| `.dependency-cruiser.cjs` | 构建/发布 | 依赖方向规则。`src/core` 不碰 fs。`src/gate` 可以被 `cli.ts`、`mcp-server.ts` 和 `src/app` 引用（dependency-cruiser `gate-is-only-reached-from-cli`）。 |
 | `.editorconfig` | 构建/发布 | 编辑器基本格式。 |
+| `.gitattributes` | 构建/发布 | 文本入库时规范为 LF（`* text=auto eol=lf`）。 |
 | `.gitignore` | 构建/发布 | 忽略 `dist/`、`node_modules/`、`output/` 内容（保留 `output/README.md`）等。 |
 | `.npmrc` | 构建/发布 | `omit-lockfile-registry-resolved=true`，lockfile 不写 registry resolved。 |
 | `.nvmrc` | 构建/发布 | 源码开发使用的 Node 主版本补丁，当前是 `22.12`。 |
 | `.prettierrc` | 构建/发布 | Prettier。`npm run format` 只覆盖 `src/{core,hosts,io,app}`。 |
+| `AGENTS.md` | 文档 | 给 AI 工具和人类贡献者的入口，指向 STANDARDS。 |
 | `CHANGELOG.md` | 文档 | 版本变更记录。发布状态以 npm 与 GitHub 为准。 |
 | `CONTRIBUTING.md` | 文档 | 贡献说明。 |
 | `LICENSE` | 文档 | Apache-2.0 许可文本。 |
@@ -201,8 +217,8 @@ init, plan, apply, rollback, doctor, list, lock, update, search <query>, memory
 | `resources/toolkit/` | 3.x | `toolkit.schema.json`。 |
 | `resources/gate/` | 冻结 2.x | schemas、policies、profiles、packs、plugins、examples、skills——skills 下是 `templates/` 与渲染好的 Codex/ZCode skill 和 command 文件；随 npm 包发布。 |
 | `scripts/` | 构建/发布 | `build.mjs`、`package-smoke.mjs`、`release-gate.mjs`、`release-provenance.mjs`、离线包与 SBOM、`render-skills.mjs`、校验和。 |
-| `src/` | 混合 | TypeScript 源码。3.x 在 `core/`（`plan/`、`render/`、`toolkit/`）、`hosts/`（含 `conformance/`）、`io/`，以及 `app/` 里的 toolkit 用例。冻结 2.x 在 `gate/`（`domain/`、`mcp/`、`policy/`、`runtime/`、`storage/`）。`config/`、`contracts/`、`entry/`、`security/` 为 2.x 入口与配置仍在使用。根上有 `cli.ts`、`mcp-server.ts`、`errors.ts`、`version.ts`。 |
-| `test/` | 混合 | Vitest。`app/`、`core/`、`hosts/`、`io/` 覆盖 3.x。根上大量 `*.test.ts` 覆盖冻结的 2.x 门禁。`helpers/`、`setup/` 是夹具与集成测试的 dist 新鲜度检查。 |
+| `src/` | 混合 | TypeScript 源码。3.x 在 `core/`（`plan/`、`render/`、`toolkit/`）、`hosts/`（含 `conformance/`）、`io/`，以及 `app/` 里的 toolkit 用例。冻结 2.x 在 `gate/`（`config/`、`contracts/`、`entry/`、`security/`、`domain/`、`mcp/`、`policy/`、`runtime/`、`storage/`）。根上有 `cli.ts`、`mcp-server.ts`、`errors.ts`、`version.ts`。 |
+| `test/` | 混合 | Vitest，与 `src/` 镜像。`gate/` 覆盖冻结的 2.x 门禁。`app/`、`core/`、`io/`、`hosts/` 覆盖 3.x。`repo/` 是结构、链接和垃圾守卫。`scripts/` 覆盖 `scripts/`。`setup/` 检查集成测试用的 dist 是否新鲜。`helpers/` 是测试辅助。 |
 | `dist/` | 不入库 | `npm run build` 的输出。不作为源码事实。 |
 | `node_modules/` | 不入库 | 依赖安装目录。 |
 
@@ -233,9 +249,9 @@ node scripts/release-gate.mjs --expected "$PACKAGE_VERSION" --git-ref "$PACKAGE_
 
 ## 版本与发布
 
-2.0.1 是已经发布的版本。2.0.2 要从 `release/2.0.2` 发布，不能把含有 3.x 的分支合并进 main 来发 2.0.2。该分支已补 Windows fsync 修复和依赖高危修复，2026-11-05 本地发布前验证全部通过；推送、六矩阵 CI、tag `v2.0.2`、`npm publish` 和 GitHub Release 还没有做。
+2.0.1 是已经发布的版本。`release/2.0.2` 已推送，CI 为绿，合入 `main` 的 PR #2 开着，等作者打 tag 和发布。不能把含有 3.x 的分支合并进 main 来发 2.0.2。
 
-3.x 分支 `codex/stinky-cobbler-3.0-m0` 已推送，六矩阵 CI（Ubuntu / macOS / Windows × Node 22 / 24）通过；没有 tag，没有 `npm publish`，四个宿主的安装冒烟仍是 `UNKNOWN / PENDING`，GA 发布被挡住。最新状态以 [PROGRESS](./docs/PROGRESS.md) 为准。
+3.x 在 `develop` 上经 `feature/*` 分支进行。旧分支 `codex/stinky-cobbler-3.0-m0` 已经不在。没有 tag，没有 `npm publish`，四个宿主的安装冒烟仍是 `UNKNOWN / PENDING`，GA 发布被挡住。最新状态以 [PROGRESS](./docs/PROGRESS.md) 为准。
 
 ## 文档索引
 

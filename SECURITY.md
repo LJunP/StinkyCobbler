@@ -5,7 +5,7 @@
 This document defines the security contract of the current code. It does not by itself prove that those bytes are published or verified in a real host.
 
 - Query the public npm version from the official registry and verify tags, Releases, assets, checksums, and SBOMs on GitHub. Do not infer release status from a manifest, historical note, or expected filename.
-- Codex and ZCode installation, restart discovery, MCP consumption, controlled-change E2E, cancellation, and deadline claims remain **UNKNOWN / PENDING** for a candidate until the real-host checklist is executed against the exact same bytes.
+- Real-host verification covers four hosts on one candidate byte set: Codex and ZCode (2.x gate: installation, restart discovery, MCP consumption, controlled-change E2E, cancellation, and deadline) and Claude Code and Cursor (toolkit `plan`, `apply`, `doctor`, `rollback`). Those claims remain **UNKNOWN / PENDING** until the checklist in `docs/release/host-acceptance-checklist.md` is executed against the exact same bytes.
 - A local test, package smoke, checksum, SBOM, or release-gate result does not establish an npm publish, Git tag, GitHub Release, host isolation, or the absence of all defects.
 
 Older architecture documents are design/history material. The current source, tests, this file, and the README are authoritative for the checked-out implementation.
@@ -114,7 +114,7 @@ Business-file rollback is separately fenced. `write rollback` first persists a `
 
 The supported runtime is Node.js `>=22.0.0`. Candidate verification must be rerun on the final bytes and includes typecheck/tests, integration/package smoke, version consistency, package/offline-asset verification, SBOM/lockfile reconciliation, checksums, and registry audit. The exact tarball selected for checksum/upload must itself be installed and scanned for required/forbidden paths, sensitive signatures, CLI/MCP behavior, and both host templates; scanning an earlier independently packed tarball is not equivalent. SBOM and checksums are integrity/inventory artifacts, not signatures or vulnerability-free guarantees.
 
-Formal release additionally requires real Codex and ZCode installation/restart/consumer E2E for this exact candidate, final diff review, and separate authorization/evidence for commit, push, tag, GitHub Release/assets, and npm publication. None of those public actions is automatic.
+Formal release additionally requires real-host verification of four hosts on this exact candidate byte set — Codex and ZCode for the 2.x gate, and Claude Code and Cursor for toolkit `plan`, `apply`, `doctor`, and `rollback` — plus final diff review, and separate authorization/evidence for commit, push, tag, GitHub Release/assets, and npm publication. None of those public actions is automatic.
 
 ## Reporting a vulnerability
 

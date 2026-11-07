@@ -7,7 +7,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Start with the user problem. Stinky Cobbler 3.x is a declarative AI agent toolkit package manager. The 2.x gate remains available, is deprecated, and stays frozen until 4.0. It is still not a host sandbox.
+        Start with the user problem. Stinky Cobbler 3.x is a declarative AI agent toolkit package manager. The 2.x governance commands are marked `[deprecated 2.x]` and frozen. `entry` and `toolkit` are current. 4.0 only decides removal. It is still not a host sandbox.
   - type: textarea
     id: problem
     attributes:

@@ -59,3 +59,5 @@ Stinky Cobbler 是 **AI agent 工具箱的包管理器**：用户用一份声明
 - [PRD](../PRD.md) · [PLAN](../PLAN.md) · [PROGRESS](../PROGRESS.md)
 
 > 2026-11-05 修订：两处措辞与代码对齐，决策实质未改。Gemini CLI 不在 3.0，3.0 GA 后再议，不再写「放 M3」。2.x 治理命令保持顶层命令，`--help` 标记 `[deprecated 2.x]` 并冻结，不另设命令组；行数由 `test/repo/gate-frozen.test.ts` 守卫。`entry` 与 `toolkit` 不标 deprecated。
+>
+> 2026-11-07 修订：自 ADR-0003 P5 起，整个 2.x 内核（含 config、contracts、entry、security）都在 `src/gate/`。新代码的架构规则是 [STANDARDS](../STANDARDS.md) §3（[ADR-0003](./0003-repository-structure-and-standards.md)），不是归档评审的 §2.5。决策正文未改。

@@ -65,7 +65,7 @@
 
 | 层 | 位置 | 说明 |
 |---|---|---|
-| 内置默认 | 包内 `policies/*.yaml` | 随版本更新，**不要直接编辑**（会被覆盖） |
+| 内置默认 | 包内 `resources/gate/policies/*.yaml` | 随版本更新，**不要直接编辑**（会被覆盖） |
 | 用户层 | `$XDG_CONFIG_HOME/stinky-cobbler/policies/`（未设置时为 `~/.config/stinky-cobbler/policies/`） | 位于内置之上、项目层之下 |
 | 项目覆盖 | 项目 `.stinky-cobbler/policies/*.yaml` | 工作区级，最后合并，可提交 git 审计 |
 

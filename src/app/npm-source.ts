@@ -18,7 +18,7 @@ export async function fetchNpmSkills(spec: ToolkitSpec, root: string): Promise<R
   return fetched;
 }
 
-export async function readNpmSkill(source: string, directory: string): Promise<string> {
+async function readNpmSkill(source: string, directory: string): Promise<string> {
   const spec = source.slice("npm:".length);
   if (path.isAbsolute(spec)) return readPackageSkill(spec);
   if (!REGISTRY_SPEC.test(spec) || spec.includes("..")) throw npmError("TOOLKIT_NPM_SOURCE_INVALID", "npm source must be a package directory or name@version.");

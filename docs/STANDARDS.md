@@ -172,7 +172,7 @@ managed:
 | T3 | 禁止为了通过而删除、跳过测试或放松断言；平台差异要分别断言 | ⬜（评审） |
 | T4 | 测试与真实环境隔离：XDG 配置、`GIT_*` 环境变量、全局 git 配置都指向临时位置 | ✅ `test/setup/isolate-*.ts` |
 | T5 | 集成测试前自动 build；测试纳入类型检查 | ✅ |
-| T6 | 覆盖率地板：`core` ≥ 90%，`io`/`hosts` ≥ 85% | 🟡（`npm run coverage` 在 CI 强制 core ≥ 90、io/hosts ≥ 85 行覆盖；分支覆盖 ⬜） |
+| T6 | 覆盖率地板：`core` ≥ 90%，`io`/`hosts` ≥ 85% | 🟡（`npm run coverage` 在 CI 的 ubuntu / Node 22 格子强制 core ≥ 90、io/hosts ≥ 85 行覆盖；分支覆盖 ⬜） |
 | T7 | 禁止新增针对文档措辞的探测断言，优先断言不变量 | ⬜ |
 | T8 | `core/plan` 可在无磁盘下测试（纯函数 + 快照） | 🟡（`core` 直接 import fs 会被 dependency-cruiser 拦，间接碰盘不拦，见 C9；快照测试 ⬜，目前没有快照测试） |
 | T9 | `scripts/` 纳入类型检查 | ⬜（scripts/ 只有 ESLint，未纳入 tsc 类型检查） |

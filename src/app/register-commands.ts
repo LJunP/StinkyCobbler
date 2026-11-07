@@ -60,7 +60,7 @@ async function readJson(file: string): Promise<unknown> {
   return JSON.parse(await readFile(path.resolve(file), "utf8")) as unknown;
 }
 
-export function emit(value: unknown, json?: boolean, presentation?: "tasks"): void {
+function emit(value: unknown, json?: boolean, presentation?: "tasks"): void {
   if (json === true) {
     console.log(JSON.stringify(value));
     return;
