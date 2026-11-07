@@ -704,6 +704,51 @@ describe("toolkit cli", () => {
     expect(refused.code).toBe(7);
     expect(await readFile(toml, "utf8")).toBe(installed);
   });
+  it("exits 7 when rollback meets a hand-edited managed file and still prints the report", async () => {
+    const home = await tempDir("stinky-rollback-conflict-home-");
+    const xdg = await tempDir("stinky-rollback-conflict-xdg-");
+    const env = childEnv(home, xdg);
+    await run(env, "toolkit", "init", "--json");
+    await writeFile(path.join(xdg, "stinky-cobbler", "toolkit.yaml"), mcpSpec("echo"));
+    await run(env, "toolkit", "apply", "--yes", "--json");
+    const toml = path.join(home, ".codex", "config.toml");
+    const edited = `${await readFile(toml, "utf8")}# user edit\n`;
+    await writeFile(toml, edited);
+    const failure = await fail(env, "toolkit", "rollback", "--last", "--json");
+    expect(failure.code).toBe(7);
+    expect(JSON.parse(failure.stdout ?? "{}")).toMatchObject({ restored: [], conflict: { path: toml } });
+    expect(await readFile(toml, "utf8")).toBe(edited);
+  });
+
+  it("exits 6 when apply stops partway and still prints the rollback hint", async () => {
+    const home = await tempDir("stinky-apply-stopped-home-");
+    const xdg = await tempDir("stinky-apply-stopped-xdg-");
+    const source = await tempDir("stinky-apply-stopped-source-");
+    const env = childEnv(home, xdg);
+    await writeFile(path.join(source, "SKILL.md"), "review the diff\n");
+    await mkdir(path.join(home, ".codex"), { recursive: true });
+    await writeFile(path.join(home, ".codex", "skills"), "not a directory\n");
+    await run(env, "toolkit", "init", "--json");
+    await writeFile(path.join(xdg, "stinky-cobbler", "toolkit.yaml"), [
+      "version: 1",
+      "scope: user",
+      "hosts:",
+      "  - codex",
+      "skills:",
+      "  - id: review",
+      `    source: ${JSON.stringify(source)}`,
+      "mcpServers: []",
+      "instructions: []",
+      "bundles: []",
+      ""
+    ].join("\n"));
+    await run(env, "toolkit", "lock", "--json");
+    const failure = await fail(env, "toolkit", "apply", "--yes", "--json");
+    expect(failure.code).toBe(6);
+    expect(JSON.parse(failure.stdout ?? "{}")).toMatchObject({ stopped: true, completed: [], hint: "toolkit rollback --last", error: { code: expect.any(String) } });
+    expect(await readFile(path.join(home, ".codex", "skills"), "utf8")).toBe("not a directory\n");
+  });
+
 });
 
 function mcpSpec(command: string): string {
