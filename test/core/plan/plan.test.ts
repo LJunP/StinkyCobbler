@@ -31,7 +31,7 @@ describe("pure toolkit planner", () => {
     expect(changed.ops).toEqual([expect.objectContaining({ action: "replace", bytes: nextBody, priorHash: sha256(skillBody) })]);
   });
 
-  it("removes a managed skill the spec no longer wants and skips an unsupported host", () => {
+  it("reports a managed skill the spec no longer wants as an orphan instead of removing it, and skips an unsupported host", () => {
     const spec = parseToolkitSpec({
       version: 1,
       hosts: ["codex", "cursor", "zcode"],
@@ -49,8 +49,8 @@ describe("pure toolkit planner", () => {
         support: [{ host: "zcode", kind: "skill", supported: false, reason: "ZCode skill directory is not selected." }]
       }
     );
-    expect(result.ops.map((op) => op.action).sort()).toEqual(["create", "remove"]);
-    expect(result.ops.find((op) => op.action === "remove")).toMatchObject({ host: "cursor", priorHash: "abc123" });
+    expect(result.ops.map((op) => op.action)).toEqual(["create"]);
+    expect(result.orphans).toEqual([{ host: "cursor", kind: "skill", id: "review", path: "/tmp/cursor/skill/review", hash: "abc123" }]);
     expect(result.skipped).toEqual([expect.objectContaining({ host: "zcode", kind: "skill", reason: "ZCode skill directory is not selected." })]);
   });
 

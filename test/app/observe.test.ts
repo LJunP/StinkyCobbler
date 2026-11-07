@@ -59,6 +59,24 @@ describe("host observation", () => {
     expect(await readFile(codexSkill)).not.toEqual(managedBytes);
     expect(await readFile(`${codexSkill}.stinky-cobbler-managed.json`, "utf8")).toContain(sha256("managed skill\n"));
   });
+
+  it("does not inspect the Cursor rules directory as a segment file", async () => {
+    const home = await realpath(await mkdtemp(path.join(tmpdir(), "stinky-observe-rules-home-")));
+    const cwd = await realpath(await mkdtemp(path.join(tmpdir(), "stinky-observe-rules-cwd-")));
+    rootsToRemove.push(home, cwd);
+    const rules = path.join(cwd, ".cursor", "rules");
+    await mkdir(rules, { recursive: true });
+    await writeFile(path.join(rules, "existing.mdc"), "keep\n");
+    const spec = parseToolkitSpec({
+      version: 1,
+      hosts: ["cursor", "claude-code"],
+      instructions: [{ id: "my-style", source: "./my-style.md", render: { cursor: ".cursor/rules/my-style.mdc", "claude-code": "CLAUDE.md" } }]
+    });
+    const observed = await observe({ adapters: hostAdapters, spec, scope: "project", roots: { home, cwd } });
+    expect(observed.filter((item) => item.host === "cursor")).toEqual([]);
+    expect(observed).toEqual([expect.objectContaining({ host: "claude-code", kind: "instructions", id: "my-style", path: path.join(cwd, "CLAUDE.md"), state: "absent" })]);
+    expect(await readFile(path.join(rules, "existing.mdc"), "utf8")).toBe("keep\n");
+  });
 });
 
 function find(observations: HostObservation[], host: string, kind: HostObservation["kind"]): HostObservation {

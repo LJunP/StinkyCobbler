@@ -43,7 +43,7 @@ describe("cli presenter", () => {
     expect(json.some((task) => task.id === "present-task")).toBe(true);
   });
 
-  it("exits 1 when install-host refuses a user-edited managed file", async () => {
+  it("exits 7 (CONFLICT) when install-host refuses a user-edited managed file", async () => {
     const home = await realpath(await mkdtemp(path.join(tmpdir(), "stinky-cli-conflict-")));
     roots.push(home);
     const env = { ...process.env, HOME: home, USERPROFILE: home };
@@ -52,7 +52,7 @@ describe("cli presenter", () => {
     const edited = `${await readFile(commandFile, "utf8")}\n<!-- user edit -->\n`;
     await writeFile(commandFile, edited);
     const failure = await run(env, "entry", "install-host", "--host", "zcode", "--scope", "user", "--json").then(() => null, (error: unknown) => error as { code?: number; stdout?: string });
-    expect(failure?.code).toBe(1);
+    expect(failure?.code).toBe(7);
     expect(await readFile(commandFile, "utf8")).toBe(edited);
   });
 });

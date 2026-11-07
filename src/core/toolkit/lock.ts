@@ -1,12 +1,13 @@
 import { createHash } from "node:crypto";
 import * as z from "zod";
 import { ExitCode, StinkyCobblerError } from "../../errors.js";
+import { LOCKED_KINDS, type LockedKind } from "./kinds.js";
 import type { ToolkitSpec } from "./spec.js";
 
 const sha256Schema = z.string().regex(/^[0-9a-f]{64}$/);
 
 const lockEntrySchema = z.strictObject({
-  kind: z.enum(["skill", "instructions"]),
+  kind: z.enum(LOCKED_KINDS),
   id: z.string().regex(/^[a-z0-9][a-z0-9-]{0,63}$/),
   source: z.string().min(1),
   resolved: z.enum(["local", "fetched", "not-fetched", "absent"]),
@@ -27,7 +28,7 @@ const toolkitLockSchema = z.strictObject({ version: z.literal(1), entries: z.arr
 });
 
 export interface LockEntry {
-  kind: "skill" | "instructions";
+  kind: LockedKind;
   id: string;
   source: string;
   resolved: "local" | "fetched" | "not-fetched" | "absent";

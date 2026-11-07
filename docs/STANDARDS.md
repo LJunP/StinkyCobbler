@@ -137,16 +137,16 @@ managed:
 | C1 | 新代码文件 ≤ 400 行、函数 ≤ 50 行、嵌套 ≤ 4 层；`src/gate` 豁免但冻结 | 🟡（ESLint 对 `src/core`、`io`、`hosts`、`app` 与 `errors.ts`、`version.ts` 全部生效；`eslint.config.js` 的 FROZEN_KERNEL 只剩 `src/gate/**` 与 2.x 入口 `cli.ts`、`mcp-server.ts`） |
 | C2 | 依赖方向白名单、无循环（`core` 不依赖 `io/hosts/app`；`gate` 只被入口引用）；不得用动态 `import()` 隐藏循环 | 🟡（dependency-cruiser 已拦：新的循环（包括用动态 `import()` 藏起来的环；`.dependency-cruiser-known-violations.json` 里已知的 15 条循环除外）、`core` 依赖 `io/hosts/app`、`app` 直接 import fs（`app-has-no-fs`，基线只减不增，见 C9）；依赖方向白名单还不存在；`gate` 允许被 `cli.ts`、`mcp-server.ts` 与 `app` 引用（dependency-cruiser `gate-is-only-reached-from-cli`）） |
 | C3 | `src/gate` 不加新行为，文件清单与非空行数有基线 | 🟡（`test/repo/gate-frozen.test.ts` 只拦新增 `.ts` 文件和非空行总数超过 16873 基线；删文件允许，非 `.ts` 文件不查；「不加新行为」靠评审） |
-| C4 | 宿主、artifact 种类等枚举只在 `core/toolkit/kinds.ts` 定义一次 | 🟡（`test/core/toolkit/spec.test.ts` 断言宿主注册表、适配器的种类与 `kinds.ts` 一致；别处另行定义枚举无检查，现有 `core/toolkit/lock.ts` 用字面量 `["skill", "instructions"]` 重复了 artifact 种类的子集，见 PROGRESS 待办） |
+| C4 | 宿主、artifact 种类等枚举只在 `core/toolkit/kinds.ts` 定义一次 | 🟡（`test/core/toolkit/spec.test.ts` 断言宿主注册表、适配器的种类与 `kinds.ts` 一致；`test/core/toolkit/lock.test.ts` 断言 lock 的种类取自 `kinds.ts` 的 `LOCKED_KINDS`；别处另行定义枚举无检查） |
 | C5 | 每个 schema 属性在 `src/` 有消费点，没有读者的配置键不准存在 | 🟡（`test/repo/config-liveness.test.ts` 只检查 `resources/gate/schemas/*.json` 与 `resources/toolkit/*.json` 的属性名在 `src/` 文本里出现过，不检查真实读取点；`toolkit.schema.json` 的键都写在 `core/toolkit/spec.ts` 的 zod 定义里，所以对 3.x 实际拦不住） |
 | C6 | 错误码集中注册，附退出码与可读修复提示；禁止裸 `new Error` | 🟡（ESLint 拦 C1 生效范围内任何 `new Error(...)`；2.x 豁免；集中注册表 ⬜） |
-| C7 | 每个命令同时支持人类输出与 `--json`；非零退出码对应错误码；`conflict` 类结果非零退出；一文件一命令（`app/commands/<name>.ts`） | 🟡（`toolkit init`、`toolkit apply` 的冲突退出 7，以及 `TOOLKIT_LEDGER_EMPTY`、`TOOLKIT_CONFIRM_REQUIRED`、`TOOLKIT_LOCK_BLOB_MISSING`、`TOOLKIT_SEARCH_UNVERIFIED`、`SEGMENT_INVALID`、`ENTRY_HOST_INVALID` 的退出 2 有集成测试，部分命令的 `--json` 有集成测试；其余命令的退出码无测试；现状不符：`toolkit rollback` 遇冲突仍退出 0，`entry install-host` 遇冲突退出未注册的 1，见 PROGRESS 待办；人类输出与一文件一命令 ⬜） |
+| C7 | 每个命令同时支持人类输出与 `--json`；非零退出码对应错误码；`conflict` 类结果非零退出；一文件一命令（`app/commands/<name>.ts`） | 🟡（`toolkit init`、`toolkit apply` 的冲突退出 7，以及 `TOOLKIT_LEDGER_EMPTY`、`TOOLKIT_CONFIRM_REQUIRED`、`TOOLKIT_LOCK_BLOB_MISSING`、`TOOLKIT_SEARCH_UNVERIFIED`、`SEGMENT_INVALID`、`ENTRY_HOST_INVALID` 的退出 2 有集成测试，部分命令的 `--json` 有集成测试；其余命令的退出码无测试；`toolkit rollback` 遇冲突退出 7、`toolkit apply` 中途停止退出 6、`entry install-host` 遇冲突退出 7 有集成测试；人类输出与一文件一命令 ⬜） |
 | C8 | 宿主适配器必须通过 `hosts/conformance/`；宿主特定逻辑只在自己的文件 | 🟡（`test/hosts/conformance.test.ts` 对注册表里每个适配器跑共享检查；宿主特定逻辑放在哪里无检查） |
 | C9 | IO 只在 `io/`；`core/`、`app/` 禁止 import `node:fs` | 🟡（dependency-cruiser：`core-has-no-io`、`gate-is-only-reached-from-cli`、`app-has-no-fs`（现有 10 处基线只减不增）；间接碰盘不拦） |
 | C10 | 写磁盘必须经 `managed-file` 或 `fs-boundary` | ⬜（`core` 不碰盘已记在 C9；现有 5 个 `app` 文件直接写盘：缓存、`toolkit.lock`、scaffold、rollback 删除，见 PROGRESS 待办） |
 | C11 | 资源路径（`resources/` 下）只从一个模块取得，不在各处拼 `projectRoot + "schemas"` | ✅（`src/io/resources.ts` 唯一来源；`test/repo/junk.test.ts` 拦别处的资源路径字面量，豁免：冻结的 `src/gate`、宿主目录名 `"skills"`（`src/hosts`）、用户配置目录名 `"policies"`（`src/io/tiered-config.ts`）） |
 | C12 | 运行时依赖 ≤ 10 个；新增依赖须写用途、维护状态、替代方案，并经作者批准 | ⬜（`package.json` 声明 6 个；`src/` 还直接 import 未声明的 `zod`（经 `@modelcontextprotocol/sdk` 间接安装），见 PROGRESS 待办；无工具统计或拦截） |
-| C13 | 任何产物不得出现明文密钥，只允许 `${env:NAME}` / `${file:PATH}`；package-smoke 的敏感内容扫描覆盖所有渲染产物 | 🟡（spec 只拒绝 `mcpServers[].env` 值里的明文，`command`、`args` 不查；集成测试只断言 env 引用没有被展开进 plan、apply、doctor 的输出和 Codex 的 `config.toml`；package-smoke 扫描渲染产物 ⬜，PRD S5） |
+| C13 | 任何产物不得出现明文密钥，只允许 `${env:NAME}` / `${file:PATH}`；package-smoke 的敏感内容扫描覆盖所有渲染产物 | 🟡（spec 只拒绝 `mcpServers[].env` 值里的明文，`command`、`args` 不查；集成测试断言 env 引用没有被展开进 plan、apply、doctor 的输出和四个宿主的 MCP 文件（`test/app/toolkit-cli.integration.test.ts`），`hosts/conformance` 对每个适配器做 env 条目往返检查；package-smoke 扫描渲染产物 ⬜，PRD S5） |
 | C14 | 不留调试输出、注释掉的代码、无主 TODO | 🟡（`test/repo/junk.test.ts`：无主 TODO、超大文件、core/io/hosts 禁 console；注释掉的代码与无引用文件 ⬜） |
 
 ### 3.1 工具链

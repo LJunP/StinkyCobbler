@@ -1,18 +1,18 @@
 import { ExitCode, StinkyCobblerError } from "../errors.js";
-import type { McpMergeResult, McpServerSpec } from "./host-adapter.js";
+import { sameMcpEntry, type HostMcpEntry, type McpMergeResult } from "./host-adapter.js";
 
-export function isSameMcpServer(value: unknown, server: McpServerSpec): boolean {
-  if (!isRecord(value) || value.command !== server.command || !Array.isArray(value.args)) return false;
-  return value.args.length === server.args.length && value.args.every((arg, index) => arg === server.args[index]);
+function isSameMcpServer(value: unknown, server: HostMcpEntry): boolean {
+  const installed = normalizeServer(value);
+  return installed !== undefined && sameMcpEntry(installed, server);
 }
 
-export function readJsonMcp(text: string, keyPath: readonly string[]): Record<string, McpServerSpec> {
+export function readJsonMcp(text: string, keyPath: readonly string[]): Record<string, HostMcpEntry> {
   if (text.trim() === "") return {};
   const servers = objectAt(parseObject(text), keyPath) ?? {};
   return normalizeServers(servers);
 }
 
-export function mergeJsonMcp(text: string, keyPath: readonly string[], id: string, server: McpServerSpec): McpMergeResult {
+export function mergeJsonMcp(text: string, keyPath: readonly string[], id: string, server: HostMcpEntry): McpMergeResult {
   if (text.trim() === "") return { status: "merged", text: `${JSON.stringify(assignServer({}, keyPath, id, server), null, 2)}\n` };
   let root: Record<string, unknown>;
   try {
@@ -42,21 +42,33 @@ function objectAt(root: Record<string, unknown>, keyPath: readonly string[]): Re
   return isRecord(current) ? current : undefined;
 }
 
-function assignServer(root: Record<string, unknown>, keyPath: readonly string[], id: string, server: McpServerSpec): Record<string, unknown> {
+function assignServer(root: Record<string, unknown>, keyPath: readonly string[], id: string, server: HostMcpEntry): Record<string, unknown> {
   const [head, ...rest] = keyPath;
-  if (head === undefined) return { ...root, [id]: { command: server.command, args: [...server.args] } };
+  if (head === undefined) return { ...root, [id]: serverJson(server) };
   const child = isRecord(root[head]) ? root[head] : {};
   return { ...root, [head]: assignServer(child, rest, id, server) };
 }
 
-function normalizeServers(servers: Record<string, unknown>): Record<string, McpServerSpec> {
-  const result: Record<string, McpServerSpec> = {};
+/** JSON hosts write `env` as an object; `envVars` is a TOML-host field and is never written here. */
+function serverJson(server: HostMcpEntry): Record<string, unknown> {
+  const env = server.env ?? {};
+  return { command: server.command, args: [...server.args], ...(Object.keys(env).length === 0 ? {} : { env: { ...env } }) };
+}
+
+function normalizeServers(servers: Record<string, unknown>): Record<string, HostMcpEntry> {
+  const result: Record<string, HostMcpEntry> = {};
   for (const [id, value] of Object.entries(servers)) {
-    if (!isRecord(value) || typeof value.command !== "string") continue;
-    const args = Array.isArray(value.args) ? value.args.filter((arg): arg is string => typeof arg === "string") : [];
-    result[id] = { command: value.command, args };
+    const server = normalizeServer(value);
+    if (server !== undefined) result[id] = server;
   }
   return result;
+}
+
+function normalizeServer(value: unknown): HostMcpEntry | undefined {
+  if (!isRecord(value) || typeof value.command !== "string") return undefined;
+  const args = Array.isArray(value.args) ? value.args.filter((arg): arg is string => typeof arg === "string") : [];
+  const env = isRecord(value.env) ? Object.fromEntries(Object.entries(value.env).filter((pair): pair is [string, string] => typeof pair[1] === "string")) : {};
+  return { command: value.command, args, ...(Object.keys(env).length === 0 ? {} : { env }) };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

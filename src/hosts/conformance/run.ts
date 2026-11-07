@@ -1,5 +1,5 @@
 import path from "node:path";
-import { ARTIFACT_KINDS, type HostAdapter, type HostScope } from "../host-adapter.js";
+import { ARTIFACT_KINDS, hostMcpEntry, sameMcpEntry, type HostAdapter, type HostScope } from "../host-adapter.js";
 
 export async function runHostConformance(adapter: HostAdapter, input: { emptyHome: string; presentHome: string; cwd: string }): Promise<readonly string[]> {
   const issues: string[] = [];
@@ -41,5 +41,17 @@ function checkMerge(adapter: HostAdapter, input: { presentHome: string; cwd: str
   const same = adapter.mergeMcp(second.text, "demo", { command: "tool", args: ["--a"] });
   if (same.status !== "unchanged" || same.text !== second.text) return [`${adapter.id} identical server was rewritten`];
   const conflict = adapter.mergeMcp(second.text, "demo", { command: "other-tool", args: [] });
-  return conflict.status === "conflict" ? [] : [`${adapter.id} different command was not a conflict`];
+  if (conflict.status !== "conflict") return [`${adapter.id} different command was not a conflict`];
+  return checkEnv(adapter, second.text);
+}
+
+/** An env reference round-trips through the host file as the host's own syntax; the value never appears. */
+function checkEnv(adapter: HostAdapter, text: string): string[] {
+  const rendered = hostMcpEntry(adapter, { command: "secret-tool", args: [], env: { API_TOKEN: "${env:CONFORMANCE_TOKEN}" } });
+  const merged = adapter.mergeMcp(text, "secret", rendered);
+  if (merged.status !== "merged") return [`${adapter.id} env entry was not merged`];
+  const read = adapter.readMcp(merged.text).secret;
+  if (read === undefined || !sameMcpEntry(read, rendered)) return [`${adapter.id} readMcp did not round-trip the env entry`];
+  if (adapter.mergeMcp(merged.text, "secret", rendered).status !== "unchanged") return [`${adapter.id} identical env entry was rewritten`];
+  return [];
 }

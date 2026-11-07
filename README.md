@@ -45,10 +45,10 @@ node dist/cli.js toolkit doctor --json
 | 子命令 | 是否写盘 |
 |---|---|
 | `init` | 写一份 `toolkit.yaml`（默认 user 作用域）。已存在则拒绝覆盖。 |
-| `plan` | 不写盘。预览的是当前源文件，所以 diff 可能和后面 `apply` 安装的锁定字节不同。 |
+| `plan` | 不写盘。有 lock 时预览 blob 里的字节，和 `apply` 写入的完全一致；没有 lock 时预览当前源文件（此时 `apply` 会拒绝）。 |
 | `apply` | 写宿主受管文件、managed-state sidecar、内容寻址备份，并追加 toolkit 账本。有变更必须 `--yes`。冲突不覆盖。有 skill 或指令时必须先 `lock`，安装的是 blob 里的字节。 |
 | `rollback` | 把最后一次 apply 按账本写回去。用 `--last` 或 `--to <applyId>`，且只能回最后一次。账本为空则失败。当前字节或 sidecar hash 不符则 `conflict` 并停止。 |
-| `doctor` | 不写盘。报告漂移、`${env:NAME}` 的变量名是否出现在当前进程（不打印值）、command 是否存在、密钥提示，以及 `role: knowledge` 的新鲜度。没有该 server 的工具结果时新鲜度是 `unavailable`，不读取 `sources` 建索引。 |
+| `doctor` | 不写盘。报告漂移、`orphans`（受管但规格已不再指向的文件，toolkit 不删除，由用户处理）、`${env:NAME}` 的变量名是否出现在当前进程（不打印值）、command 是否存在、密钥提示，以及 `role: knowledge` 的新鲜度。没有该 server 的工具结果时新鲜度是 `unavailable`，不读取 `sources` 建索引。 |
 | `list` | 不写盘。列出已观察到的 skill、MCP 和指令。command 还没有观察。 |
 | `lock` | 写规格旁边的 `toolkit.lock` 和 `blobs/<sha256>`。`git+` 与 `npm:` 的 skill 在这时抓取，正文进 `sources/`，不执行来源里的脚本。不改宿主目录。`skills.sh:` 不抓取，没有 hash。找不到的本地文件记为 `absent`。 |
 | `update` | 不改 `toolkit.lock`，不写宿主。重新读取本地来源，并重新抓取 `git+` 和 `npm:`（会改 `sources/`），只输出 plan diff。之后的 `apply` 仍安装锁定字节。 |

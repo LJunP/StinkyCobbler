@@ -2,6 +2,25 @@
 
 > 只追加，最新在上。每条：日期 / 任务 / 做了什么 / 验证 / 待办与问题。
 
+## 2026-11-07 · 3.x 行为缺陷修复（P7 审计待办中的 7 条）
+
+- 分支 `feature/rc1-defect-fixes`，从 `feature/p7-audit` 切出（PR #10 在本分支推送时已合并进 develop，本分支相对 develop 正好是下列 8 个提交）；7 个提交各修一个缺陷，每个都先写复现测试（用修复前的 `dist/` 或改前代码确认红灯）再修，不改 `src/gate/`：
+  1. `19fdd6c` `toolkit rollback` 有 `conflict` 退出 7、`toolkit apply` `stopped: true` 退出 6（`ExitCode.INTERNAL`，固定码，JSON 不变；op 自己的退出码没有透传，见待办）。
+  2. `28be634` `entry install-host` 冲突退出 7：`release/2.0.2` 的代码与测试早已是 7，3.x 分支漏了这项；两条锁定 1 的测试改为 7，CHANGELOG rc.1 标为相对 alpha.1 的破坏性变化。
+  3. `def575b` Cursor `.cursor/rules` 不再当段落文件：`host-adapter.ts` 新增 `rendersInstructionSegment` / `instructionSkipReason`，observe、plan 的 support 行、`toolkit memory` 共用；非 `md-segment` 目标进 `plan.skipped` 并带原因。
+  4. `06d94dd` plan 与 apply 统一来源：有 lock 时都读 blob（本地源也是），无 lock 时 plan 预览实时文件、apply 仍 `TOOLKIT_LOCK_REQUIRED`；删除 `overlayLockedSources`。
+  5. `717d364` MCP `env` 按宿主文档语法写入（Cursor `${env:NAME}`、Claude Code `${NAME}`、Codex `env_vars`、ZCode 不写），不读不展开值；`hosts/host-adapter.ts` 的重复 `McpServerSpec` 改为宿主文件形态 `HostMcpEntry`，规格类型只剩 `core/toolkit/spec.ts` 一处；readMcp 同步读回 env，env 变化算冲突/漂移；conformance 增加 env 往返检查。Codex `env_vars` 语义当天按官方页核对（`env_vars`: "Environment variables to allow and forward"）。
+  6. `c3d2ce1` plan 不再生成 `remove` op，改为 `plan.orphans` 与 `doctor.orphans` 报告；apply 不再因它中断；`FileOp.action` 去掉 `remove`。
+  7. `771d7ef` `lock.ts` 的种类枚举改为 `kinds.ts` 的 `LOCKED_KINDS`（C4）。
+- 文档：CHANGELOG 3.0.0-rc.1 五条用户可见变化；STANDARDS C4/C7/C13 状态同步；`docs/hosts/*.md` 各补一句 apply 写什么；quickstart 与 README 的 plan/lock、orphans 说明。
+- 验证：lint（typecheck、test types、ESLint 0 error、depcruise 0 violation）通过；`npm test` 100 文件 / 920 项通过（unit + integration）；`npm run test:package` 真实打包安装后冒烟通过（`stinky-cobbler-3.0.0-rc.1.tgz`）；`git diff --check` 干净。每条缺陷的复现测试都先在修复前跑出红灯（1、2、6 用修复前的 `dist/` 或改前代码复现）。
+
+### 待办 / 问题
+- `orphans` 只覆盖"规格仍引用、但 `hosts` 收窄后多出的受管副本"。整条从 `toolkit.yaml` 删掉的 artifact 不会被 observe 看到（observe 只按规格条目定位路径），plan/doctor 报不出来；要覆盖它需要扫描宿主目录或在 lock/账本里记安装清单，设计由作者定。真正的删除（经 managed-file、可回滚）同样待设计。
+- `${file:PATH}` 引用四个宿主都没有文档语法，apply 不写、doctor 也不提示；建议 doctor 加一条提示。
+- Codex 只能按名转发：`KEY: ${env:NAME}` 且 KEY≠NAME 时服务进程拿到的变量名是 NAME；doctor 的 wrapper 提示仍是正确做法。Claude Code 的 `${VAR}` 只在 `.mcp.json` 文档里核实过，用户级 `~/.claude.json` 按同一语法写。
+- apply 中途停止固定退出 6；若作者希望透传 op 自身的退出码（例如 managed-file 的 3），需要在 JSON 报告里加 `exitCode` 字段。
+
 ## 2026-11-07 · ADR-0003 P7：全量审计与收尾
 
 - 审计：8 个只读 grok 分片覆盖全部 357 个跟踪文件（按 `git ls-files` 逐项对账，357/357，零遗漏），每个文件一条 KEEP/FIX/DELETE/ARCHIVE/MOVE_OUTPUT 判定加理由。结果：KEEP 323、FIX 31、DELETE 3、ARCHIVE 0、MOVE_OUTPUT 0。

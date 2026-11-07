@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
+import { ARTIFACT_KINDS, LOCKED_KINDS } from "../../../src/core/toolkit/kinds.js";
 import { buildToolkitLock, parseToolkitLock } from "../../../src/core/toolkit/lock.js";
 import type { ToolkitSpec } from "../../../src/core/toolkit/spec.js";
 
@@ -40,6 +41,16 @@ describe("toolkit lock", () => {
       version: 1,
       entries: [{ kind: "skill", id: "remote-skill", source: remote, resolved: "not-fetched", sha256: "ab".repeat(32) }]
     })).toThrowError(expect.objectContaining({ code: "TOOLKIT_LOCK_INVALID" }));
+  });
+
+  it("takes its kinds from kinds.ts instead of a literal copy (STANDARDS C4)", async () => {
+    const source = await readFile(new URL("../../../src/core/toolkit/lock.ts", import.meta.url), "utf8");
+    expect(source).not.toContain('"skill", "instructions"');
+    expect(source).not.toContain('"skill" | "instructions"');
+    expect(LOCKED_KINDS.every((kind) => ARTIFACT_KINDS.includes(kind))).toBe(true);
+    expect(() => parseToolkitLock({ version: 1, entries: [{ kind: "mcp-server", id: "fs", source: "npx", resolved: "absent" }] })).toThrowError(
+      expect.objectContaining({ code: "TOOLKIT_LOCK_INVALID" })
+    );
   });
 
   it("does not import a network client", async () => {

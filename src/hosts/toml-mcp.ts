@@ -1,22 +1,27 @@
 import { parse, stringify } from "smol-toml";
 import { appendTomlDocument } from "../io/toml-edit.js";
-import type { McpMergeResult, McpServerSpec } from "./host-adapter.js";
-import { isSameMcpServer } from "./json-mcp.js";
+import { sameMcpEntry, type HostMcpEntry, type McpMergeResult } from "./host-adapter.js";
 
-export function readTomlMcp(text: string): Record<string, McpServerSpec> {
+export function readTomlMcp(text: string): Record<string, HostMcpEntry> {
   if (text.trim() === "") return {};
   const parsed = parse(text);
   const servers = isRecord(parsed.mcp_servers) ? parsed.mcp_servers : {};
-  const result: Record<string, McpServerSpec> = {};
+  const result: Record<string, HostMcpEntry> = {};
   for (const [id, value] of Object.entries(servers)) {
-    if (!isRecord(value) || typeof value.command !== "string") continue;
-    const args = Array.isArray(value.args) ? value.args.filter((arg): arg is string => typeof arg === "string") : [];
-    result[id] = { command: value.command, args };
+    const server = tomlServer(value);
+    if (server !== undefined) result[id] = server;
   }
   return result;
 }
 
-export function mergeTomlMcp(text: string, id: string, server: McpServerSpec): McpMergeResult {
+function tomlServer(value: unknown): HostMcpEntry | undefined {
+  if (!isRecord(value) || typeof value.command !== "string") return undefined;
+  const args = Array.isArray(value.args) ? value.args.filter((arg): arg is string => typeof arg === "string") : [];
+  const envVars = Array.isArray(value.env_vars) ? value.env_vars.filter((name): name is string => typeof name === "string") : [];
+  return { command: value.command, args, ...(envVars.length === 0 ? {} : { envVars }) };
+}
+
+export function mergeTomlMcp(text: string, id: string, server: HostMcpEntry): McpMergeResult {
   let parsed: Record<string, unknown> = {};
   if (text.trim() !== "") {
     try {
@@ -26,10 +31,12 @@ export function mergeTomlMcp(text: string, id: string, server: McpServerSpec): M
     }
   }
   const servers = isRecord(parsed.mcp_servers) ? parsed.mcp_servers : {};
+  const current = servers[id] === undefined ? undefined : tomlServer(servers[id]);
   if (servers[id] !== undefined) {
-    return isSameMcpServer(servers[id], server) ? { status: "unchanged", text } : { status: "conflict" };
+    return current !== undefined && sameMcpEntry(current, server) ? { status: "unchanged", text } : { status: "conflict" };
   }
-  const fragment = { mcp_servers: { [id]: { command: server.command, args: [...server.args] } } };
+  const envVars = server.envVars ?? [];
+  const fragment = { mcp_servers: { [id]: { command: server.command, args: [...server.args], ...(envVars.length === 0 ? {} : { env_vars: [...envVars] }) } } };
   const next = text.length === 0 ? `${stringify(fragment)}\n` : appendTomlDocument(text, fragment);
   try {
     parse(next);

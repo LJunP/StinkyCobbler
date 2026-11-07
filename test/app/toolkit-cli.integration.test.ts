@@ -4,6 +4,7 @@ import { mkdir, mkdtemp, readFile, readdir, realpath, rm, writeFile } from "node
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
+import { parse as parseToml } from "smol-toml";
 import { afterEach, describe, expect, it } from "vitest";
 
 const execFileAsync = promisify(execFile);
@@ -22,16 +23,20 @@ interface CliFailure {
 }
 
 async function run(env: NodeJS.ProcessEnv, ...args: string[]): Promise<{ stdout: string; stderr: string }> {
-  return execFileAsync(process.execPath, [path.join(projectRoot, "dist/cli.js"), ...args], {
-    cwd: projectRoot,
-    env,
-    maxBuffer: 1024 * 1024
-  });
+  return runIn(projectRoot, env, ...args);
+}
+
+async function runIn(cwd: string, env: NodeJS.ProcessEnv, ...args: string[]): Promise<{ stdout: string; stderr: string }> {
+  return execFileAsync(process.execPath, [path.join(projectRoot, "dist/cli.js"), ...args], { cwd, env, maxBuffer: 1024 * 1024 });
 }
 
 async function fail(env: NodeJS.ProcessEnv, ...args: string[]): Promise<CliFailure> {
+  return failIn(projectRoot, env, ...args);
+}
+
+async function failIn(cwd: string, env: NodeJS.ProcessEnv, ...args: string[]): Promise<CliFailure> {
   try {
-    const result = await run(env, ...args);
+    const result = await runIn(cwd, env, ...args);
     return { code: 0, stdout: result.stdout, stderr: result.stderr };
   } catch (error: unknown) {
     return error as CliFailure;
@@ -704,6 +709,221 @@ describe("toolkit cli", () => {
     expect(refused.code).toBe(7);
     expect(await readFile(toml, "utf8")).toBe(installed);
   });
+  it("exits 7 when rollback meets a hand-edited managed file and still prints the report", async () => {
+    const home = await tempDir("stinky-rollback-conflict-home-");
+    const xdg = await tempDir("stinky-rollback-conflict-xdg-");
+    const env = childEnv(home, xdg);
+    await run(env, "toolkit", "init", "--json");
+    await writeFile(path.join(xdg, "stinky-cobbler", "toolkit.yaml"), mcpSpec("echo"));
+    await run(env, "toolkit", "apply", "--yes", "--json");
+    const toml = path.join(home, ".codex", "config.toml");
+    const edited = `${await readFile(toml, "utf8")}# user edit\n`;
+    await writeFile(toml, edited);
+    const failure = await fail(env, "toolkit", "rollback", "--last", "--json");
+    expect(failure.code).toBe(7);
+    expect(JSON.parse(failure.stdout ?? "{}")).toMatchObject({ restored: [], conflict: { path: toml } });
+    expect(await readFile(toml, "utf8")).toBe(edited);
+  });
+
+  it("exits 6 when apply stops partway and still prints the rollback hint", async () => {
+    const home = await tempDir("stinky-apply-stopped-home-");
+    const xdg = await tempDir("stinky-apply-stopped-xdg-");
+    const source = await tempDir("stinky-apply-stopped-source-");
+    const env = childEnv(home, xdg);
+    await writeFile(path.join(source, "SKILL.md"), "review the diff\n");
+    await mkdir(path.join(home, ".codex"), { recursive: true });
+    await writeFile(path.join(home, ".codex", "skills"), "not a directory\n");
+    await run(env, "toolkit", "init", "--json");
+    await writeFile(path.join(xdg, "stinky-cobbler", "toolkit.yaml"), [
+      "version: 1",
+      "scope: user",
+      "hosts:",
+      "  - codex",
+      "skills:",
+      "  - id: review",
+      `    source: ${JSON.stringify(source)}`,
+      "mcpServers: []",
+      "instructions: []",
+      "bundles: []",
+      ""
+    ].join("\n"));
+    await run(env, "toolkit", "lock", "--json");
+    const failure = await fail(env, "toolkit", "apply", "--yes", "--json");
+    expect(failure.code).toBe(6);
+    expect(JSON.parse(failure.stdout ?? "{}")).toMatchObject({ stopped: true, completed: [], hint: "toolkit rollback --last", error: { code: expect.any(String) } });
+    expect(await readFile(path.join(home, ".codex", "skills"), "utf8")).toBe("not a directory\n");
+  });
+
+  it("skips Cursor project rules instead of treating the rules directory as a segment file", async () => {
+    const home = await tempDir("stinky-cursor-rules-home-");
+    const xdg = await tempDir("stinky-cursor-rules-xdg-");
+    const cwd = await tempDir("stinky-cursor-rules-cwd-");
+    const env = childEnv(home, xdg);
+    const source = path.join(cwd, "my-style.md");
+    await writeFile(source, "Use short paragraphs.\n");
+    await runIn(cwd, env, "toolkit", "init", "--scope", "project", "--json");
+    await writeFile(path.join(cwd, ".stinky-cobbler", "toolkit.yaml"), [
+      "version: 1",
+      "scope: project",
+      "hosts:",
+      "  - cursor",
+      "skills: []",
+      "mcpServers: []",
+      "instructions:",
+      "  - id: my-style",
+      `    source: ${JSON.stringify(source)}`,
+      "    render:",
+      "      cursor: .cursor/rules/my-style.mdc",
+      "bundles: []",
+      ""
+    ].join("\n"));
+    await runIn(cwd, env, "toolkit", "lock", "--scope", "project", "--json");
+    const skip = expect.objectContaining({ host: "cursor", kind: "instructions", id: "my-style", reason: expect.stringContaining("md-segment") });
+    const absent = JSON.parse((await runIn(cwd, env, "toolkit", "plan", "--scope", "project", "--json")).stdout) as { ops: unknown[]; conflicts: unknown[]; skipped: unknown[] };
+    expect(absent.ops).toEqual([]);
+    expect(absent.conflicts).toEqual([]);
+    expect(absent.skipped).toEqual([skip]);
+    const rules = path.join(cwd, ".cursor", "rules");
+    await mkdir(rules, { recursive: true });
+    await writeFile(path.join(rules, "existing.mdc"), "keep\n");
+    const before = await treeHash(cwd);
+    const present = JSON.parse((await runIn(cwd, env, "toolkit", "plan", "--scope", "project", "--json")).stdout) as { ops: unknown[]; conflicts: unknown[]; skipped: unknown[] };
+    expect(present.ops).toEqual([]);
+    expect(present.conflicts).toEqual([]);
+    expect(present.skipped).toEqual([skip]);
+    const applied = JSON.parse((await runIn(cwd, env, "toolkit", "apply", "--yes", "--scope", "project", "--json")).stdout) as { stopped: boolean; completed: unknown[] };
+    expect(applied).toMatchObject({ stopped: false, completed: [] });
+    const doctor = JSON.parse((await runIn(cwd, env, "toolkit", "doctor", "--scope", "project", "--json")).stdout) as { drift: unknown[] };
+    expect(doctor.drift).toEqual([]);
+    expect(await treeHash(cwd)).toBe(before);
+  });
+
+  it("previews the same locked bytes that apply writes after the local source changes", async () => {
+    const home = await tempDir("stinky-plan-lock-home-");
+    const xdg = await tempDir("stinky-plan-lock-xdg-");
+    const source = await tempDir("stinky-plan-lock-source-");
+    const env = childEnv(home, xdg);
+    const locked = "locked body\n";
+    const skillFile = path.join(source, "SKILL.md");
+    await writeFile(skillFile, locked);
+    await run(env, "toolkit", "init", "--json");
+    await writeFile(path.join(xdg, "stinky-cobbler", "toolkit.yaml"), [
+      "version: 1",
+      "scope: user",
+      "hosts:",
+      "  - codex",
+      "skills:",
+      "  - id: review",
+      `    source: ${JSON.stringify(source)}`,
+      "mcpServers: []",
+      "instructions: []",
+      "bundles: []",
+      ""
+    ].join("\n"));
+    await run(env, "toolkit", "lock", "--json");
+    await writeFile(skillFile, "edited after lock\n");
+    const planned = JSON.parse((await run(env, "toolkit", "plan", "--json")).stdout) as { ops: Array<{ bytes?: string }>; diffs: string[] };
+    expect(planned.ops.map((op) => op.bytes)).toEqual([locked]);
+    expect(planned.diffs.join("\n")).toContain("locked body");
+    expect(planned.diffs.join("\n")).not.toContain("edited after lock");
+    const applied = JSON.parse((await run(env, "toolkit", "apply", "--yes", "--json")).stdout) as { completed: Array<{ bytes?: string }> };
+    expect(applied.completed.map((op) => op.bytes)).toEqual(planned.ops.map((op) => op.bytes));
+    expect(await readFile(path.join(home, ".codex", "skills", "review", "SKILL.md"), "utf8")).toBe(locked);
+    expect(JSON.parse((await run(env, "toolkit", "plan", "--json")).stdout)).toMatchObject({ ops: [], conflicts: [] });
+  });
+
+  it("renders the env reference in each host's documented syntax and never the value", async () => {
+    const home = await tempDir("stinky-mcp-env-home-");
+    const xdg = await tempDir("stinky-mcp-env-xdg-");
+    const env = childEnv(home, xdg, { STINKY_TEST_FS_TOKEN: secret });
+    await run(env, "toolkit", "init", "--json");
+    await writeFile(path.join(xdg, "stinky-cobbler", "toolkit.yaml"), [
+      "version: 1",
+      "scope: user",
+      "hosts:",
+      "  - zcode",
+      "  - codex",
+      "  - claude-code",
+      "  - cursor",
+      "skills: []",
+      "mcpServers:",
+      "  - id: filesystem",
+      "    transport: stdio",
+      "    command: stinky-cobbler-missing-cmd",
+      "    env:",
+      '      FS_TOKEN: "${env:STINKY_TEST_FS_TOKEN}"',
+      "instructions: []",
+      "bundles: []",
+      ""
+    ].join("\n"));
+    const appliedText = (await run(env, "toolkit", "apply", "--yes", "--json")).stdout;
+    expect(JSON.parse(appliedText)).toMatchObject({ stopped: false });
+    expect((JSON.parse(appliedText) as { completed: unknown[] }).completed).toHaveLength(4);
+    const files = {
+      zcode: path.join(home, ".zcode", "cli", "config.json"),
+      codex: path.join(home, ".codex", "config.toml"),
+      "claude-code": path.join(home, ".claude.json"),
+      cursor: path.join(home, ".cursor", "mcp.json")
+    };
+    const cursor = JSON.parse(await readFile(files.cursor, "utf8")) as { mcpServers: { filesystem: { env?: Record<string, string> } } };
+    expect(cursor.mcpServers.filesystem.env).toEqual({ FS_TOKEN: "${env:STINKY_TEST_FS_TOKEN}" });
+    const claude = JSON.parse(await readFile(files["claude-code"], "utf8")) as { mcpServers: { filesystem: { env?: Record<string, string> } } };
+    expect(claude.mcpServers.filesystem.env).toEqual({ FS_TOKEN: "${STINKY_TEST_FS_TOKEN}" });
+    const codex = parseToml(await readFile(files.codex, "utf8")) as { mcp_servers: { filesystem: { env?: unknown; env_vars?: string[] } } };
+    expect(codex.mcp_servers.filesystem.env_vars).toEqual(["STINKY_TEST_FS_TOKEN"]);
+    expect(codex.mcp_servers.filesystem.env).toBeUndefined();
+    const zcode = JSON.parse(await readFile(files.zcode, "utf8")) as { mcp: { servers: { filesystem: Record<string, unknown> } } };
+    expect(zcode.mcp.servers.filesystem).toEqual({ command: "stinky-cobbler-missing-cmd", args: [] });
+    for (const file of Object.values(files)) expect(await readFile(file, "utf8")).not.toContain(secret);
+    expect(appliedText).not.toContain(secret);
+    const planned = JSON.parse((await run(env, "toolkit", "plan", "--json")).stdout) as { ops: unknown[]; conflicts: unknown[] };
+    expect(planned).toMatchObject({ ops: [], conflicts: [] });
+    expect((JSON.parse((await run(env, "toolkit", "doctor", "--json")).stdout) as { drift: unknown[] }).drift).toEqual([]);
+  });
+
+  it("reports a managed copy the spec no longer wants as an orphan and does not stop apply", async () => {
+    const home = await tempDir("stinky-orphan-home-");
+    const xdg = await tempDir("stinky-orphan-xdg-");
+    const source = await tempDir("stinky-orphan-source-");
+    const env = childEnv(home, xdg);
+    await writeFile(path.join(source, "SKILL.md"), "review the diff\n");
+    const specFor = (hosts: string) => [
+      "version: 1",
+      "scope: user",
+      "hosts:",
+      "  - codex",
+      "  - claude-code",
+      "skills:",
+      "  - id: review",
+      `    source: ${JSON.stringify(source)}`,
+      hosts,
+      "mcpServers: []",
+      "instructions: []",
+      "bundles: []",
+      ""
+    ].join("\n");
+    await run(env, "toolkit", "init", "--json");
+    const specFile = path.join(xdg, "stinky-cobbler", "toolkit.yaml");
+    await writeFile(specFile, specFor("    hosts: [codex, claude-code]"));
+    await run(env, "toolkit", "lock", "--json");
+    await run(env, "toolkit", "apply", "--yes", "--json");
+    const claudeSkill = path.join(home, ".claude", "skills", "review", "SKILL.md");
+    expect(await readFile(claudeSkill, "utf8")).toBe("review the diff\n");
+    await writeFile(specFile, specFor("    hosts: [codex]"));
+    const orphan = { host: "claude-code", kind: "skill", id: "review", path: claudeSkill };
+    const planned = JSON.parse((await run(env, "toolkit", "plan", "--json")).stdout) as { ops: unknown[]; conflicts: unknown[]; orphans: unknown[] };
+    expect(planned.ops).toEqual([]);
+    expect(planned.conflicts).toEqual([]);
+    expect(planned.orphans).toEqual([expect.objectContaining(orphan)]);
+    const before = await treeHash(home);
+    const applied = JSON.parse((await run(env, "toolkit", "apply", "--yes", "--json")).stdout) as { stopped: boolean; completed: unknown[] };
+    expect(applied).toMatchObject({ stopped: false, completed: [] });
+    expect(await treeHash(home)).toBe(before);
+    const doctor = JSON.parse((await run(env, "toolkit", "doctor", "--json")).stdout) as { drift: unknown[]; orphans: unknown[] };
+    expect(doctor.drift).toEqual([]);
+    expect(doctor.orphans).toEqual([expect.objectContaining(orphan)]);
+  });
+
 });
 
 function mcpSpec(command: string): string {
