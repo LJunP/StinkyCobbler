@@ -2,6 +2,13 @@
 
 > 只追加，最新在上。每条：日期 / 任务 / 做了什么 / 验证 / 待办与问题。
 
+## 2026-11-07 · ADR-0003 P3：test/ 镜像 src/
+
+- 79 个根目录文件按引用的 src 模块归位（git 全部识别为 rename）：2.x 测试进 `test/gate/{storage 39, runtime 4, mcp 6, policy 2, config 5, contracts 3, entry 3}`，跨模块的 2.x 端到端测试（dogfood、e2e-user-path）放 `test/gate/` 根；3.x CLI 测试进 `test/app/`；仓库级守卫（gate-frozen、config-liveness 两个、typecheck-baseline.json）进 `test/repo/`；脚本测试进 `test/scripts/`；两个辅助文件进 `test/helpers/`。`src/config`、`contracts`、`entry` 的测试直接放到 `test/gate/` 下，P5 搬源码时不用再搬测试。
+- 搬动文件里只改了 import 层数、`projectRoot` 表达式、crash-matrix 与 durability-order 的动态 import、workspace-lock 的子进程路径；断言未动。机械检查器把每个文件与 develop 版本归一化后比对：零其他差异，所有相对 import 可解析，`projectRoot` 都指回仓库根。
+- 引用更新：`scripts/check-test-types.mjs`、README、PRD、STANDARDS（C3/C5/D2 路径，§2 测试行与 T1 去掉「P3 迁移」）、ADR-0002、`docs/hosts/codex.md`、安全审查清单。CHANGELOG 已发布段、docs/archive、本文件旧条目保留历史路径。
+- 执行：grok 1 轮（22 turns），evaluator 复核 PASS（逐行读完 79 个 diff，471 条相对 import 全部可解析）。。验证：build/lint 0；`npm test` 92 文件 / 862 项通过（与 develop 相同，没丢测试）；`test:package` 404 项；`git diff --check` 干净。
+
 ## 2026-11-06 · ADR-0003 P1–P2：项目规范与 docs/ 重组
 
 - P1（PR #4，已合并 develop）：ADR-0003、`docs/STANDARDS.md`、根目录 `AGENTS.md`。作者决定：文件名用英文 kebab-case；2.x 封存进 gate 目录，不删；总规则写在 STANDARDS，由 AGENTS.md 指向；按 P1–P7 分批迁移，每批一个 PR，六项 CI 通过后合并。P1 合并时没有记 PROGRESS，在本条补记。

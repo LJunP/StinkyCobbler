@@ -87,7 +87,7 @@ init, plan, apply, rollback, doctor, list, lock, update, search <query>, memory
 
 | 宿主 | 路径依据 | 真实冒烟 |
 |---|---|---|
-| Codex | 安装路径由 2.0.1 安装器与 `test/host-codex.test.ts` 锁定；MCP 环境变量写法按官方文档核实，代码在 `src/hosts/codex.ts`。无自定义 slash-command 文件，指令路径未写入。见 [codex.md](./docs/hosts/codex.md)。 | `UNKNOWN / PENDING` |
+| Codex | 安装路径由 2.0.1 安装器与 `test/gate/entry/host-codex.test.ts` 锁定；MCP 环境变量写法按官方文档核实，代码在 `src/hosts/codex.ts`。无自定义 slash-command 文件，指令路径未写入。见 [codex.md](./docs/hosts/codex.md)。 | `UNKNOWN / PENDING` |
 | ZCode | 安装路径由 2.0.1 安装器与 entry 测试锁定；没有单独的公开路径文档。MCP 展开页未写 `${env:NAME}`。代码在 `src/hosts/zcode.ts`。见 [zcode.md](./docs/hosts/zcode.md)。 | `UNKNOWN / PENDING` |
 | Claude Code | 路径按官方文档核实（2026-10-21），代码在 `src/hosts/claude-code.ts`。见 [claude-code.md](./docs/hosts/claude-code.md)。bundled `entry install-host` 为 `ENTRY_HOST_UNSUPPORTED`。 | `UNKNOWN / PENDING` |
 | Cursor | 路径按官方文档核实（2026-10-21），代码在 `src/hosts/cursor.ts`。见 [cursor.md](./docs/hosts/cursor.md)。bundled `entry install-host` 为 `ENTRY_HOST_UNSUPPORTED`。 | `UNKNOWN / PENDING` |
@@ -102,7 +102,7 @@ init, plan, apply, rollback, doctor, list, lock, update, search <query>, memory
 
 2.x 是 Cooperative Mode 下的本地受控执行与审计层，不是当前主产品。保证只覆盖经本 CLI/MCP 路由的操作。宿主原生文件工具可以绕过它。它不是操作系统沙箱。
 
-顶层命令里，下面这些在 `--help` 中标记 `[deprecated 2.x]`，并冻结到 4.0 再决定删除或拆包：`validate`、`recommend`、`doctor`、`config`、`init`、`task`、`approval`、`evidence`、`receipt`、`runtime`、`audit`、`ledger`、`lease`、`plan`、`write`、`orchestration`。`entry` 和 `toolkit` 不标 deprecated。冻结由 `test/gate-frozen.test.ts` 守卫：只修会丢数据或误导用户的 P0，不扩展。2.x 分支只修 P0，直到 3.0 GA 之后 6 个月。2.x 的持久化记录在 3.x 里保持可读、可安全终止。`entry install-host` 与受管文件 sidecar 保持字节级兼容。
+顶层命令里，下面这些在 `--help` 中标记 `[deprecated 2.x]`，并冻结到 4.0 再决定删除或拆包：`validate`、`recommend`、`doctor`、`config`、`init`、`task`、`approval`、`evidence`、`receipt`、`runtime`、`audit`、`ledger`、`lease`、`plan`、`write`、`orchestration`。`entry` 和 `toolkit` 不标 deprecated。冻结由 `test/repo/gate-frozen.test.ts` 守卫：只修会丢数据或误导用户的 P0，不扩展。2.x 分支只修 P0，直到 3.0 GA 之后 6 个月。2.x 的持久化记录在 3.x 里保持可读、可安全终止。`entry install-host` 与受管文件 sidecar 保持字节级兼容。
 
 受控写入链是：持久化 Task，精确 `delegate-capability` Approval，受限 Lease，单目标 WriteIntent 捕获 `expectedPreimageHash`，然后才是可选的 `write-confirm`。create/modify 可以 `auto-allow`。这个 auto-allow 不会跳过 TaskAuthority、Lease、writeSet、路径或 preimage。delete 必须单独确认，不会被 auto-allow。apply 前会重验 TaskAuthority、Lease、scope 和 preimage。
 

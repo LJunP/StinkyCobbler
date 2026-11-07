@@ -1,6 +1,6 @@
 # Codex
 
-Verified by the 2.0.1 installer and `test/host-codex.test.ts`. Checked again on 2026-10-21.
+Verified by the 2.0.1 installer and `test/gate/entry/host-codex.test.ts`. Checked again on 2026-10-21.
 
 | Kind | User | Project |
 |---|---|---|
