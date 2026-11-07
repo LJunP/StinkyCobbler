@@ -99,8 +99,15 @@ export function sameMcpEntry(left: HostMcpEntry, right: HostMcpEntry): boolean {
     left.command === right.command &&
     sameList(left.args, right.args) &&
     sameList(left.envVars ?? [], right.envVars ?? []) &&
-    sameList(Object.entries(left.env ?? {}).flat(), Object.entries(right.env ?? {}).flat())
+    sameList(sortedPairs(left.env ?? {}), sortedPairs(right.env ?? {}))
   );
+}
+
+/** Key order in a host file is formatting, not meaning, so env objects compare as sorted pairs. */
+function sortedPairs(env: Readonly<Record<string, string>>): string[] {
+  return Object.entries(env)
+    .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
+    .flat();
 }
 
 function envReferences(env: Readonly<Record<string, string>>): Array<[string, string]> {

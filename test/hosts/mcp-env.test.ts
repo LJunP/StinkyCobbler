@@ -1,6 +1,6 @@
 import { parse } from "smol-toml";
 import { describe, expect, it } from "vitest";
-import { hostMcpEntry } from "../../src/hosts/host-adapter.js";
+import { hostMcpEntry, sameMcpEntry } from "../../src/hosts/host-adapter.js";
 import { claudeCodeHost } from "../../src/hosts/claude-code.js";
 import { codexHost } from "../../src/hosts/codex.js";
 import { cursorHost } from "../../src/hosts/cursor.js";
@@ -40,6 +40,19 @@ describe("mcp env rendering", () => {
     const text = merged.status === "merged" ? merged.text : "";
     expect(text).not.toContain("env");
     expect(text).not.toContain("FS_TOKEN");
+  });
+
+  it.each([cursorHost, claudeCodeHost])("$id treats a reordered env object as unchanged, not a conflict", (host) => {
+    const rendered = hostMcpEntry(host, { command: "npx", args: [], env: { B_TOKEN: "${env:B_VAR}", A_TOKEN: "${env:A_VAR}" } });
+    const merged = host.mergeMcp("", "fs", rendered);
+    const text = merged.status === "merged" ? merged.text : "";
+    const document = JSON.parse(text) as { mcpServers: { fs: { env: Record<string, string> } } };
+    document.mcpServers.fs.env = Object.fromEntries(Object.entries(document.mcpServers.fs.env).reverse());
+    const reordered = `${JSON.stringify(document, null, 2)}\n`;
+    expect(reordered).not.toBe(text);
+    expect(Object.keys(host.readMcp(reordered).fs?.env ?? {})).not.toEqual(Object.keys(rendered.env ?? {}));
+    expect(host.mergeMcp(reordered, "fs", rendered).status).toBe("unchanged");
+    expect(sameMcpEntry(host.readMcp(reordered).fs!, rendered)).toBe(true);
   });
 
   it.each([cursorHost, claudeCodeHost, codexHost, zcodeHost])("$id reads back what it wrote and treats a changed env as a conflict", (host) => {
