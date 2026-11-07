@@ -1,8 +1,8 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
-import type { CapabilityLease } from "../../src/contracts/types.js";
-import type { SchemaRegistry } from "../../src/contracts/schema-registry.js";
-import type { Registries } from "../../src/config/registry.js";
+import type { CapabilityLease } from "../../src/gate/contracts/types.js";
+import type { SchemaRegistry } from "../../src/gate/contracts/schema-registry.js";
+import type { Registries } from "../../src/gate/config/registry.js";
 import type { LocalWorkspace } from "../../src/gate/storage/workspace.js";
 import { createTask } from "../../src/gate/storage/tasks.js";
 import { createPlan, confirmPlan, executePlan, beginStep } from "../../src/gate/storage/plans.js";
@@ -11,7 +11,7 @@ import { issueLease } from "../../src/gate/storage/leases.js";
 import { applyWrite } from "../../src/gate/storage/writes.js";
 import type { WriteIntentRecord } from "../../src/gate/storage/write-intents.js";
 import { approvePlanConfirmation, approveTaskCapability, approveWriteIntent } from "./authority.js";
-import type { TaskCharter } from "../../src/contracts/types.js";
+import type { TaskCharter } from "../../src/gate/contracts/types.js";
 
 /** Prepares a workspace with a confirmed write intent and an L1 write lease. */
 export async function prepareConfirmedWrite(workspace: LocalWorkspace, schemas: SchemaRegistry, registries: Registries): Promise<{ planId: string; intent: WriteIntentRecord; lease: CapabilityLease }> {

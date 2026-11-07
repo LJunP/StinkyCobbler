@@ -2,7 +2,7 @@ import { cp, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { SchemaRegistry } from "../../../src/contracts/schema-registry.js";
+import { SchemaRegistry } from "../../../src/gate/contracts/schema-registry.js";
 import { gateResource } from "../../../src/io/resources.js";
 
 const roots: string[] = [];

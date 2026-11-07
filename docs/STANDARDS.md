@@ -24,7 +24,7 @@ StinkyCobbler/
 │   ├── io/             3.x 所有磁盘读写：有界读写、受管文件、分层配置、账本、资源路径
 │   ├── hosts/          3.x 宿主适配器与 conformance
 │   ├── app/            3.x 命令即用例 + Presenter
-│   └── gate/           冻结的 2.x（domain mcp policy runtime storage config contracts entry）
+│   └── gate/           冻结的 2.x（domain mcp policy runtime storage config contracts entry security）
 ├── resources/          运行时读取、随 npm 包发布的静态数据
 │   ├── toolkit/        3.x：toolkit.schema.json 等
 │   └── gate/           冻结的 2.x：schemas policies profiles packs plugins examples skills
@@ -133,15 +133,15 @@ managed:
 
 | # | 规则 | 状态 |
 |---|---|---|
-| C1 | 新代码文件 ≤ 400 行、函数 ≤ 50 行、嵌套 ≤ 4 层；`src/gate` 豁免但冻结 | 🟡（ESLint 只对 `src/core`、`io`、`hosts`、`app` 与 `errors.ts`、`version.ts` 生效；`eslint.config.js` 的 FROZEN_KERNEL 还豁免了 P5 才并入 gate 的 `config`、`entry`、`security`、`contracts`，以及 `cli.ts`、`mcp-server.ts`） |
-| C2 | 依赖方向白名单、无循环（`core` 不依赖 `io/hosts/app`；`gate` 只被入口引用）；不得用动态 `import()` 隐藏循环 | 🟡（dependency-cruiser 已拦：新的循环（包括用动态 `import()` 藏起来的环；`.dependency-cruiser-known-violations.json` 里已知的 15 条除外）、`core` 依赖 `io/hosts/app`；依赖方向白名单还不存在；`gate` 目前还允许被 `app`、`config`、`entry`、`security`、`contracts` 引用） |
-| C3 | `src/gate` 不加新行为，文件清单与非空行数有基线 | 🟡（`test/repo/gate-frozen.test.ts` 只拦新增 `.ts` 文件和非空行总数超过 14045 基线；删文件允许，非 `.ts` 文件不查；「不加新行为」靠评审） |
+| C1 | 新代码文件 ≤ 400 行、函数 ≤ 50 行、嵌套 ≤ 4 层；`src/gate` 豁免但冻结 | 🟡（ESLint 对 `src/core`、`io`、`hosts`、`app` 与 `errors.ts`、`version.ts` 全部生效；`eslint.config.js` 的 FROZEN_KERNEL 只剩 `src/gate/**` 与 2.x 入口 `cli.ts`、`mcp-server.ts`） |
+| C2 | 依赖方向白名单、无循环（`core` 不依赖 `io/hosts/app`；`gate` 只被入口引用）；不得用动态 `import()` 隐藏循环 | 🟡（dependency-cruiser 已拦：新的循环（包括用动态 `import()` 藏起来的环；`.dependency-cruiser-known-violations.json` 里已知的 15 条除外）、`core` 依赖 `io/hosts/app`；依赖方向白名单还不存在；`gate` 允许被 `cli.ts`、`mcp-server.ts` 与 `app` 引用（dependency-cruiser `gate-is-only-reached-from-cli`）） |
+| C3 | `src/gate` 不加新行为，文件清单与非空行数有基线 | 🟡（`test/repo/gate-frozen.test.ts` 只拦新增 `.ts` 文件和非空行总数超过 16873 基线；删文件允许，非 `.ts` 文件不查；「不加新行为」靠评审） |
 | C4 | 宿主、artifact 种类等枚举只在 `core/toolkit/kinds.ts` 定义一次 | 🟡（`test/core/toolkit/spec.test.ts` 断言宿主注册表、适配器的种类与 `kinds.ts` 一致；别处另行定义枚举无检查，现有 `core/toolkit/lock.ts` 用字面量 `["skill", "instructions"]` 重复了 artifact 种类的子集，见 PROGRESS 待办） |
 | C5 | 每个 schema 属性在 `src/` 有消费点，没有读者的配置键不准存在 | 🟡（`test/repo/config-liveness.test.ts` 只检查 `resources/gate/schemas/*.json` 与 `resources/toolkit/*.json` 的属性名在 `src/` 文本里出现过，不检查真实读取点；`toolkit.schema.json` 的键都写在 `core/toolkit/spec.ts` 的 zod 定义里，所以对 3.x 实际拦不住） |
-| C6 | 错误码集中注册，附退出码与可读修复提示；禁止裸 `new Error` | 🟡（ESLint 只拦 C1 生效范围内直接写的 `throw new Error(...)`；2.x 目录与 `cli.ts`、`mcp-server.ts` 豁免，`return new Error()`、`reject(new Error())`、`throw Error()` 等写法都不拦；集中注册表 ⬜） |
+| C6 | 错误码集中注册，附退出码与可读修复提示；禁止裸 `new Error` | 🟡（ESLint 只拦 C1 生效范围内直接写的 `throw new Error(...)`；`src/gate/**` 与 `cli.ts`、`mcp-server.ts` 豁免，`return new Error()`、`reject(new Error())`、`throw Error()` 等写法都不拦；集中注册表 ⬜） |
 | C7 | 每个命令同时支持人类输出与 `--json`；非零退出码对应错误码；`conflict` 类结果非零退出；一文件一命令（`app/commands/<name>.ts`） | 🟡（`toolkit init`、`toolkit apply` 的冲突退出 7，以及 `TOOLKIT_LEDGER_EMPTY`、`TOOLKIT_CONFIRM_REQUIRED`、`TOOLKIT_LOCK_BLOB_MISSING`、`TOOLKIT_SEARCH_UNVERIFIED`、`SEGMENT_INVALID`、`ENTRY_HOST_INVALID` 的退出 2 有集成测试，部分命令的 `--json` 有集成测试；其余命令的退出码无测试；现状不符：`toolkit rollback` 遇冲突仍退出 0，`entry install-host` 遇冲突退出未注册的 1，见 PROGRESS 待办；人类输出与一文件一命令 ⬜） |
 | C8 | 宿主适配器必须通过 `hosts/conformance/`；宿主特定逻辑只在自己的文件 | 🟡（`test/hosts/conformance.test.ts` 对注册表里每个适配器跑共享检查；宿主特定逻辑放在哪里无检查） |
-| C9 | IO 只在 `io/`；`core/`、`app/` 禁止 import `node:fs` | 🟡（dependency-cruiser：`core-has-no-io` 拦 `core` 直接 import fs 或 `io/hosts/app`，`gate-is-only-reached-from-cli` 拦 `core` 直接 import `gate`；经 `config`、`security`、`contracts`、`entry` 间接碰盘不拦；`app` 禁 fs ⬜，现有 9 个 `app` 文件直接 import fs，见 PROGRESS 待办） |
+| C9 | IO 只在 `io/`；`core/`、`app/` 禁止 import `node:fs` | 🟡（dependency-cruiser：`core-has-no-io` 拦 `core` 直接 import fs 或 `io/hosts/app`，`gate-is-only-reached-from-cli` 拦 `core` 直接 import `gate`；经 `gate` 间接碰盘不拦；`app` 禁 fs ⬜，现有 9 个 `app` 文件直接 import fs，见 PROGRESS 待办） |
 | C10 | 写磁盘必须经 `managed-file` 或 `fs-boundary` | ⬜（`core` 不碰盘已记在 C9；现有 5 个 `app` 文件直接写盘：缓存、`toolkit.lock`、scaffold、rollback 删除，见 PROGRESS 待办） |
 | C11 | 资源路径（`resources/` 下）只从一个模块取得，不在各处拼 `projectRoot + "schemas"` | ⬜（`src/io/resources.ts` 已是唯一来源；无工具拦截别处再拼路径，P6 可加 grep 守卫） |
 | C12 | 运行时依赖 ≤ 10 个；新增依赖须写用途、维护状态、替代方案，并经作者批准 | ⬜（`package.json` 声明 6 个；`src/` 还直接 import 未声明的 `zod`（经 `@modelcontextprotocol/sdk` 间接安装），见 PROGRESS 待办；无工具统计或拦截） |
@@ -152,7 +152,7 @@ managed:
 
 | 工具 | 用途 | 状态 |
 |---|---|---|
-| ESLint + typescript-eslint | 文件/函数长度、嵌套、裸 `throw new Error` | 🟡（会拦，但只在 C1 的生效范围内；2.x 目录豁免，见 C1、C6） |
+| ESLint + typescript-eslint | 文件/函数长度、嵌套、裸 `throw new Error` | 🟡（会拦，但只在 C1 的生效范围内；`src/gate/**` 豁免，见 C1、C6） |
 | Prettier | `src/{core,hosts,io,app}` 格式 | ⬜（只有手动 npm run format；hook 与 CI 不检查） |
 | `.editorconfig` | 编辑器基本格式 | 🟡（LF 换行另由 `.gitattributes` 的 `eol=lf` 在入库时规范化；编码、末尾换行、缩进、行尾空白只靠编辑器） |
 | `.nvmrc` | 源码开发 Node 主版本（22.12） | ⬜（开发约定；CI 用 Node 22/24 矩阵） |

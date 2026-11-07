@@ -2,8 +2,8 @@ import { cp, mkdir, mkdtemp, readFile, realpath, rm, symlink, writeFile } from "
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { loadRegistries } from "../../../src/config/registry.js";
-import { SchemaRegistry } from "../../../src/contracts/schema-registry.js";
+import { loadRegistries } from "../../../src/gate/config/registry.js";
+import { SchemaRegistry } from "../../../src/gate/contracts/schema-registry.js";
 import { gateResource } from "../../../src/io/resources.js";
 import { appendLedgerEntry, verifyLedger } from "../../../src/gate/storage/ledger.js";
 import { initWorkspace, workspaceFile } from "../../../src/gate/storage/workspace.js";

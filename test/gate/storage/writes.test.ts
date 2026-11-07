@@ -3,8 +3,8 @@ import { createHash } from "node:crypto";
 import { link, mkdir, mkdtemp, readFile, readdir, rm, stat, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { SchemaRegistry } from "../../../src/contracts/schema-registry.js";
-import { loadRegistries } from "../../../src/config/registry.js";
+import { SchemaRegistry } from "../../../src/gate/contracts/schema-registry.js";
+import { loadRegistries } from "../../../src/gate/config/registry.js";
 import { createTask, getTask } from "../../../src/gate/storage/tasks.js";
 import { initWorkspace, writeWorkspaceJson } from "../../../src/gate/storage/workspace.js";
 import { createPlan, confirmPlan, executePlan, beginStep, getPlan } from "../../../src/gate/storage/plans.js";
@@ -12,7 +12,7 @@ import { requestWrites, confirmWrites, getWriteIntent, listWriteIntents, reconci
 import { issueLease, getLease } from "../../../src/gate/storage/leases.js";
 import { applyWrite, applyDelete, reconcileApplyWrite } from "../../../src/gate/storage/writes.js";
 import { listLedgerEntries } from "../../../src/gate/storage/ledger.js";
-import type { CapabilityLease } from "../../../src/contracts/types.js";
+import type { CapabilityLease } from "../../../src/gate/contracts/types.js";
 import { approvePlanConfirmation, approveTaskCapability, approveWriteIntent } from "../../helpers/authority.js";
 import { decideApproval } from "../../../src/gate/storage/approvals.js";
 

@@ -4,8 +4,8 @@ import YAML from "yaml";
 import type { Pack, PluginDiagnostic, PluginManifest, Profile, RoleRegistry } from "../contracts/types.js";
 import { discoverBuiltinPlugins } from "./plugin-discovery.js";
 import { SchemaRegistry } from "../contracts/schema-registry.js";
-import { ExitCode, StinkyCobblerError } from "../errors.js";
-import { gateResource } from "../io/resources.js";
+import { ExitCode, StinkyCobblerError } from "../../errors.js";
+import { gateResource } from "../../io/resources.js";
 
 export interface Registries {
   profiles: Map<string, Profile>;

@@ -3,7 +3,7 @@ import {
   artifactInScope, defectFingerprint, evaluateConstraints, exceedsRoundBudget, exceedsTokenBudget,
   oscillationDetected, regressionDetected, retriesExhausted, scopeViolation
 } from "../../../src/gate/policy/orchestration-constraints.js";
-import type { Artifact, OrchestrationRun, ReviewRecord, SubtaskPackage } from "../../../src/contracts/orchestration.js";
+import type { Artifact, OrchestrationRun, ReviewRecord, SubtaskPackage } from "../../../src/gate/contracts/orchestration.js";
 
 const run: OrchestrationRun = {
   version: 1, runId: "run-1", contractRef: "contract-1", status: "RUNNING", round: 1,

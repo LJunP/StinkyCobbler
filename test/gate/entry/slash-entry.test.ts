@@ -3,9 +3,9 @@ import { mkdtemp, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promis
 import os from "node:os";
 import path from "node:path";
 import { gateResource } from "../../../src/io/resources.js";
-import { parseVia, isValidVia } from "../../../src/entry/via.js";
-import { preflightEntry, decideEntry, detectMcpServer } from "../../../src/entry/preflight.js";
-import { installHost, MCP_SERVER_ID } from "../../../src/entry/install-host.js";
+import { parseVia, isValidVia } from "../../../src/gate/entry/via.js";
+import { preflightEntry, decideEntry, detectMcpServer } from "../../../src/gate/entry/preflight.js";
+import { installHost, MCP_SERVER_ID } from "../../../src/gate/entry/install-host.js";
 
 const roots: string[] = [];
 const projectRoot = path.resolve(import.meta.dirname, "..", "..", "..");

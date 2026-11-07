@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import type { Artifact, Defect, OrchestrationRun, ReviewRecord, SubtaskPackage } from "../../contracts/orchestration.js";
+import type { Artifact, Defect, OrchestrationRun, ReviewRecord, SubtaskPackage } from "../contracts/orchestration.js";
 
 /**
  * 2.0 global constraint engine: budget / oscillation / regression / scope.

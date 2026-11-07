@@ -1,8 +1,8 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { assertRunOwner } from "../storage/runs.js";
-import type { AgentReceipt, AgentRun, EvidenceRef, RoleRegistry, TaskCapsule, ToolCallRecord } from "../../contracts/types.js";
+import type { AgentReceipt, AgentRun, EvidenceRef, RoleRegistry, TaskCapsule, ToolCallRecord } from "../contracts/types.js";
 import { BudgetSupervisor } from "./budget.js";
-import { SchemaRegistry } from "../../contracts/schema-registry.js";
+import { SchemaRegistry } from "../contracts/schema-registry.js";
 import { admitReadonlyRuntime, type RuntimeAdmission } from "./admission.js";
 import { admitAndReserveLeaseCall } from "../storage/lease-usage.js";
 import { ExitCode, StinkyCobblerError } from "../../errors.js";

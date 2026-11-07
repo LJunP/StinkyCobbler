@@ -5,12 +5,25 @@ import { describe, expect, it } from "vitest";
 const projectRoot = path.resolve(import.meta.dirname, "..", "..");
 const gateRoot = path.join(projectRoot, "src", "gate");
 
-// ADR-0002 freezes src/gate; baseline is the 2026-11-05 non-empty (trim) line count. Lower it after a shrink.
-const GATE_NONEMPTY_LINE_BASELINE = 14045;
+// 2026-11-07 after ADR-0003 P5 folded config, contracts, entry, security into src/gate. Lower it after a shrink.
+const GATE_NONEMPTY_LINE_BASELINE = 16873;
 
 const GATE_TS_FILES = [
+  "src/gate/config/plugin-discovery.ts",
+  "src/gate/config/registry.ts",
+  "src/gate/config/scaffold.ts",
+  "src/gate/config/tiered-health.ts",
+  "src/gate/config/tiered.ts",
+  "src/gate/config/workspace.ts",
+  "src/gate/contracts/default-schema-registry.ts",
+  "src/gate/contracts/orchestration.ts",
+  "src/gate/contracts/schema-registry.ts",
+  "src/gate/contracts/types.ts",
   "src/gate/domain/recommend.ts",
   "src/gate/domain/task-state.ts",
+  "src/gate/entry/install-host.ts",
+  "src/gate/entry/preflight.ts",
+  "src/gate/entry/via.ts",
   "src/gate/mcp/docs-index.ts",
   "src/gate/mcp/git-read.ts",
   "src/gate/mcp/invocation.ts",
@@ -29,6 +42,7 @@ const GATE_TS_FILES = [
   "src/gate/runtime/scripted-readonly.ts",
   "src/gate/runtime/service.ts",
   "src/gate/runtime/tool-broker.ts",
+  "src/gate/security/workspace-path.ts",
   "src/gate/storage/approvals.ts",
   "src/gate/storage/audit-outbox.ts",
   "src/gate/storage/audit-service.ts",

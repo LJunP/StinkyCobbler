@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { ORCHESTRATION_MERGE_STRATEGY, loadOrchestrationConfig } from "../../src/config/tiered.js";
+import { ORCHESTRATION_MERGE_STRATEGY, loadOrchestrationConfig } from "../../src/gate/config/tiered.js";
 import { StinkyCobblerError } from "../../src/errors.js";
 import { listContractTemplates } from "../../src/gate/storage/contract-templates.js";
 import { listSpecialists } from "../../src/gate/storage/specialists.js";

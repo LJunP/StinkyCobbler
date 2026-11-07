@@ -3,7 +3,7 @@ import { appendFile, link, mkdir, mkdtemp, rename, rm, symlink, writeFile } from
 import os from "node:os";
 import path from "node:path";
 import { listRepositoryDirectory, readRepositoryFile } from "../../../src/gate/mcp/repo-read.js";
-import { readBoundedWorkspaceFile } from "../../../src/security/workspace-path.js";
+import { readBoundedWorkspaceFile } from "../../../src/gate/security/workspace-path.js";
 import { asLegacyLease } from "../../helpers/lease.js";
 
 const roots: string[] = [];

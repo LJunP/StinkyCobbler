@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { GENERAL_DOMAIN, MAX_DOMAIN_LENGTH } from "../../../src/contracts/orchestration.js";
+import { GENERAL_DOMAIN, MAX_DOMAIN_LENGTH } from "../../../src/gate/contracts/orchestration.js";
 import { listSpecialists, resolveSpecialist, domainInstructionsFor, getSpecialist } from "../../../src/gate/storage/specialists.js";
 
 describe("specialist registry", () => {

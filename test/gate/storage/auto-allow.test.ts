@@ -2,8 +2,8 @@ import { afterEach, describe, expect, it } from "vitest";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { SchemaRegistry } from "../../../src/contracts/schema-registry.js";
-import { loadRegistries } from "../../../src/config/registry.js";
+import { SchemaRegistry } from "../../../src/gate/contracts/schema-registry.js";
+import { loadRegistries } from "../../../src/gate/config/registry.js";
 import { createTask } from "../../../src/gate/storage/tasks.js";
 import { initWorkspace } from "../../../src/gate/storage/workspace.js";
 import { createPlan, confirmPlan, executePlan, beginStep } from "../../../src/gate/storage/plans.js";
@@ -11,7 +11,7 @@ import { requestWrites, getWriteIntent, rollbackWrite } from "../../../src/gate/
 import { issueLease } from "../../../src/gate/storage/leases.js";
 import { applyWrite } from "../../../src/gate/storage/writes.js";
 import { listLedgerEntries } from "../../../src/gate/storage/ledger.js";
-import type { WriteIntent } from "../../../src/contracts/types.js";
+import type { WriteIntent } from "../../../src/gate/contracts/types.js";
 import { approvePlanConfirmation, approveTaskCapability } from "../../helpers/authority.js";
 
 const roots: string[] = [];

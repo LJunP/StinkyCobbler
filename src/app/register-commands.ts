@@ -2,10 +2,10 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 import { Command } from "commander";
-import { SchemaRegistry, type ContractKind } from "../contracts/schema-registry.js";
-import type { CapabilityLease, PolicyDecision, TaskCapsule, TaskCharter, TaskState } from "../contracts/types.js";
-import { loadRegistries } from "../config/registry.js";
-import { createWorkspaceConfig, migrateWorkspaceConfig, WorkspaceConfigService, type WorkspaceConfig } from "../config/workspace.js";
+import { SchemaRegistry, type ContractKind } from "../gate/contracts/schema-registry.js";
+import type { CapabilityLease, PolicyDecision, TaskCapsule, TaskCharter, TaskState } from "../gate/contracts/types.js";
+import { loadRegistries } from "../gate/config/registry.js";
+import { createWorkspaceConfig, migrateWorkspaceConfig, WorkspaceConfigService, type WorkspaceConfig } from "../gate/config/workspace.js";
 import { evaluateLease, evaluateTask } from "../gate/policy/evaluate.js";
 import { evaluateTaskApproval } from "../gate/policy/approval.js";
 import { recommendTask } from "../gate/domain/recommend.js";
@@ -23,8 +23,8 @@ import { cancelRuntime, executeReadonlyRuntime, validateRuntime } from "../gate/
 import { getRun, getRunStaleness, recoverStaleRun } from "../gate/storage/runs.js";
 import { inspectRuntimeRun, reconcileRuntimeRun } from "../gate/storage/runtime-reconciliation.js";
 import { diagnoseRuntime } from "../gate/storage/runtime-diagnostics.js";
-import { preflightEntry } from "../entry/preflight.js";
-import { installHost, MCP_SERVER_ID, resolveMcpServerCommand, type HostScope } from "../entry/install-host.js";
+import { preflightEntry } from "../gate/entry/preflight.js";
+import { installHost, MCP_SERVER_ID, resolveMcpServerCommand, type HostScope } from "../gate/entry/install-host.js";
 import { knownHost, requireHost } from "../hosts/registry.js";
 import { issueLease, getLease, listLeases, revokeLease } from "../gate/storage/leases.js";
 import { createPlan, getPlan, listPlans, confirmPlan, cancelPlan, executePlan, beginStep, completeStep, failStep, finishPlan, failPlan } from "../gate/storage/plans.js";
@@ -39,9 +39,9 @@ import {
 } from "../gate/storage/orchestration.js";
 import { listSpecialists, getSpecialist } from "../gate/storage/specialists.js";
 import { listContractTemplates, getContractTemplate } from "../gate/storage/contract-templates.js";
-import { loadOrchestrationConfig, loadTieredYaml } from "../config/tiered.js";
-import { loadAndValidateAllTieredConfig } from "../config/tiered-health.js";
-import { scaffoldUserPolicies } from "../config/scaffold.js";
+import { loadOrchestrationConfig, loadTieredYaml } from "../gate/config/tiered.js";
+import { loadAndValidateAllTieredConfig } from "../gate/config/tiered-health.js";
+import { scaffoldUserPolicies } from "../gate/config/scaffold.js";
 import { registerToolkitCommands } from "./toolkit-commands.js";
 
 import { z } from "zod";

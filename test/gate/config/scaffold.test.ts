@@ -3,8 +3,8 @@ import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promis
 import os from "node:os";
 import path from "node:path";
 import { initWorkspace } from "../../../src/gate/storage/workspace.js";
-import { scaffoldUserPolicies } from "../../../src/config/scaffold.js";
-import { loadOrchestrationConfig } from "../../../src/config/tiered.js";
+import { scaffoldUserPolicies } from "../../../src/gate/config/scaffold.js";
+import { loadOrchestrationConfig } from "../../../src/gate/config/tiered.js";
 
 const roots: string[] = [];
 afterEach(async () => { await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true }))); });

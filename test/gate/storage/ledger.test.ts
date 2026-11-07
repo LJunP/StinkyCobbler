@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { defaultSchemaRegistry } from "../../../src/contracts/default-schema-registry.js";
+import { defaultSchemaRegistry } from "../../../src/gate/contracts/default-schema-registry.js";
 import {
   appendLedgerEntry,
   listLedgerEntries,

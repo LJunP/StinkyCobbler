@@ -2,7 +2,7 @@ import { describe, expect, it, afterEach } from "vitest";
 import { mkdtemp, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { SchemaRegistry } from "../../../src/contracts/schema-registry.js";
+import { SchemaRegistry } from "../../../src/gate/contracts/schema-registry.js";
 import { createAuditOutbox, injectAuditOutboxCreateFaultForTesting, updateAuditOutbox } from "../../../src/gate/storage/audit-outbox.js";
 import { persistMcpAudit, prepareMcpAudit, recoverMcpAudit, listPendingAudits } from "../../../src/gate/storage/audit-service.js";
 import { initWorkspace } from "../../../src/gate/storage/workspace.js";

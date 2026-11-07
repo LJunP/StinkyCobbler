@@ -1,6 +1,6 @@
 /** Contract templates: prebuilt goal/criteria/scope/domain bundles for one-command contract creation. */
 
-import { loadContractTemplatesPolicy } from "../../config/tiered.js";
+import { loadContractTemplatesPolicy } from "../config/tiered.js";
 import { ExitCode, StinkyCobblerError } from "../../errors.js";
 import type { LocalWorkspace } from "./workspace.js";
 

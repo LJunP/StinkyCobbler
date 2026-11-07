@@ -1,4 +1,4 @@
-import type { CapabilityLease } from "../../src/contracts/types.js";
+import type { CapabilityLease } from "../../src/gate/contracts/types.js";
 
 /**
  * Marks a 2.0-shaped lease literal (no parentGrantRef / taskAuthorityHash /

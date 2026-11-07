@@ -1,9 +1,9 @@
 import { lstat, mkdir, readdir, readFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import path from "node:path";
-import { defaultSchemaRegistry } from "../../contracts/default-schema-registry.js";
-import type { SchemaRegistry } from "../../contracts/schema-registry.js";
-import type { AgentRun } from "../../contracts/types.js";
+import { defaultSchemaRegistry } from "../contracts/default-schema-registry.js";
+import type { SchemaRegistry } from "../contracts/schema-registry.js";
+import type { AgentRun } from "../contracts/types.js";
 import { ExitCode, StinkyCobblerError } from "../../errors.js";
 import { appendLedgerEntry, listLedgerEntries } from "./ledger.js";
 import { getRun, TERMINAL_RUN_STATUSES } from "./runs.js";

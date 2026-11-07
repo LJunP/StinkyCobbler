@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
-import type { TaskCharter, TaskState } from "../../contracts/types.js";
-import { defaultSchemaRegistry } from "../../contracts/default-schema-registry.js";
+import type { TaskCharter, TaskState } from "../contracts/types.js";
+import { defaultSchemaRegistry } from "../contracts/default-schema-registry.js";
 import { allowedTaskTransitions, isTaskTerminal } from "../domain/task-state.js";
 import { ExitCode, StinkyCobblerError } from "../../errors.js";
 import type { LocalWorkspace } from "./workspace.js";

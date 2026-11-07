@@ -1,10 +1,10 @@
 import { mkdir, readFile, readdir } from "node:fs/promises";
 import { createHash, randomUUID } from "node:crypto";
 import path from "node:path";
-import type { CapabilityLease, OrchestrationPlan, PlanStep } from "../../contracts/types.js";
-import type { SchemaRegistry } from "../../contracts/schema-registry.js";
-import { defaultSchemaRegistry } from "../../contracts/default-schema-registry.js";
-import type { Registries } from "../../config/registry.js";
+import type { CapabilityLease, OrchestrationPlan, PlanStep } from "../contracts/types.js";
+import type { SchemaRegistry } from "../contracts/schema-registry.js";
+import { defaultSchemaRegistry } from "../contracts/default-schema-registry.js";
+import type { Registries } from "../config/registry.js";
 import { ExitCode, StinkyCobblerError } from "../../errors.js";
 import { appendLedgerEntry, listLedgerEntries, prepareLedgerEntry, type AppendLedgerEntry } from "./ledger.js";
 import type { LocalWorkspace } from "./workspace.js";
@@ -16,7 +16,7 @@ import { isApprovalExpired } from "../policy/approval.js";
 import { recommendTask } from "../domain/recommend.js";
 import { issueLease, listLeases, revokeLease } from "./leases.js";
 import { listWriteIntents } from "./write-intents.js";
-import { loadOrchestrationConfig } from "../../config/tiered.js";
+import { loadOrchestrationConfig } from "../config/tiered.js";
 import { assertCurrentTaskAuthorityGeneration, hashTaskAuthority, TASK_AUTHORITY_POLICY_VERSION } from "./task-authority.js";
 
 const DIRECTORY = "plans";
@@ -751,7 +751,7 @@ export async function assertCurrentPlanExecutionAuthority(workspace: LocalWorksp
   await assertCurrentPlanConfirmationApproval(workspace, plan);
 }
 
-function isExactPlanConfirmationApproval(plan: OrchestrationPlan, approval: import("../../contracts/types.js").Approval, hostSessionId: string): boolean {
+function isExactPlanConfirmationApproval(plan: OrchestrationPlan, approval: import("../contracts/types.js").Approval, hostSessionId: string): boolean {
   return hasImmutablePlanConfirmationBinding(plan, approval, hostSessionId) &&
     approval.status === "approved" &&
     !isApprovalExpired(approval) &&
@@ -780,7 +780,7 @@ export async function assertCurrentPlanConfirmationApproval(workspace: LocalWork
 }
 
 /** Loads the immutable consumed proof used only for APPROVED-state audit repair. */
-async function getPersistedPlanConfirmationProof(workspace: LocalWorkspace, plan: OrchestrationPlan): Promise<import("../../contracts/types.js").Approval> {
+async function getPersistedPlanConfirmationProof(workspace: LocalWorkspace, plan: OrchestrationPlan): Promise<import("../contracts/types.js").Approval> {
   if (plan.approvalRef === undefined || plan.hostSessionId === undefined) {
     throw planError("PLAN_APPROVAL_PROOF_MISSING", "An APPROVED or executing Plan must retain its exact consumed plan-confirm Approval reference.", { planId: plan.planId });
   }
@@ -795,7 +795,7 @@ async function getPersistedPlanConfirmationProof(workspace: LocalWorkspace, plan
 }
 
 /** Status/clock-independent binding retained after a legitimate revoke/expiry. */
-function hasImmutablePlanConfirmationBinding(plan: OrchestrationPlan, approval: import("../../contracts/types.js").Approval, hostSessionId: string): boolean {
+function hasImmutablePlanConfirmationBinding(plan: OrchestrationPlan, approval: import("../contracts/types.js").Approval, hostSessionId: string): boolean {
   return approval.taskId === plan.taskId &&
     approval.action === PLAN_CONFIRM_ACTION &&
     approval.subjectKind === "plan" &&

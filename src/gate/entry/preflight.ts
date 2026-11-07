@@ -3,7 +3,7 @@ import { homedir } from "node:os";
 import path from "node:path";
 import { parse as parseToml } from "smol-toml";
 import { parseVia, type EntryVia } from "./via.js";
-import { hostAdapters, knownHost, type HostId } from "../hosts/registry.js";
+import { hostAdapters, knownHost, type HostId } from "../../hosts/registry.js";
 
 export const MCP_SERVER_COMMAND = "stinky-cobbler-mcp";
 export const HOST_CONFIG_FILE = "config.json";

@@ -5,7 +5,7 @@ import {
   readBoundedWorkspaceFile,
   visitWorkspaceDirectory,
   WorkspaceReadBoundaryError
-} from "../../security/workspace-path.js";
+} from "../security/workspace-path.js";
 
 export interface RepositoryFile { path: string; content: string; }
 export interface RepositoryEntry { path: string; kind: "file" | "directory"; }

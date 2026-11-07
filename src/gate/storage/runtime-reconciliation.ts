@@ -1,5 +1,5 @@
-import type { SchemaRegistry } from "../../contracts/schema-registry.js";
-import type { AgentRun, AgentRunStatus } from "../../contracts/types.js";
+import type { SchemaRegistry } from "../contracts/schema-registry.js";
+import type { AgentRun, AgentRunStatus } from "../contracts/types.js";
 import { assertRuntimeReceiptMatchesRun, listReceipts, type AgentReceipt as StoredReceipt } from "./receipts.js";
 import {
   assertRuntimeFinalizationSnapshot, findRuntimeFinalization, reconcileRuntimeFinalization,

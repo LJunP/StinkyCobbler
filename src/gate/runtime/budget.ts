@@ -1,6 +1,6 @@
 import { performance } from "node:perf_hooks";
 import { StinkyCobblerError, ExitCode } from "../../errors.js";
-import type { RuntimeBudget, RuntimeBudgetUsage } from "../../contracts/types.js";
+import type { RuntimeBudget, RuntimeBudgetUsage } from "../contracts/types.js";
 
 export interface BudgetMeasurement {
   files?: string[];

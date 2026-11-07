@@ -1,14 +1,14 @@
 import { createHash } from "node:crypto";
 import { mkdir, readFile, readdir } from "node:fs/promises";
 import path from "node:path";
-import type { SchemaRegistry, ContractKind } from "../../contracts/schema-registry.js";
-import { defaultSchemaRegistry } from "../../contracts/default-schema-registry.js";
+import type { SchemaRegistry, ContractKind } from "../contracts/schema-registry.js";
+import { defaultSchemaRegistry } from "../contracts/default-schema-registry.js";
 import type {
   Artifact, OrchestrationRun, ReviewRecord, SubtaskPackage, TaskContract, ValidatorReceipt
-} from "../../contracts/orchestration.js";
+} from "../contracts/orchestration.js";
 import { ExitCode, StinkyCobblerError } from "../../errors.js";
-import { loadOrchestrationConfig } from "../../config/tiered.js";
-import { readBoundedWorkspaceFile, resolveWorkspacePath, WorkspaceReadBoundaryError } from "../../security/workspace-path.js";
+import { loadOrchestrationConfig } from "../config/tiered.js";
+import { readBoundedWorkspaceFile, resolveWorkspacePath, WorkspaceReadBoundaryError } from "../security/workspace-path.js";
 import { appendLedgerEntry, auditTextFingerprint, listLedgerEntries, prepareLedgerEntry, type AppendLedgerEntry, type LedgerEntry } from "./ledger.js";
 import {
   assertValidatorReceiptBinding, getValidatorReceipt, persistValidatorReceipt, validatorReceiptId

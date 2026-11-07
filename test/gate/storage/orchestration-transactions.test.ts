@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { mkdir, mkdtemp, readFile, rm, unlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { SchemaRegistry } from "../../../src/contracts/schema-registry.js";
+import { SchemaRegistry } from "../../../src/gate/contracts/schema-registry.js";
 import { createTask, getTask, saveTask } from "../../../src/gate/storage/tasks.js";
 import { decideApproval } from "../../../src/gate/storage/approvals.js";
 import { initWorkspace, writeWorkspaceJson, type LocalWorkspace } from "../../../src/gate/storage/workspace.js";

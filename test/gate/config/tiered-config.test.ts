@@ -2,11 +2,11 @@ import { afterEach, describe, expect, it } from "vitest";
 import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { SchemaRegistry } from "../../../src/contracts/schema-registry.js";
+import { SchemaRegistry } from "../../../src/gate/contracts/schema-registry.js";
 import { createTask, getTask, saveTask } from "../../../src/gate/storage/tasks.js";
 import { initWorkspace } from "../../../src/gate/storage/workspace.js";
-import { loadOrchestrationConfig, loadTieredYaml } from "../../../src/config/tiered.js";
-import { loadAndValidateAllTieredConfig } from "../../../src/config/tiered-health.js";
+import { loadOrchestrationConfig, loadTieredYaml } from "../../../src/gate/config/tiered.js";
+import { loadAndValidateAllTieredConfig } from "../../../src/gate/config/tiered-health.js";
 import {
   createContract, createRun, addSubtask, reportArtifact, recordReview, completeRound, dispatchSubtask, beginSubtask
 } from "../../../src/gate/storage/orchestration.js";

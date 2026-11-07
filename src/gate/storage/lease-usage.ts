@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
-import { defaultSchemaRegistry } from "../../contracts/default-schema-registry.js";
-import type { CapabilityLease, PolicyDecision } from "../../contracts/types.js";
+import { defaultSchemaRegistry } from "../contracts/default-schema-registry.js";
+import type { CapabilityLease, PolicyDecision } from "../contracts/types.js";
 import { ExitCode, StinkyCobblerError } from "../../errors.js";
 import { evaluateLease } from "../policy/evaluate.js";
 import type { LocalWorkspace } from "./workspace.js";

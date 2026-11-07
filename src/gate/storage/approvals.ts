@@ -1,9 +1,9 @@
 import { mkdir, readFile, readdir } from "node:fs/promises";
 import { createHash, randomUUID } from "node:crypto";
 import path from "node:path";
-import type { Approval } from "../../contracts/types.js";
-import type { SchemaRegistry } from "../../contracts/schema-registry.js";
-import { defaultSchemaRegistry } from "../../contracts/default-schema-registry.js";
+import type { Approval } from "../contracts/types.js";
+import type { SchemaRegistry } from "../contracts/schema-registry.js";
+import { defaultSchemaRegistry } from "../contracts/default-schema-registry.js";
 import { ExitCode, StinkyCobblerError } from "../../errors.js";
 import { appendLedgerEntry, auditTextFingerprint, listLedgerEntries, prepareLedgerEntry, type AppendLedgerEntry } from "./ledger.js";
 import type { LocalWorkspace } from "./workspace.js";

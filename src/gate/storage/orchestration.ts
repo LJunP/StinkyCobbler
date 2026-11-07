@@ -1,23 +1,23 @@
 import { createHash, randomUUID } from "node:crypto";
 import { mkdir, readFile, readdir, stat } from "node:fs/promises";
 import path from "node:path";
-import type { SchemaRegistry } from "../../contracts/schema-registry.js";
-import { defaultSchemaRegistry } from "../../contracts/default-schema-registry.js";
+import type { SchemaRegistry } from "../contracts/schema-registry.js";
+import { defaultSchemaRegistry } from "../contracts/default-schema-registry.js";
 import type {
   Artifact, ContractStatus, Defect, OrchestrationRun, ReviewRecord, SubtaskPackage, TaskContract,
   ValidatorArtifactObservation, ValidatorEvidence
-} from "../../contracts/orchestration.js";
+} from "../contracts/orchestration.js";
 import {
   DEFAULT_MAX_RETRIES_PER_SUBTASK, DEFAULT_MAX_ROUNDS, DEFAULT_MAX_SUBTASK_TOKENS,
   MAX_CONTRACT_CRITERIA, MAX_CONTRACT_SCOPE, MAX_DEFECTS, MAX_DOMAIN_INSTRUCTIONS, MAX_DOMAIN_LENGTH,
   MAX_INPUT_ARTIFACTS, MAX_REVIEW_TOKENS, MAX_RUN_ARTIFACTS, MAX_RUN_REVIEWS, MAX_RUN_SUBTASKS,
   MAX_SUBTASK_ARTIFACTS, MAX_SUBTASK_CRITERIA, MAX_SUBTASK_SCOPE
-} from "../../contracts/orchestration.js";
+} from "../contracts/orchestration.js";
 import { domainInstructionsFor } from "./specialists.js";
 import { ExitCode, StinkyCobblerError } from "../../errors.js";
-import { loadOrchestrationConfig, type OrchestrationConfig } from "../../config/tiered.js";
-import { loadRegistries, type Registries } from "../../config/registry.js";
-import { loadWorkspaceConfig } from "../../config/workspace.js";
+import { loadOrchestrationConfig, type OrchestrationConfig } from "../config/tiered.js";
+import { loadRegistries, type Registries } from "../config/registry.js";
+import { loadWorkspaceConfig } from "../config/workspace.js";
 import { appendLedgerEntry, auditTextFingerprint, listLedgerEntries, prepareLedgerEntry, type AppendLedgerEntry } from "./ledger.js";
 import { issueLease } from "./leases.js";
 import { listLeases, revokeLease } from "./leases.js";
@@ -28,7 +28,7 @@ import { withWorkspaceLock } from "./workspace-lock.js";
 import { beginRunCancellation, completeRunCancellation, getRunCancellationFence } from "./orchestration-fence.js";
 import {
   assertWorkspacePathPolicy, readBoundedWorkspaceFile, resolveWorkspacePath, WorkspaceReadBoundaryError
-} from "../../security/workspace-path.js";
+} from "../security/workspace-path.js";
 import { listWriteIntents } from "./write-intents.js";
 import {
   assertValidatorReceiptBinding, getValidatorReceipt, prepareRegisteredValidatorReceipts

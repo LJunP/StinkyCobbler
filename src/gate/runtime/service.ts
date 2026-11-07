@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
-import type { CapabilityLease, TaskCapsule, TaskCharter, AgentRun, AgentReceipt } from "../../contracts/types.js";
-import type { SchemaRegistry } from "../../contracts/schema-registry.js";
-import type { Registries } from "../../config/registry.js";
+import type { CapabilityLease, TaskCapsule, TaskCharter, AgentRun, AgentReceipt } from "../contracts/types.js";
+import type { SchemaRegistry } from "../contracts/schema-registry.js";
+import type { Registries } from "../config/registry.js";
 import { assertRuntimeReceiptMatchesRun, listReceipts } from "../storage/receipts.js";
 import { withWorkspaceLock } from "../storage/workspace-lock.js";
 import { recordEvidenceOwned } from "../storage/evidence.js";

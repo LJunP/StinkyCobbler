@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { lstat, readFile, readdir, unlink } from "node:fs/promises";
-import { defaultSchemaRegistry } from "../../contracts/default-schema-registry.js";
+import { defaultSchemaRegistry } from "../contracts/default-schema-registry.js";
 import { ExitCode, StinkyCobblerError } from "../../errors.js";
 import type { LocalWorkspace } from "./workspace.js";
 import { createWorkspaceDirectory, createWorkspaceJson, workspaceFile, writeWorkspaceJson } from "./workspace.js";

@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import type { TaskCapsule } from "../../contracts/types.js";
+import type { TaskCapsule } from "../contracts/types.js";
 import { ExitCode, StinkyCobblerError } from "../../errors.js";
 
 /**

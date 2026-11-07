@@ -1,7 +1,7 @@
 import { mkdir, readFile, readdir } from "node:fs/promises";
-import type { EvidenceRef } from "../../contracts/types.js";
-import { defaultSchemaRegistry } from "../../contracts/default-schema-registry.js";
-import type { SchemaRegistry } from "../../contracts/schema-registry.js";
+import type { EvidenceRef } from "../contracts/types.js";
+import { defaultSchemaRegistry } from "../contracts/default-schema-registry.js";
+import type { SchemaRegistry } from "../contracts/schema-registry.js";
 import { ExitCode, StinkyCobblerError } from "../../errors.js";
 import { appendLedgerEntry, listLedgerEntries } from "./ledger.js";
 import type { LocalWorkspace } from "./workspace.js";

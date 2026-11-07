@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { mkdtemp, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { SchemaRegistry } from "../../../src/contracts/schema-registry.js";
+import { SchemaRegistry } from "../../../src/gate/contracts/schema-registry.js";
 import { decideApproval, requestApproval } from "../../../src/gate/storage/approvals.js";
 import { admitAndReserveLeaseCall, getLeaseCallUsage } from "../../../src/gate/storage/lease-usage.js";
 import { issueLease } from "../../../src/gate/storage/leases.js";

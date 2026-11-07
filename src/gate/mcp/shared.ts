@@ -1,9 +1,9 @@
 import { join } from "node:path";
 import { evaluateLease } from "../policy/evaluate.js";
 import { containsShellMetacharacter } from "../policy/path-policy.js";
-import { loadOrchestrationConfig } from "../../config/tiered.js";
-import { resolveWorkspacePath, workspacePathInScopes } from "../../security/workspace-path.js";
-import type { CapabilityLease, PolicyDecision } from "../../contracts/types.js";
+import { loadOrchestrationConfig } from "../config/tiered.js";
+import { resolveWorkspacePath, workspacePathInScopes } from "../security/workspace-path.js";
+import type { CapabilityLease, PolicyDecision } from "../contracts/types.js";
 
 export interface ToolAccess {
   lease: CapabilityLease;

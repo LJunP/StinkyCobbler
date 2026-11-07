@@ -1,5 +1,5 @@
 import type { PluginDiagnostic, PluginManifest } from "../contracts/types.js";
-import { ExitCode, StinkyCobblerError } from "../errors.js";
+import { ExitCode, StinkyCobblerError } from "../../errors.js";
 
 const TRUSTED_IMPLEMENTATIONS = new Set(["builtin.repository-read", "builtin.git-read", "builtin.docs-index"]);
 

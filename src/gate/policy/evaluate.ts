@@ -1,4 +1,4 @@
-import type { CapabilityLease, PolicyDecision, TaskCharter } from "../../contracts/types.js";
+import type { CapabilityLease, PolicyDecision, TaskCharter } from "../contracts/types.js";
 
 const NEVER_AUTONOMOUS = new Set(["secret-read", "production-access", "payment", "legal-final-decision", "medical-final-decision", "investment-final-decision", "external-data-export"]);
 

@@ -2,14 +2,14 @@ import { afterEach, describe, expect, it } from "vitest";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { SchemaRegistry } from "../../../src/contracts/schema-registry.js";
+import { SchemaRegistry } from "../../../src/gate/contracts/schema-registry.js";
 import { createTask } from "../../../src/gate/storage/tasks.js";
 import { initWorkspace } from "../../../src/gate/storage/workspace.js";
 import { consumeApproval, decideApproval, getApproval, injectApprovalFaultForTesting, inspectApproval, listApprovals, requestApproval } from "../../../src/gate/storage/approvals.js";
 import { evaluateTaskApproval } from "../../../src/gate/policy/approval.js";
 import { listLedgerEntries, verifyLedger } from "../../../src/gate/storage/ledger.js";
 import { writeWorkspaceJson } from "../../../src/gate/storage/workspace.js";
-import type { TaskCharter } from "../../../src/contracts/types.js";
+import type { TaskCharter } from "../../../src/gate/contracts/types.js";
 
 const roots: string[] = [];
 const projectRoot = path.resolve(import.meta.dirname, "..", "..", "..");

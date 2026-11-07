@@ -1,10 +1,10 @@
 import { createHash } from "node:crypto";
-import type { TaskContract } from "../../contracts/orchestration.js";
-import type { Approval, CapabilityLease, TaskCharter, TaskState } from "../../contracts/types.js";
+import type { TaskContract } from "../contracts/orchestration.js";
+import type { Approval, CapabilityLease, TaskCharter, TaskState } from "../contracts/types.js";
 import { ExitCode, StinkyCobblerError } from "../../errors.js";
 import { isApprovalExpired } from "../policy/approval.js";
 import { targetInWriteSet } from "../policy/path-policy.js";
-import { normalizeWorkspaceRelativePath, workspacePathInScopes } from "../../security/workspace-path.js";
+import { normalizeWorkspaceRelativePath, workspacePathInScopes } from "../security/workspace-path.js";
 import { getApproval, listApprovals } from "./approvals.js";
 import { getTask } from "./tasks.js";
 import type { LocalWorkspace } from "./workspace.js";

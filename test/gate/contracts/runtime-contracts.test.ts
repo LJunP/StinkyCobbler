@@ -1,7 +1,7 @@
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { SchemaRegistry } from "../../../src/contracts/schema-registry.js";
-import type { AgentReceipt, AgentRun, EvidenceRef, TaskCapsule, ToolCallRecord } from "../../../src/contracts/types.js";
+import { SchemaRegistry } from "../../../src/gate/contracts/schema-registry.js";
+import type { AgentReceipt, AgentRun, EvidenceRef, TaskCapsule, ToolCallRecord } from "../../../src/gate/contracts/types.js";
 
 const root = path.resolve(import.meta.dirname, "..", "..", "..");
 

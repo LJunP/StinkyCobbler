@@ -3,17 +3,17 @@ import { randomUUID } from "node:crypto";
 import path from "node:path";
 import type { Pack, Profile, RoleDefinition, RoleRegistry } from "../contracts/types.js";
 import type { SchemaRegistry } from "../contracts/schema-registry.js";
-import { ExitCode, StinkyCobblerError } from "../errors.js";
+import { ExitCode, StinkyCobblerError } from "../../errors.js";
 import {
   createWorkspaceJson,
   createWorkspaceDirectory,
   openWorkspace,
   workspaceFile,
   type LocalWorkspace
-} from "../gate/storage/workspace.js";
+} from "../storage/workspace.js";
 import type { Registries } from "./registry.js";
-import { withWorkspaceLock } from "../gate/storage/workspace-lock.js";
-import { syncDirectory } from "../gate/storage/durability.js";
+import { withWorkspaceLock } from "../storage/workspace-lock.js";
+import { syncDirectory } from "../storage/durability.js";
 
 export const WORKSPACE_CONFIG_FILE = "workspace.json";
 

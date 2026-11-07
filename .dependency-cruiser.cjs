@@ -25,8 +25,8 @@ module.exports = {
     {
       name: "gate-is-only-reached-from-cli",
       severity: "error",
-      comment: "ADR-0002: keep this exemption until config, entry, security, contracts, cli.ts, and mcp-server.ts no longer import src/gate. app stays allowed as the command layer. Do not drop those pathNot prefixes while the imports remain.",
-      from: { pathNot: "^src/(gate/|cli\\.ts$|mcp-server\\.ts$|config/|entry/|security/|contracts/|app/)" },
+      comment: "ADR-0002: only cli.ts, mcp-server.ts and the app command layer may import src/gate.",
+      from: { pathNot: "^src/(gate/|cli\\.ts$|mcp-server\\.ts$|app/)" },
       to: { path: "^src/gate/" }
     }
   ],

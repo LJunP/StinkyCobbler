@@ -4,8 +4,8 @@ import os from "node:os";
 import path from "node:path";
 import { gateResource } from "../../../src/io/resources.js";
 import { parse as parseToml } from "smol-toml";
-import { installHost, MCP_SERVER_ID } from "../../../src/entry/install-host.js";
-import { detectMcpServer } from "../../../src/entry/preflight.js";
+import { installHost, MCP_SERVER_ID } from "../../../src/gate/entry/install-host.js";
+import { detectMcpServer } from "../../../src/gate/entry/preflight.js";
 
 const roots: string[] = [];
 const projectRoot = path.resolve(import.meta.dirname, "..", "..", "..");

@@ -1,4 +1,4 @@
-import type { SchemaRegistry } from "../../contracts/schema-registry.js";
+import type { SchemaRegistry } from "../contracts/schema-registry.js";
 import { authorize, denied, type ToolAccess, type ToolOutcome } from "./shared.js";
 import { targetInWriteSet } from "../policy/path-policy.js";
 import { getWriteIntent } from "../storage/write-intents.js";

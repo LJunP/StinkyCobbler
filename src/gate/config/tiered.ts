@@ -4,10 +4,10 @@ import { lstat } from "node:fs/promises";
 import path from "node:path";
 import { defaultSchemaRegistry } from "../contracts/default-schema-registry.js";
 import type { ContractKind } from "../contracts/schema-registry.js";
-import { ExitCode, StinkyCobblerError } from "../errors.js";
-import { workspaceFile, type LocalWorkspace } from "../gate/storage/workspace.js";
-import { gateResource, PACKAGE_ROOT } from "../io/resources.js";
-import { loadTieredDocument, readTieredYamlFile, userPolicyFile, type MergeStrategy, type TieredLayer } from "../io/tiered-config.js";
+import { ExitCode, StinkyCobblerError } from "../../errors.js";
+import { workspaceFile, type LocalWorkspace } from "../storage/workspace.js";
+import { gateResource, PACKAGE_ROOT } from "../../io/resources.js";
+import { loadTieredDocument, readTieredYamlFile, userPolicyFile, type MergeStrategy, type TieredLayer } from "../../io/tiered-config.js";
 import { assertWorkspacePathPolicy, isReservedWorkspacePath, normalizeWorkspaceRelativePath } from "../security/workspace-path.js";
 
 /** Package-internal policies directory (ships with the tool; npm updates replace it — never edit directly). */
