@@ -69,6 +69,21 @@ describe("toolkit apply and rollback", () => {
     expect(await readFile(created, "utf8")).toBe("user edit\n");
   });
 
+  it("rolls back two ops on the user's own file to its original bytes instead of deleting it", async () => {
+    const root = await freshRoot("stinky-apply-two-ops-");
+    const target = path.join(root, "config.toml");
+    const userText = '# my settings\nmodel = "o3"\n';
+    await writeFile(target, userText);
+    const merge = (id: string): FileOp => ({ host: "codex", kind: "mcp-server", id, path: target, action: "merge-mcp", mcpEntry: { command: id, args: [] } });
+    const report = await apply(planOf(merge("files"), merge("docs")));
+    expect(report).toMatchObject({ stopped: false });
+    expect(await readFile(target, "utf8")).toContain("[mcp_servers.docs]");
+
+    const rolled = await rollbackLast();
+    expect(rolled.conflict).toBeUndefined();
+    expect(await readFile(target, "utf8")).toBe(userText);
+  });
+
   it("merges an mcp server through the host adapter and rolls the file back", async () => {
     const root = await freshRoot("stinky-apply-mcp-");
     const target = path.join(root, "mcp.json");
