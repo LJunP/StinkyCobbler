@@ -35,6 +35,8 @@
 - [ ] M2-T7 MCP 自省工具（可选）
 - [x] M2-T8 文档与 alpha 发布
 
+- 2026-11-08 更正：M2 勾选时 PRD §4 的两项没有做到——指令只渲染到 Claude Code 的 `CLAUDE.md`，配置也没有按 `id` 分层合并。PRD 已改为如实描述，缺口移到 M5。
+
 ## M3 插件包与来源 → 3.0.0-beta.1
 
 只做架构评审 §3.5 点名的范围。`skills.sh` 的 API 还没核实，`toolkit search` 在核实前必须失败关闭。
@@ -56,3 +58,10 @@
 - [x] M4-T3 可选 `memory/*.md` 只同步受管文件，不解释内容
 - [x] M4-T4 `toolkit memory show` 显示受管段落原文，`toolkit memory edit` 只替换该段落
 - [x] M4-T5 经核实的 RAG/memory preset：名称、维护状态、本地或云、数据流向四项都核实后才写入；核实前不写 preset
+
+## M5 3.0 GA 前补齐
+
+M2 勾选时漏掉、2026-11-08 从 PRD §4 移来的两项。每项先按宿主官方文档核实，再写复现测试。
+
+- [ ] M5-T1 指令段落渲染到 Codex `AGENTS.md`、Cursor `.cursor/rules/*.mdc`（rule 文件而不是段落文件）、ZCode skill 段落；每个宿主的路径与格式先核实并记录日期
+- [ ] M5-T2 配置分层 builtin → user → project，按 `id` 合并；`plan` 标出每个条目来自哪一层
