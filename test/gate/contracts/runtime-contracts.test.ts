@@ -34,7 +34,7 @@ const evidence: EvidenceRef = {
   id: "evidence-1",
   kind: "file",
   source: "workspace-1",
-  locator: "src/contracts/types.ts",
+  locator: "src/gate/contracts/types.ts",
   contentHash: "sha256:abc",
   observedAt: "2026-01-01T00:00:00.000Z",
   sensitivity: "internal",
