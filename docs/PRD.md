@@ -21,11 +21,11 @@ AI 编程工具（Codex、Claude Code、Cursor、ZCode、Gemini CLI…）各有�
 ## 4. 范围
 
 ### 3.0.0-alpha.1（M0–M2）
-- artifact 种类：`skill`（Agent Skills 规范的 SKILL.md 目录）、`mcp-server`（stdio / http）、`instructions`（按宿主渲染到 AGENTS.md / CLAUDE.md / `.cursor/rules/*.mdc` / ZCode skill 的受管段落）。
+- artifact 种类：`skill`（Agent Skills 规范的 SKILL.md 目录）、`mcp-server`（stdio / http）、`instructions`（受管段落）。3.0.0 只渲染到 Claude Code 的 `CLAUDE.md`（user 与 project 两个作用域）；Codex `AGENTS.md`、Cursor `.cursor/rules/*.mdc`、ZCode skill 段落的路径或格式尚未按宿主文档核实，适配器标为不支持并在 `plan.skipped` 里说明原因，补齐见 PLAN M5-T1。
 - 宿主：Codex、Claude Code、Cursor、ZCode。
 - 作用域：user、project。
 - 命令：`toolkit init | plan | apply | rollback | doctor | list`。
-- 配置分层：builtin → `~/.config/stinky-cobbler/toolkit.yaml` → `<repo>/.stinky-cobbler/toolkit.yaml`，按 `id` 合并。
+- 配置：每条命令只读一份 `toolkit.yaml`，`--scope user` 读 `~/.config/stinky-cobbler/toolkit.yaml`，`--scope project` 读 `<repo>/.stinky-cobbler/toolkit.yaml`。builtin → user → project 按 `id` 合并尚未实现，见 PLAN M5-T2。
 - 密钥：只允许 `${env:NAME}` / `${file:path}` 引用；明文拒绝。
 
 ### 3.0.0-beta.1（M3）

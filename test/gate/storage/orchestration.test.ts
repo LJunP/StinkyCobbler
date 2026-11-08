@@ -6,6 +6,7 @@ import os from "node:os";
 import path from "node:path";
 import { SchemaRegistry } from "../../../src/gate/contracts/schema-registry.js";
 import { MAX_SUBTASK_ARTIFACTS } from "../../../src/gate/contracts/orchestration.js";
+import { resolveSpecialist } from "../../../src/gate/storage/specialists.js";
 import { createTask, saveTask } from "../../../src/gate/storage/tasks.js";
 import { decideApproval, getApproval, requestApproval } from "../../../src/gate/storage/approvals.js";
 import { hashTaskAuthority, TASK_AUTHORITY_POLICY_VERSION } from "../../../src/gate/storage/task-authority.js";
@@ -1418,7 +1419,10 @@ describe("domain routing (specialist)", () => {
       capabilities: ["repository-read"]
     });
     expect(subtask.domain).toBe("compliance");
-    expect(subtask.domainInstructions[0]).toContain("合规");
+    const specialist = await resolveSpecialist(workspace, "compliance");
+    expect(specialist.match).toBe("exact");
+    expect(specialist.profile.title.length).toBeGreaterThan(0);
+    expect(subtask.domainInstructions[0]).toContain(specialist.profile.title);
     expect(subtask.domainInstructions.some((i) => i.startsWith("验收："))).toBe(true);
     expect(subtask.domainInstructions.some((i) => i.startsWith("禁止："))).toBe(true);
   });
@@ -1434,7 +1438,12 @@ describe("domain routing (specialist)", () => {
       domain: "content"
     });
     expect(subtask.domain).toBe("content");
-    expect(subtask.domainInstructions[0]).toContain("内容创作");
+    const content = await resolveSpecialist(workspace, "content");
+    const contractDomain = await resolveSpecialist(workspace, "compliance");
+    expect(content.match).toBe("exact");
+    expect(content.profile.title.length).toBeGreaterThan(0);
+    expect(content.profile.title).not.toBe(contractDomain.profile.title);
+    expect(subtask.domainInstructions[0]).toContain(content.profile.title);
   });
 
   it("falls back to the general specialist for unknown contract domains", async () => {
@@ -1449,7 +1458,10 @@ describe("domain routing (specialist)", () => {
       capabilities: ["repository-read"]
     });
     expect(subtask.domain).toBe("quantum-physics");
-    expect(subtask.domainInstructions[0]).toContain("通用工程执行者");
+    const fallback = await resolveSpecialist(workspace, "quantum-physics");
+    expect(fallback.match).toBe("general");
+    expect(fallback.profile.title.length).toBeGreaterThan(0);
+    expect(subtask.domainInstructions[0]).toContain(fallback.profile.title);
   });
 });
 

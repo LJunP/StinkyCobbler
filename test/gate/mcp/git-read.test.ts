@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { execFile } from "node:child_process";
+import { execFile, spawnSync } from "node:child_process";
 import { chmod, mkdir, mkdtemp, readFile, rename, rm, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -12,14 +12,7 @@ const execFileAsync = promisify(execFile);
 const roots: string[] = [];
 afterEach(async () => { await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true }))); });
 
-const gitAvailable = (() => {
-  try {
-    execFileAsync("git", ["--version"]);
-    return true;
-  } catch {
-    return false;
-  }
-})();
+const gitAvailable = spawnSync("git", ["--version"], { encoding: "utf8" }).status === 0;
 
 function access(workspace: string, readScope = ["."]): ToolAccess {
   return { lease: asLegacyLease({ id: "lease", taskId: "task", agentId: "agent", role: "scout", capability: "git-read", level: "L0", workspace, readScope, writeSet: [], issuedAt: "2026-01-01T00:00:00.000Z", expiresAt: "2099-01-01T00:00:00.000Z", maxToolCalls: 2, status: "active" }), taskId: "task", role: "scout", workspace };

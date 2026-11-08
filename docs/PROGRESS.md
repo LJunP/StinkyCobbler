@@ -2,6 +2,15 @@
 
 > 只追加，最新在上。每条：日期 / 任务 / 做了什么 / 验证 / 待办与问题。
 
+## 2026-11-08 · P7 作者决定项：测试修正、删除 3 个无读者示例、PRD 口径
+
+- 作者 2026-11-08 授权"按推荐直接进行"，P7 待办里的三组决定按推荐执行：
+  1. **删除**（STANDARDS §7.3）：`resources/gate/examples/{content-calendar,research-report,student-management-system}/task.json`。删前 `git grep` 确认 src/test/CI/package.json 无读者，只剩 `docs/archive/` 的历史散文；`frameflow/task.json` 有 `test/gate/dogfood.test.ts` 读取，保留。README 目录树只列到 `examples/`，无需改。
+  2. **测试修正**（grok 写模式执行，主指挥逐条核 diff）：`registry.test.ts` 与 `orchestration.test.ts`、`specialists.test.ts` 的中文标题探测改为结构断言（标题取自产品实际加载的 specialist，并断言指令首行包含它，比原来的字面量更强）；`git-read.test.ts` 的 `gitAvailable` 改为同步 `spawnSync` 探测（原来没 await，`skipIf` 恒不生效）；`read-scope.test.ts` 里断言 `isSensitivePath` 的 7 个 expect 原样移到新文件 `test/gate/policy/path-policy.test.ts`（原 10 = 留 3 + 移 7）；`runtime-contracts.test.ts` 夹具路径改为 `src/gate/contracts/types.ts`。`test/core/plan/plan.test.ts` 的「section 3.3」标题随 ADR-0004 那个 PR 改。
+  3. **PRD 口径**：按代码改 PRD。§4 指令目标如实写成"只渲染到 Claude Code 的 `CLAUDE.md`"，配置写成"每条命令只读一份 `toolkit.yaml`"；两处缺口移到 PLAN 新增的 M5（M5-T1 其余三宿主的指令渲染，M5-T2 按 id 分层合并），M2 下加一行更正说明。
+- 未做：`test/gate/dogfood.test.ts:28-31` 仍只验证自己写的 README——`src/gate` 里没有准备或校验 dogfood 工作区的函数（grok 列了 6 条 grep 证据），没有产品函数可调就不改、不删。`test/gate/mcp/git-read.test.ts:50-55` 回读夹具设置的 git config，它守的是夹具本身（测试泄漏事故后加的），保留。
+- 验证（沙箱外实跑）：build 0、lint 0；`npm test` 101 文件 / 922 项通过；`npm run test:package` 407 项（410 减去删掉的 3 个）；`git diff --check` 干净；改动的 7 个测试文件单独跑 120 项通过。
+
 ## 2026-11-07 · 3.x 行为缺陷修复（P7 审计待办中的 7 条）
 
 - 分支 `feature/rc1-defect-fixes`，从 `feature/p7-audit` 切出（PR #10 在本分支推送时已合并进 develop，本分支相对 develop 正好是下列 8 个提交）；7 个提交各修一个缺陷，每个都先写复现测试（用修复前的 `dist/` 或改前代码确认红灯）再修，不改 `src/gate/`：

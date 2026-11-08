@@ -36,8 +36,12 @@ describe("specialist registry", () => {
   });
 
   it("injects domain instructions: specialist header, instructions, checklist, negative rules", async () => {
+    const { profile, match } = await resolveSpecialist(null, "compliance");
     const instructions = await domainInstructionsFor(null, "compliance");
-    expect(instructions[0]).toContain("合规");
+    expect(match).toBe("exact");
+    expect(profile.domain).toBe("compliance");
+    expect(profile.title.length).toBeGreaterThan(0);
+    expect(instructions[0]).toContain(profile.title);
     expect(instructions.some((i) => i.startsWith("验收："))).toBe(true);
     expect(instructions.some((i) => i.startsWith("禁止："))).toBe(true);
     expect(instructions.length).toBeLessThanOrEqual(30);
