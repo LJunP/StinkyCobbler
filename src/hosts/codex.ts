@@ -2,7 +2,7 @@ import path from "node:path";
 import { directoryExists } from "../io/directory-exists.js";
 import { gateResourceRelative } from "../io/resources.js";
 import { located, unsupported, type ArtifactKind, type HostAdapter, type HostRoots, type HostScope } from "./host-adapter.js";
-import { mergeTomlMcp, readTomlMcp } from "./toml-mcp.js";
+import { mergeTomlMcp, readTomlMcp, replaceTomlMcp } from "./toml-mcp.js";
 
 const UNSUPPORTED_KIND = new Set<ArtifactKind>(["instructions", "command"]);
 
@@ -17,6 +17,7 @@ export const codexHost = {
   locate: (kind, scope, roots) => locateCodex(kind, scope, roots),
   readMcp: readTomlMcp,
   mergeMcp: mergeTomlMcp,
+  replaceMcp: replaceTomlMcp,
   extraMcpFiles: () => [],
   mcpRegistration: (id, command) => ({ host: "codex", format: "toml", mcp_servers: { [id]: { command, args: [] } } })
 } satisfies HostAdapter;

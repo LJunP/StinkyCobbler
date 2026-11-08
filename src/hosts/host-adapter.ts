@@ -43,6 +43,8 @@ export interface HostAdapter {
   locate(kind: ArtifactKind, scope: HostScope, roots: HostRoots): LocatedArtifact;
   readMcp(text: string): Readonly<Record<string, HostMcpEntry>>;
   mergeMcp(text: string, id: string, server: HostMcpEntry): McpMergeResult;
+  /** Replaces an entry that is already present; every other byte the host format lets us keep stays. */
+  replaceMcp(text: string, id: string, server: HostMcpEntry): McpMergeResult;
   extraMcpFiles(roots: HostRoots): readonly string[];
   legacyMcpFile?(roots: HostRoots): string;
   bundledSkillTemplate?: string;

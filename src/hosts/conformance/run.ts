@@ -42,7 +42,19 @@ function checkMerge(adapter: HostAdapter, input: { presentHome: string; cwd: str
   if (same.status !== "unchanged" || same.text !== second.text) return [`${adapter.id} identical server was rewritten`];
   const conflict = adapter.mergeMcp(second.text, "demo", { command: "other-tool", args: [] });
   if (conflict.status !== "conflict") return [`${adapter.id} different command was not a conflict`];
-  return checkEnv(adapter, second.text);
+  return [...checkReplace(adapter, second.text), ...checkEnv(adapter, second.text)];
+}
+
+/** Replacing one entry changes that entry only; a missing entry is a conflict, never a silent add. */
+function checkReplace(adapter: HostAdapter, text: string): string[] {
+  const replaced = adapter.replaceMcp(text, "demo", { command: "tool-v2", args: ["--b"] });
+  if (replaced.status !== "merged") return [`${adapter.id} existing server was not replaced`];
+  const read = adapter.readMcp(replaced.text);
+  if (read.demo?.command !== "tool-v2" || read.demo.args[0] !== "--b") return [`${adapter.id} replaceMcp did not write the new entry`];
+  if (read.other?.command !== "other" || !replaced.text.includes("keep")) return [`${adapter.id} replaceMcp changed another entry`];
+  if (adapter.replaceMcp(replaced.text, "demo", { command: "tool-v2", args: ["--b"] }).status !== "unchanged") return [`${adapter.id} identical replace was rewritten`];
+  if (adapter.replaceMcp(text, "missing", { command: "x", args: [] }).status !== "conflict") return [`${adapter.id} replacing a missing server was not a conflict`];
+  return [];
 }
 
 /** An env reference round-trips through the host file as the host's own syntax; the value never appears. */

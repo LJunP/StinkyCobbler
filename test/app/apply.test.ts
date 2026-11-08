@@ -84,6 +84,31 @@ describe("toolkit apply and rollback", () => {
     expect(await readFile(target, "utf8")).toBe(userText);
   });
 
+  it("stops instead of overwriting a file whose bytes changed after the op was planned", async () => {
+    const root = await freshRoot("stinky-apply-prior-");
+    const target = path.join(root, "CLAUDE.md");
+    await writeFile(target, "typed after plan\n");
+    const report = await apply(
+      planOf({
+        host: "claude-code",
+        kind: "instructions",
+        id: "notes",
+        path: target,
+        action: "upsert-segment",
+        segment: "<!-- stinky-cobbler:begin notes -->\nnew\n<!-- stinky-cobbler:end notes -->",
+        priorHash: sha256("planned bytes\n")
+      })
+    );
+    expect(report).toMatchObject({ stopped: true, completed: [], error: { code: "TOOLKIT_CONFLICT" } });
+    expect(await readFile(target, "utf8")).toBe("typed after plan\n");
+
+    const skill = path.join(root, "SKILL.md");
+    await writeFile(skill, "edited skill\n");
+    const replaced = await apply(planOf({ host: "codex", kind: "skill", id: "review", path: skill, action: "replace", bytes: "next\n", priorHash: sha256("planned skill\n") }));
+    expect(replaced).toMatchObject({ stopped: true, error: { code: "TOOLKIT_CONFLICT" } });
+    expect(await readFile(skill, "utf8")).toBe("edited skill\n");
+  });
+
   it("merges an mcp server through the host adapter and rolls the file back", async () => {
     const root = await freshRoot("stinky-apply-mcp-");
     const target = path.join(root, "mcp.json");

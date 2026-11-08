@@ -1,7 +1,7 @@
 import path from "node:path";
 import { directoryExists } from "../io/directory-exists.js";
 import { located, unsupported, type ArtifactKind, type HostAdapter, type HostRoots, type HostScope } from "./host-adapter.js";
-import { mergeJsonMcp, readJsonMcp } from "./json-mcp.js";
+import { mergeJsonMcp, readJsonMcp, replaceJsonMcp } from "./json-mcp.js";
 
 const SERVERS = ["mcpServers"] as const;
 
@@ -19,6 +19,7 @@ export const cursorHost = {
   locate: (kind, scope, roots) => locateCursor(kind, scope, roots),
   readMcp: (text) => readJsonMcp(text, SERVERS),
   mergeMcp: (text, id, server) => mergeJsonMcp(text, SERVERS, id, server),
+  replaceMcp: (text, id, server) => replaceJsonMcp(text, SERVERS, id, server),
   extraMcpFiles: () => [],
   mcpRegistration: (id, command) => ({ mcpServers: { [id]: { command, args: [] } } })
 } satisfies HostAdapter;

@@ -691,9 +691,9 @@ describe("toolkit cli", () => {
     expect(await readFile(toml, "utf8")).toBe(edited);
   });
 
-  it("reports drift when a managed mcp command no longer matches the spec", async () => {
-    const home = await tempDir("stinky-mcp-drift-home-");
-    const xdg = await tempDir("stinky-mcp-drift-xdg-");
+  it("replaces a managed mcp entry in place when only the spec changed, and rolls it back", async () => {
+    const home = await tempDir("stinky-mcp-update-home-");
+    const xdg = await tempDir("stinky-mcp-update-xdg-");
     const env = childEnv(home, xdg);
     const specFile = path.join(xdg, "stinky-cobbler", "toolkit.yaml");
     await run(env, "toolkit", "init", "--json");
@@ -701,13 +701,183 @@ describe("toolkit cli", () => {
     await run(env, "toolkit", "apply", "--yes", "--json");
     const toml = path.join(home, ".codex", "config.toml");
     const installed = await readFile(toml, "utf8");
-    expect(installed).toContain("echo");
     await writeFile(specFile, mcpSpec("printf"));
-    const doctor = JSON.parse((await run(env, "toolkit", "doctor", "--json")).stdout) as { drift: Array<{ kind: string; id: string }> };
-    expect(doctor.drift).toEqual([expect.objectContaining({ kind: "mcp-server", id: "files", state: "managed-modified" })]);
+    const doctor = JSON.parse((await run(env, "toolkit", "doctor", "--json")).stdout) as { drift: unknown[] };
+    expect(doctor.drift).toEqual([]);
+    const planned = JSON.parse((await run(env, "toolkit", "plan", "--json")).stdout) as { ops: unknown[]; conflicts: unknown[] };
+    expect(planned.conflicts).toEqual([]);
+    expect(planned.ops).toEqual([expect.objectContaining({ host: "codex", kind: "mcp-server", id: "files", action: "replace-mcp" })]);
+    const applied = JSON.parse((await run(env, "toolkit", "apply", "--yes", "--json")).stdout) as { stopped: boolean };
+    expect(applied.stopped).toBe(false);
+    const servers = (parseToml(await readFile(toml, "utf8")) as { mcp_servers: Record<string, { command: string }> }).mcp_servers;
+    expect(servers).toEqual({ files: expect.objectContaining({ command: "printf" }) });
+    expect((JSON.parse((await run(env, "toolkit", "plan", "--json")).stdout) as { ops: unknown[] }).ops).toEqual([]);
+    await run(env, "toolkit", "rollback", "--last", "--json");
+    expect(await readFile(toml, "utf8")).toBe(installed);
+  });
+
+  it("keeps the user's own Codex settings byte for byte when a managed mcp entry is replaced", async () => {
+    const home = await tempDir("stinky-mcp-keep-home-");
+    const xdg = await tempDir("stinky-mcp-keep-xdg-");
+    const env = childEnv(home, xdg);
+    const specFile = path.join(xdg, "stinky-cobbler", "toolkit.yaml");
+    const toml = path.join(home, ".codex", "config.toml");
+    const userText = '# my settings\nmodel = "o3"\n\n[profiles.fast]\nmodel = "mini" # keep this comment\n';
+    await mkdir(path.dirname(toml), { recursive: true });
+    await writeFile(toml, userText);
+    await run(env, "toolkit", "init", "--json");
+    await writeFile(specFile, mcpSpec("echo"));
+    await run(env, "toolkit", "apply", "--yes", "--json");
+    await writeFile(specFile, mcpSpec("printf"));
+    await run(env, "toolkit", "apply", "--yes", "--json");
+    const text = await readFile(toml, "utf8");
+    expect(text.startsWith(userText)).toBe(true);
+    const parsed = parseToml(text) as { model: string; profiles: { fast: { model: string } }; mcp_servers: Record<string, { command: string }> };
+    expect(parsed).toMatchObject({ model: "o3", profiles: { fast: { model: "mini" } } });
+    expect(parsed.mcp_servers).toEqual({ files: expect.objectContaining({ command: "printf" }) });
+  });
+
+  it("adds an env reference to an mcp entry that was applied without one", async () => {
+    const home = await tempDir("stinky-mcp-env-upgrade-home-");
+    const xdg = await tempDir("stinky-mcp-env-upgrade-xdg-");
+    const env = childEnv(home, xdg);
+    const specFile = path.join(xdg, "stinky-cobbler", "toolkit.yaml");
+    const cursorSpec = (extra: string[]): string => [
+      "version: 1",
+      "scope: user",
+      "hosts:",
+      "  - cursor",
+      "skills: []",
+      "mcpServers:",
+      "  - id: files",
+      "    transport: stdio",
+      "    command: echo",
+      ...extra,
+      "instructions: []",
+      "bundles: []",
+      ""
+    ].join("\n");
+    await run(env, "toolkit", "init", "--json");
+    await writeFile(specFile, cursorSpec([]));
+    await run(env, "toolkit", "apply", "--yes", "--json");
+    await writeFile(specFile, cursorSpec(["    env:", '      FS_TOKEN: "${env:FS_TOKEN}"']));
+    const applied = JSON.parse((await run(env, "toolkit", "apply", "--yes", "--json")).stdout) as { stopped: boolean; completed: Array<{ action: string }> };
+    expect(applied).toMatchObject({ stopped: false, completed: [expect.objectContaining({ action: "replace-mcp" })] });
+    const cursor = JSON.parse(await readFile(path.join(home, ".cursor", "mcp.json"), "utf8")) as { mcpServers: { files: { env?: Record<string, string> } } };
+    expect(cursor.mcpServers.files.env).toEqual({ FS_TOKEN: "${env:FS_TOKEN}" });
+  });
+
+  it("updates a managed instruction segment after the locked body changes and adds a second instruction to the same file", async () => {
+    const home = await tempDir("stinky-instruction-update-home-");
+    const xdg = await tempDir("stinky-instruction-update-xdg-");
+    const source = await tempDir("stinky-instruction-update-source-");
+    const env = childEnv(home, xdg);
+    const specFile = path.join(xdg, "stinky-cobbler", "toolkit.yaml");
+    const claudeMd = path.join(home, ".claude", "CLAUDE.md");
+    await writeFile(path.join(source, "notes.md"), "first body\n");
+    await writeFile(path.join(source, "style.md"), "style body\n");
+    await run(env, "toolkit", "init", "--json");
+    await writeFile(specFile, instructionSpec(source, ["notes"]));
+    await run(env, "toolkit", "lock", "--json");
+    await run(env, "toolkit", "apply", "--yes", "--json");
+    await writeFile(path.join(source, "notes.md"), "second body\n");
+    await run(env, "toolkit", "lock", "--json");
+    const planned = JSON.parse((await run(env, "toolkit", "plan", "--json")).stdout) as { ops: unknown[]; conflicts: unknown[] };
+    expect(planned).toMatchObject({ conflicts: [], ops: [expect.objectContaining({ kind: "instructions", id: "notes", action: "upsert-segment" })] });
+    await run(env, "toolkit", "apply", "--yes", "--json");
+    expect(await readFile(claudeMd, "utf8")).toBe("<!-- stinky-cobbler:begin notes -->\nsecond body\n<!-- stinky-cobbler:end notes -->\n");
+    await writeFile(specFile, instructionSpec(source, ["notes", "style"]));
+    await run(env, "toolkit", "lock", "--json");
+    await run(env, "toolkit", "apply", "--yes", "--json");
+    const text = await readFile(claudeMd, "utf8");
+    expect(text).toContain("<!-- stinky-cobbler:begin notes -->\nsecond body\n<!-- stinky-cobbler:end notes -->");
+    expect(text).toContain("<!-- stinky-cobbler:begin style -->\nstyle body\n<!-- stinky-cobbler:end style -->");
+    expect((JSON.parse((await run(env, "toolkit", "plan", "--json")).stdout) as { ops: unknown[] }).ops).toEqual([]);
+  });
+
+  it("replaces two changed mcp entries in one host file in a single apply and rolls both back", async () => {
+    const home = await tempDir("stinky-mcp-two-home-");
+    const xdg = await tempDir("stinky-mcp-two-xdg-");
+    const env = childEnv(home, xdg);
+    const specFile = path.join(xdg, "stinky-cobbler", "toolkit.yaml");
+    const twoServers = (first: string, second: string): string => [
+      "version: 1",
+      "scope: user",
+      "hosts:",
+      "  - codex",
+      "skills: []",
+      "mcpServers:",
+      "  - id: files",
+      "    transport: stdio",
+      `    command: ${first}`,
+      "  - id: docs",
+      "    transport: stdio",
+      `    command: ${second}`,
+      "instructions: []",
+      "bundles: []",
+      ""
+    ].join("\n");
+    await run(env, "toolkit", "init", "--json");
+    await writeFile(specFile, twoServers("echo", "cat"));
+    await run(env, "toolkit", "apply", "--yes", "--json");
+    const toml = path.join(home, ".codex", "config.toml");
+    const installed = await readFile(toml, "utf8");
+    await writeFile(specFile, twoServers("printf", "tac"));
+    const applied = JSON.parse((await run(env, "toolkit", "apply", "--yes", "--json")).stdout) as { stopped: boolean; completed: unknown[] };
+    expect(applied).toMatchObject({ stopped: false });
+    expect(applied.completed).toHaveLength(2);
+    const servers = (parseToml(await readFile(toml, "utf8")) as { mcp_servers: Record<string, { command: string }> }).mcp_servers;
+    expect(servers).toEqual({ files: expect.objectContaining({ command: "printf" }), docs: expect.objectContaining({ command: "tac" }) });
+    await run(env, "toolkit", "rollback", "--last", "--json");
+    expect(await readFile(toml, "utf8")).toBe(installed);
+  });
+
+  it("updates two changed instruction segments in one file in a single apply", async () => {
+    const home = await tempDir("stinky-instruction-two-home-");
+    const xdg = await tempDir("stinky-instruction-two-xdg-");
+    const source = await tempDir("stinky-instruction-two-source-");
+    const env = childEnv(home, xdg);
+    const specFile = path.join(xdg, "stinky-cobbler", "toolkit.yaml");
+    await writeFile(path.join(source, "notes.md"), "notes v1\n");
+    await writeFile(path.join(source, "style.md"), "style v1\n");
+    await run(env, "toolkit", "init", "--json");
+    await writeFile(specFile, instructionSpec(source, ["notes", "style"]));
+    await run(env, "toolkit", "lock", "--json");
+    await run(env, "toolkit", "apply", "--yes", "--json");
+    await writeFile(path.join(source, "notes.md"), "notes v2\n");
+    await writeFile(path.join(source, "style.md"), "style v2\n");
+    await run(env, "toolkit", "lock", "--json");
+    const applied = JSON.parse((await run(env, "toolkit", "apply", "--yes", "--json")).stdout) as { stopped: boolean; completed: unknown[] };
+    expect(applied).toMatchObject({ stopped: false });
+    expect(applied.completed).toHaveLength(2);
+    const text = await readFile(path.join(home, ".claude", "CLAUDE.md"), "utf8");
+    expect(text).toContain("notes v2\n");
+    expect(text).toContain("style v2\n");
+    const listed = JSON.parse((await run(env, "toolkit", "list", "--json")).stdout) as Array<Record<string, unknown>>;
+    expect(listed).toHaveLength(2);
+    for (const row of listed) expect(Object.keys(row).sort()).toEqual(["hash", "host", "id", "kind", "path", "state"]);
+  });
+
+  it("refuses to update an instruction file the user edited by hand", async () => {
+    const home = await tempDir("stinky-instruction-edit-home-");
+    const xdg = await tempDir("stinky-instruction-edit-xdg-");
+    const source = await tempDir("stinky-instruction-edit-source-");
+    const env = childEnv(home, xdg);
+    const specFile = path.join(xdg, "stinky-cobbler", "toolkit.yaml");
+    const claudeMd = path.join(home, ".claude", "CLAUDE.md");
+    await writeFile(path.join(source, "notes.md"), "first body\n");
+    await run(env, "toolkit", "init", "--json");
+    await writeFile(specFile, instructionSpec(source, ["notes"]));
+    await run(env, "toolkit", "lock", "--json");
+    await run(env, "toolkit", "apply", "--yes", "--json");
+    const edited = `${await readFile(claudeMd, "utf8")}my own line\n`;
+    await writeFile(claudeMd, edited);
+    await writeFile(path.join(source, "notes.md"), "second body\n");
+    await run(env, "toolkit", "lock", "--json");
     const refused = await fail(env, "toolkit", "apply", "--yes", "--json");
     expect(refused.code).toBe(7);
-    expect(await readFile(toml, "utf8")).toBe(installed);
+    expect(JSON.parse(refused.stderr ?? "{}")).toMatchObject({ error: "TOOLKIT_CONFLICT" });
+    expect(await readFile(claudeMd, "utf8")).toBe(edited);
   });
   it("exits 7 when rollback meets a hand-edited managed file and still prints the report", async () => {
     const home = await tempDir("stinky-rollback-conflict-home-");
@@ -938,6 +1108,21 @@ function mcpSpec(command: string): string {
     "    transport: stdio",
     `    command: ${command}`,
     "instructions: []",
+    "bundles: []",
+    ""
+  ].join("\n");
+}
+
+function instructionSpec(source: string, ids: readonly string[]): string {
+  return [
+    "version: 1",
+    "scope: user",
+    "hosts:",
+    "  - claude-code",
+    "skills: []",
+    "mcpServers: []",
+    "instructions:",
+    ...ids.flatMap((id) => [`  - id: ${id}`, `    source: ${JSON.stringify(path.join(source, `${id}.md`))}`, "    render:", "      claude-code: CLAUDE.md"]),
     "bundles: []",
     ""
   ].join("\n");

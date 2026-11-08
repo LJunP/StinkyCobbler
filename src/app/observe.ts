@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { hostMcpEntry, rendersInstructionSegment, sameMcpEntry, type HostAdapter, type HostRoots, type HostScope } from "../hosts/host-adapter.js";
 import { inspectManagedFile, type ManagedInspection, type ManagedObservationState } from "../io/managed-file.js";
+import { readSegments } from "../io/segment-file.js";
 import { HOST_IDS, type ArtifactKind, type ToolkitHostId } from "../core/toolkit/kinds.js";
 import { renderMcpEntry } from "../core/render/render.js";
 import type { McpServerSpec, ToolkitSpec } from "../core/toolkit/spec.js";
@@ -13,6 +14,10 @@ export interface HostObservation {
   path: string;
   state: ManagedObservationState;
   hash?: string;
+  /** MCP only: false when a managed file still holds the entry an older spec rendered. */
+  current?: boolean;
+  /** Instructions only: marked segment bodies already in the file. */
+  segments?: Readonly<Record<string, string>>;
 }
 
 export async function observe(input: { adapters: readonly HostAdapter[]; spec: ToolkitSpec; scope: HostScope; roots: HostRoots }): Promise<HostObservation[]> {
@@ -41,12 +46,14 @@ async function observeInstructions(adapter: HostAdapter, spec: ToolkitSpec, scop
   if (host === undefined) return [];
   const target = adapter.locate("instructions", scope, roots);
   if (!rendersInstructionSegment(target)) return [];
-  const observations: HostObservation[] = [];
-  for (const item of spec.instructions) {
-    if (item.render?.[host] === undefined) continue;
-    observations.push(observation(adapter.id, "instructions", item.id, target.path, await inspectManagedFile(target.path)));
-  }
-  return observations;
+  const items = spec.instructions.filter((item) => item.render?.[host] !== undefined);
+  if (items.length === 0) return [];
+  const inspection = await inspectManagedFile(target.path);
+  const segments = inspection.state === "managed" ? readSegments(await readFile(target.path, "utf8")) : undefined;
+  return items.map((item) => ({
+    ...observation(adapter.id, "instructions", item.id, target.path, inspection),
+    ...(segments === undefined ? {} : { segments })
+  }));
 }
 
 async function observeSkill(adapter: HostAdapter, id: string, scope: HostScope, roots: HostRoots): Promise<HostObservation> {
@@ -63,14 +70,9 @@ async function observeMcp(adapter: HostAdapter, server: McpServerSpec, scope: Ho
   }
   const installed = adapter.readMcp(await readFile(file, "utf8"))[server.id];
   if (installed === undefined) return observation(adapter.id, "mcp-server", server.id, file, { state: "absent" });
-  if (inspection.state === "managed" && !sameMcpEntry(installed, hostMcpEntry(adapter, renderMcpEntry(server)))) {
-    return observation(adapter.id, "mcp-server", server.id, file, drifted(inspection));
-  }
-  return observation(adapter.id, "mcp-server", server.id, file, inspection);
-}
-
-function drifted(inspection: ManagedInspection): ManagedInspection {
-  return { state: "managed-modified", ...(inspection.hash === undefined ? {} : { hash: inspection.hash }) };
+  const found = observation(adapter.id, "mcp-server", server.id, file, inspection);
+  if (inspection.state !== "managed") return found;
+  return { ...found, current: sameMcpEntry(installed, hostMcpEntry(adapter, renderMcpEntry(server))) };
 }
 
 function hostId(id: string): ToolkitHostId | undefined {
