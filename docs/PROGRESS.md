@@ -2,6 +2,12 @@
 
 > 只追加，最新在上。每条：日期 / 任务 / 做了什么 / 验证 / 待办与问题。
 
+## 2026-11-08 · 2.0.2 发布前审计
+
+- `release/2.0.2`（`16a75c3`）上手动触发 `release-candidate` 工作流（workflow_dispatch，version 2.0.2；只读权限，只上传构建产物，不发布）：六矩阵 verify（typecheck、build、`npm test`、`test:integration`、`test:package`）与 artifacts（`npm audit --audit-level=high`、SBOM、精确 tarball 与校验和、离线包、手册、产物校验）七个 job 全部成功，run 42462014144。PR #2 的 12 项 CI 也全绿、`mergeStateStatus` CLEAN。
+- 更正：此前建议"发布前在 `release/2.0.2` 上跑 `npm run audit:release`"不成立——该脚本是 ADR-0003 P6 加在 develop 的，2.0.2 分支没有；2.0.2 的发布前审计就是上面这条工作流。
+- 剩余全部由作者执行（AGENTS 规则 7）：合并 PR #2 → 在 main 上打 `v2.0.2` tag（tag 推送会再跑一次同一工作流）→ `npm publish` → GitHub Release。
+
 ## 2026-11-08 · ADR-0004：受管 MCP 条目与指令段落原地更新
 
 - 起因：PR #11 留下的待办"alpha.1 装过的 MCP 条目在规格加 `env` 后没有原地更新路径"。复现时发现同类缺口更大：指令段落在宿主文件已受管后完全不再更新——改正文、或给同一个 `CLAUDE.md` 加第二条指令，`plan` 都给出空操作，也不报冲突（`canRenderInstruction` 只认 `absent`）。
