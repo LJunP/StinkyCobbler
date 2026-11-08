@@ -78,8 +78,17 @@ export async function doctorToolkit(scopeFlag?: string, toolResponses: readonly 
   };
 }
 
+/** `list --json` keeps its alpha.1 shape; `current` and `segments` exist only for the planner. */
 export async function listToolkit(scopeFlag?: string): Promise<HostObservation[]> {
-  return observe(observationInput(await loadToolkit(scopeFlag)));
+  const observations = await observe(observationInput(await loadToolkit(scopeFlag)));
+  return observations.map((row) => ({
+    host: row.host,
+    kind: row.kind,
+    id: row.id,
+    path: row.path,
+    state: row.state,
+    ...(row.hash === undefined ? {} : { hash: row.hash })
+  }));
 }
 
 export async function lockToolkit(scopeFlag?: string): Promise<ToolkitLock> {

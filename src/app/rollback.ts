@@ -2,7 +2,7 @@ import { readFile, rm } from "node:fs/promises";
 import path from "node:path";
 import { ExitCode, StinkyCobblerError } from "../errors.js";
 import { readToolkitEvents, type ToolkitLedgerEvent } from "../io/ledger.js";
-import { atomicReplace, managedMetadataPath, readManagedMetadata, readRegularHostFile, sha256, writeManagedMetadata } from "../io/managed-file.js";
+import { atomicReplace, backupPathFor, managedMetadataPath, readManagedMetadata, readRegularHostFile, sha256, writeManagedMetadata } from "../io/managed-file.js";
 
 export interface RollbackConflict {
   path: string;
@@ -36,12 +36,16 @@ async function undoEvent(event: ToolkitLedgerEvent): Promise<RollbackConflict | 
   if (observedHash !== event.afterHash) return { path: event.path, expectedHash: event.afterHash, observedHash };
   const metadata = await readManagedMetadata(event.path);
   if (metadata?.installedSha256 !== event.afterHash) return { path: event.path, expectedHash: event.afterHash, observedHash };
-  if (metadata.previous === undefined) {
+  if (event.beforeHash === null) {
     await rm(event.path, { force: true });
     await rm(managedMetadataPath(event.path), { force: true });
     return undefined;
   }
-  await restoreBackup(event.path, metadata.previous, observedHash);
+  // The event's own pre-image, not the sidecar's `previous`: when one apply wrote a file twice, undoing
+  // the later write leaves a sidecar without `previous`, and reading that as "the file was new" deleted
+  // a user's file outright.
+  const backup = path.basename(backupPathFor(event.path, event.beforeHash));
+  await restoreBackup(event.path, { productVersion: metadata.previous?.productVersion ?? metadata.productVersion, sha256: event.beforeHash, backup }, observedHash);
   return undefined;
 }
 

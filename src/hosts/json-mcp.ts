@@ -27,6 +27,20 @@ export function mergeJsonMcp(text: string, keyPath: readonly string[], id: strin
   return { status: "merged", text: `${JSON.stringify(assignServer(root, keyPath, id, server), null, 2)}\n` };
 }
 
+/** JSON hosts are rewritten as a whole on merge too, so replacing keeps every other key but not the original layout. */
+export function replaceJsonMcp(text: string, keyPath: readonly string[], id: string, server: HostMcpEntry): McpMergeResult {
+  let root: Record<string, unknown>;
+  try {
+    root = parseObject(text);
+  } catch {
+    return { status: "invalid" };
+  }
+  const current = objectAt(root, keyPath)?.[id];
+  if (current === undefined) return { status: "conflict" };
+  if (isSameMcpServer(current, server)) return { status: "unchanged", text };
+  return { status: "merged", text: `${JSON.stringify(assignServer(root, keyPath, id, server), null, 2)}\n` };
+}
+
 function parseObject(text: string): Record<string, unknown> {
   const value: unknown = JSON.parse(text);
   if (!isRecord(value)) throw new StinkyCobblerError("HOST_MCP_INVALID", ExitCode.VALIDATION, "Host MCP config must be a JSON object.");

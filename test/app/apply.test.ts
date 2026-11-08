@@ -69,6 +69,46 @@ describe("toolkit apply and rollback", () => {
     expect(await readFile(created, "utf8")).toBe("user edit\n");
   });
 
+  it("rolls back two ops on the user's own file to its original bytes instead of deleting it", async () => {
+    const root = await freshRoot("stinky-apply-two-ops-");
+    const target = path.join(root, "config.toml");
+    const userText = '# my settings\nmodel = "o3"\n';
+    await writeFile(target, userText);
+    const merge = (id: string): FileOp => ({ host: "codex", kind: "mcp-server", id, path: target, action: "merge-mcp", mcpEntry: { command: id, args: [] } });
+    const report = await apply(planOf(merge("files"), merge("docs")));
+    expect(report).toMatchObject({ stopped: false });
+    expect(await readFile(target, "utf8")).toContain("[mcp_servers.docs]");
+
+    const rolled = await rollbackLast();
+    expect(rolled.conflict).toBeUndefined();
+    expect(await readFile(target, "utf8")).toBe(userText);
+  });
+
+  it("stops instead of overwriting a file whose bytes changed after the op was planned", async () => {
+    const root = await freshRoot("stinky-apply-prior-");
+    const target = path.join(root, "CLAUDE.md");
+    await writeFile(target, "typed after plan\n");
+    const report = await apply(
+      planOf({
+        host: "claude-code",
+        kind: "instructions",
+        id: "notes",
+        path: target,
+        action: "upsert-segment",
+        segment: "<!-- stinky-cobbler:begin notes -->\nnew\n<!-- stinky-cobbler:end notes -->",
+        priorHash: sha256("planned bytes\n")
+      })
+    );
+    expect(report).toMatchObject({ stopped: true, completed: [], error: { code: "TOOLKIT_CONFLICT" } });
+    expect(await readFile(target, "utf8")).toBe("typed after plan\n");
+
+    const skill = path.join(root, "SKILL.md");
+    await writeFile(skill, "edited skill\n");
+    const replaced = await apply(planOf({ host: "codex", kind: "skill", id: "review", path: skill, action: "replace", bytes: "next\n", priorHash: sha256("planned skill\n") }));
+    expect(replaced).toMatchObject({ stopped: true, error: { code: "TOOLKIT_CONFLICT" } });
+    expect(await readFile(skill, "utf8")).toBe("edited skill\n");
+  });
+
   it("merges an mcp server through the host adapter and rolls the file back", async () => {
     const root = await freshRoot("stinky-apply-mcp-");
     const target = path.join(root, "mcp.json");

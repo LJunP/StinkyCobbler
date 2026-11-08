@@ -2,6 +2,28 @@
 
 > 只追加，最新在上。每条：日期 / 任务 / 做了什么 / 验证 / 待办与问题。
 
+## 2026-11-08 · ADR-0004：受管 MCP 条目与指令段落原地更新
+
+- 起因：PR #11 留下的待办"alpha.1 装过的 MCP 条目在规格加 `env` 后没有原地更新路径"。复现时发现同类缺口更大：指令段落在宿主文件已受管后完全不再更新——改正文、或给同一个 `CLAUDE.md` 加第二条指令，`plan` 都给出空操作，也不报冲突（`canRenderInstruction` 只认 `absent`）。
+- 决定（ADR-0004）：三类受管内容统一按 skill 的规则——文件字节与 sidecar 一致、渲染结果不同就原地更新；被手改仍冲突、不覆盖。这推翻了 M2 时"规格一变就冲突"的保守设计，所以写了 ADR。
+- 实现：`observe` 对受管 MCP 文件给 `current`（不再伪装成 `managed-modified`），对受管指令文件读出各段正文 `segments`；`plan` 新增 `replace-mcp`，`upsert-segment` 只为正文不同或缺失的段落产出，两者都带 `priorHash`；`apply` 写入前对所有带 `priorHash` 的操作核对 hash（原来 skill 的 `replace` 带了 hash 但没核对），不符以 `TOOLKIT_CONFLICT` 停止；宿主适配器新增 `replaceMcp`：JSON 宿主整份重写（与合并时一致），Codex `config.toml` 只按文本替换 `[mcp_servers.<id>]` 表及子表，替换后重新解析，若除该条目外有任何差异或表头无法唯一定位就拒绝；conformance 对四宿主检查替换只动该条目、缺失条目算冲突；`segment-file` 新增 `readSegments`。
+- 测试：先写 5 条 CLI 集成测试，修复前 4 红 1 绿（绿的是"手改指令文件仍拒绝"，作防回归护栏）：MCP 原地替换并可 rollback、Codex 用户设置与注释逐字节保留、给 alpha.1 式无 env 条目补 env、指令正文更新并新增第二条。原测试"reports drift when a managed mcp command no longer matches the spec"锁的正是被推翻的旧设计，改为原地替换测试；手改仍冲突由"does not restore an mcp server deleted from a hand-edited managed file"与新增的指令手改测试覆盖。另加单元测试：planner 两条、apply 的 prior-hash 一条（对改前 `apply.ts` 跑出红灯）、`readSegments` 两条、`replaceTomlMcp` 七条（含子表、尾随注释、内联表、多行字符串里的同名表头、非法 TOML）。`plan.test.ts` 的「section 3.3」用例标题改为「README example spec」（P7 待办）。
+- 文档：CHANGELOG rc.1 新增一条（标为相对 alpha.1 的破坏性变化）并改写 env 迁移说明；README apply 行与 ADR 列表；`docs/hosts/codex.md` 说明替换只改该表。
+- evaluator 第一轮 NEEDS_WORK（1 HIGH、2 MEDIUM、4 LOW），全部修复，每条先写红灯测试：
+  - HIGH：同一文件上的多个更新操作共用计划时的 `priorHash`，第一条写完后第二条被自己误判为冲突、apply 写一半。改为同一次 apply 写过该文件后，下一个操作核对本次刚写出的 hash。补"同一 `config.toml` 两个 server 同时变化""同一 `CLAUDE.md` 两段同时变化"两条集成测试（修复前均红）。
+  - 修 HIGH 时暴露一个**早已存在的数据丢失缺陷**：`rollback` 对同一次 apply 里被写两次的文件，撤销后一次时写回的 sidecar 不带 `previous`，撤销前一次时就把文件当成新建的整份删除——一次 apply 往用户自己的 `config.toml` / `~/.claude.json` 合并两个 MCP server，`rollback --last` 会删掉整个文件。只用 develop 上已有的 `merge-mcp` 就能复现（单元测试修复前红）。改为每一步按账本事件自己的 `beforeHash` 找内容寻址备份恢复。
+  - MEDIUM：段落正文里引用了别的标记（例如文档里写 `<!-- stinky-cobbler:begin example -->`）会让之后的 observe 抛 `SEGMENT_INVALID`，plan/doctor/list 全部失败。写入时拒绝含任何段落标记的正文；读取只认顶层、配对完整的段，嵌套或不配对的不算段（真要写那个 id 时 `upsertSegment` 仍失败关闭）。
+  - MEDIUM：`toolkit list --json` 会带出内部字段 `segments`、`current`。`listToolkit` 去掉这两个字段，保持 alpha.1 的输出形状，并加断言锁定键集合。
+  - evaluator 第二轮 PASS，另提 4 条 LOW。L1 已修：`locateSegment` 原来取文件里第一个 begin 标记，不区分是否引用在别的段正文里，改前写入的文件若有这种引用，upsert 会从引用处替换到真正的 end、破坏外层段；现在读、写、删共用同一套顶层扫描（补测试，修复前红）。
+  - LOW：段 id 为 `constructor` 等原型链名时永远不收敛，改用 `Object.hasOwn`；补 skill `replace` 的 prior-hash 测试；CHANGELOG 写明中途停止时退出码是 6、`TOOLKIT_CONFLICT` 在报告里；`docs/hosts/codex.md` 注明 CRLF 文件里被替换的表用 LF。
+
+- 验证（rebase 到含 PR #12 的 develop 之前，在本分支实跑）：build 0；lint 0 error（84 条 warning 与改动前相同）；`npm test` 101 文件 / 944 项通过；`npm run test:package` 通过；`npm run coverage` 无阈值报错（io 行 89.3%、hosts 92.7%）；`git diff --check` 干净。evaluator 两轮，第二轮 PASS。
+
+### 待办 / 问题
+- 含段落标记的指令正文到 `apply` 才在 `upsertSegment` 里被拒（退出 6，前面的操作已写入，要 rollback）；更友好的是在 `plan` / `lock` 阶段就拒绝。
+- `apply` 读一次文件得到账本 `beforeHash`，`installManagedBytes` 再读一次命名备份；两次读之间文件被改，账本与备份对不上，rollback 抛 ENOENT（毫秒级窗口）。同理，同一文件的第一个操作若是 `merge-mcp`（不带 `priorHash`），计划到写入之间的变化没人核对。
+- 原本 foreign 的用户文件在 rollback 后仍留着受管 sidecar，之后被当成 managed（旧行为，改前一样）。
+
 ## 2026-11-08 · P7 作者决定项：测试修正、删除 3 个无读者示例、PRD 口径
 
 - 作者 2026-11-08 授权"按推荐直接进行"，P7 待办里的三组决定按推荐执行：

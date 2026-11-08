@@ -2,7 +2,7 @@ import path from "node:path";
 import { directoryExists } from "../io/directory-exists.js";
 import { gateResourceRelative } from "../io/resources.js";
 import { located, type ArtifactKind, type HostAdapter, type HostRoots, type HostScope } from "./host-adapter.js";
-import { mergeJsonMcp, readJsonMcp } from "./json-mcp.js";
+import { mergeJsonMcp, readJsonMcp, replaceJsonMcp } from "./json-mcp.js";
 
 const SERVERS = ["mcp", "servers"] as const;
 
@@ -18,6 +18,7 @@ export const zcodeHost = {
   locate: (kind, scope, roots) => locateZcode(kind, scope, roots),
   readMcp: (text) => readJsonMcp(text, SERVERS),
   mergeMcp: (text, id, server) => mergeJsonMcp(text, SERVERS, id, server),
+  replaceMcp: (text, id, server) => replaceJsonMcp(text, SERVERS, id, server),
   extraMcpFiles: (roots) => [path.join(roots.home, ".zcode", "config.json"), path.join(roots.home, ".agents", "mcp.json")],
   legacyMcpFile: (roots) => path.join(roots.home, ".zcode", "config.json"),
   mcpRegistration: (id, command) => ({ mcp: { servers: { [id]: { command, args: [] } } } })

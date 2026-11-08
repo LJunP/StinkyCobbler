@@ -54,7 +54,7 @@ describe("pure toolkit planner", () => {
     expect(result.skipped).toEqual([expect.objectContaining({ host: "zcode", kind: "skill", reason: "ZCode skill directory is not selected." })]);
   });
 
-  it("plans the section 3.3 example without reading sources or expanding bundles", () => {
+  it("plans the README example spec without reading sources or expanding bundles", () => {
     const spec = parseToolkitSpec({
       version: 1,
       hosts: ["codex", "claude-code", "cursor", "zcode"],
@@ -143,6 +143,35 @@ describe("pure toolkit planner", () => {
     expect(result.ops.every((op) => op.path === "/home/dev/.claude/CLAUDE.md" && op.action === "upsert-segment")).toBe(true);
     expect(result.ops.map((op) => op.segment ?? "").join("\n")).toContain("topic body\n");
     expect(result.ops.some((op) => op.path.includes("AGENTS.md"))).toBe(false);
+  });
+
+  it("replaces a managed mcp entry only when it no longer matches the spec, carrying the file hash", () => {
+    const spec = parseToolkitSpec({ version: 1, hosts: ["codex"], mcpServers: [{ id: "files", transport: "stdio", command: "printf" }] });
+    const stale = plan(spec, [{ ...observation("codex", "mcp-server", "files", "managed", "h1"), current: false }]);
+    expect(stale.ops).toEqual([expect.objectContaining({ action: "replace-mcp", id: "files", priorHash: "h1", mcpEntry: { command: "printf", args: [] } })]);
+    expect(plan(spec, [{ ...observation("codex", "mcp-server", "files", "managed", "h1"), current: true }]).ops).toEqual([]);
+    expect(plan(spec, [observation("codex", "mcp-server", "files", "managed-modified", "h2")]).conflicts).toEqual([
+      expect.objectContaining({ id: "files", state: "managed-modified" })
+    ]);
+  });
+
+  it("upserts only the instruction segments whose body differs from what a managed file holds", () => {
+    const spec = parseToolkitSpec({
+      version: 1,
+      hosts: ["claude-code"],
+      instructions: [
+        { id: "notes", source: "./notes.md", render: { "claude-code": "CLAUDE.md" } },
+        { id: "style", source: "./style.md", render: { "claude-code": "CLAUDE.md" } }
+      ]
+    });
+    const segments = { notes: "same\n", style: "old\n" };
+    const result = plan(
+      spec,
+      ["notes", "style"].map((id) => ({ ...observation("claude-code", "instructions", id, "managed", "h1"), path: "/home/dev/.claude/CLAUDE.md", segments })),
+      { sources: { instructions: { notes: "same\n", style: "new" } } }
+    );
+    expect(result.conflicts).toEqual([]);
+    expect(result.ops).toEqual([expect.objectContaining({ id: "style", action: "upsert-segment", priorHash: "h1", segment: expect.stringContaining("new\n") })]);
   });
 });
 

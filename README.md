@@ -46,7 +46,7 @@ node dist/cli.js toolkit doctor --json
 |---|---|
 | `init` | 写一份 `toolkit.yaml`（默认 user 作用域）。已存在则拒绝覆盖。 |
 | `plan` | 不写盘。有 lock 时预览 blob 里的字节，和 `apply` 写入的完全一致；没有 lock 时预览当前源文件（此时 `apply` 会拒绝）。 |
-| `apply` | 写宿主受管文件、managed-state sidecar、内容寻址备份，并追加 toolkit 账本。有变更必须 `--yes`。冲突不覆盖。有 skill 或指令时必须先 `lock`，安装的是 blob 里的字节。 |
+| `apply` | 写宿主受管文件、managed-state sidecar、内容寻址备份，并追加 toolkit 账本。有变更必须 `--yes`。冲突不覆盖。规格变了而受管文件没被手改过时原地更新：skill 整文件替换，MCP 条目替换，指令段落替换。有 skill 或指令时必须先 `lock`，安装的是 blob 里的字节。 |
 | `rollback` | 把最后一次 apply 按账本写回去。用 `--last` 或 `--to <applyId>`，且只能回最后一次。账本为空则失败。当前字节或 sidecar hash 不符则 `conflict` 并停止。 |
 | `doctor` | 不写盘。报告漂移、`orphans`（受管但规格已不再指向的文件，toolkit 不删除，由用户处理）、`${env:NAME}` 的变量名是否出现在当前进程（不打印值）、command 是否存在、密钥提示，以及 `role: knowledge` 的新鲜度。没有该 server 的工具结果时新鲜度是 `unavailable`，不读取 `sources` 建索引。 |
 | `list` | 不写盘。列出已观察到的 skill、MCP 和指令。command 还没有观察。 |
@@ -263,6 +263,7 @@ node scripts/release-gate.mjs --expected "$PACKAGE_VERSION" --git-ref "$PACKAGE_
 - [ADR-0001 产品范围与版本边界](./docs/adr/0001-product-scope-and-version-boundaries.md)
 - [ADR-0002 从权限门禁转向工具箱包管理器](./docs/adr/0002-pivot-to-agent-toolkit-package-manager.md)
 - [ADR-0003 仓库目录结构、命名与持续治理](./docs/adr/0003-repository-structure-and-standards.md)
+- [ADR-0004 规格变化时原地更新未被手改的受管内容](./docs/adr/0004-update-unedited-managed-content-in-place.md)
 - [架构评审与发展规划](./docs/archive/architecture-review-2026-10-20.md)
 - [toolkit 快速开始](./docs/guides/toolkit-quickstart.md)
 - [使用说明书](./docs/gate/user-manual.md)

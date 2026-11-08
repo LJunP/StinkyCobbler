@@ -11,6 +11,10 @@ export interface PlanObservation {
   path: string;
   state: "absent" | "managed" | "managed-modified" | "foreign";
   hash?: string;
+  /** MCP only: false when a managed host file still holds the entry an older spec rendered. */
+  current?: boolean;
+  /** Instructions only: the body of each marked segment already in the file, keyed by segment id. */
+  segments?: Readonly<Record<string, string>>;
 }
 
 export interface KindSupport {
@@ -37,7 +41,7 @@ export interface FileOp {
   kind: ArtifactKind;
   id: string;
   path: string;
-  action: "create" | "replace" | "upsert-segment" | "merge-mcp";
+  action: "create" | "replace" | "upsert-segment" | "merge-mcp" | "replace-mcp";
   bytes?: string;
   segment?: string;
   mcpEntry?: RenderedMcpEntry;
@@ -121,11 +125,18 @@ function planSkill(draft: Draft, skill: SkillSpec): void {
   }
 }
 
+/**
+ * An absent entry is merged in. A managed file whose entry an older spec rendered is replaced in
+ * place: the file still has the exact bytes the toolkit wrote, so nothing a user typed is lost.
+ * A hand-edited file never gets here; `guard` turns it into a conflict.
+ */
 function planMcp(draft: Draft, server: McpServerSpec): void {
   for (const host of targetHosts(draft.spec)) {
     const found = guard(draft, "mcp-server", server.id, host);
-    if (found === undefined || found.state !== "absent") continue;
-    draft.ops.push({ host, kind: "mcp-server", id: server.id, path: found.path, action: "merge-mcp", mcpEntry: renderMcpEntry(server) });
+    if (found === undefined) continue;
+    const base = { host, kind: "mcp-server" as const, id: server.id, path: found.path, mcpEntry: renderMcpEntry(server) };
+    if (found.state === "absent") draft.ops.push({ ...base, action: "merge-mcp" });
+    else if (found.state === "managed" && found.current === false) draft.ops.push({ ...base, action: "replace-mcp", ...priorHash(found) });
   }
 }
 
@@ -133,45 +144,52 @@ function planInstruction(draft: Draft, item: InstructionsSpec): void {
   const memory = item.kind === "memory";
   for (const host of instructionHosts(draft.spec, item)) {
     const found = guard(draft, "instructions", item.id, host, memory);
-    if (found === undefined || !canRenderInstruction(found.state, memory)) continue;
+    if (found === undefined) continue;
     const body = draft.sources.instructions?.[item.id];
     if (body === undefined) {
       draft.skipped.push({ host, kind: "instructions", id: item.id, reason: "Instruction body was not provided." });
       continue;
     }
-    draft.ops.push({
-      host,
-      kind: "instructions",
-      id: item.id,
-      path: found.path,
-      action: "upsert-segment",
-      segment: renderInstructionSegment(item, host, body)
-    });
-    if (memory) planMemoryFiles(draft, item, host, found.path);
+    const wanted = [{ id: item.id, body }, ...(memory ? memoryFileSegments(draft, item) : [])];
+    for (const segment of wanted) {
+      if (found.state === "managed" && holdsSegment(found, segment.id, segment.body)) continue;
+      draft.ops.push({
+        host,
+        kind: "instructions",
+        id: segment.id,
+        path: found.path,
+        action: "upsert-segment",
+        segment: renderInstructionSegment({ ...item, id: segment.id }, host, segment.body),
+        ...(found.state === "managed" ? priorHash(found) : {})
+      });
+    }
   }
 }
 
-function planMemoryFiles(draft: Draft, item: InstructionsSpec, host: ToolkitHostId, target: string): void {
+function memoryFileSegments(draft: Draft, item: InstructionsSpec): Array<{ id: string; body: string }> {
   const files = draft.sources.memoryFiles?.[item.id];
-  if (files === undefined) return;
+  if (files === undefined) return [];
+  const segments: Array<{ id: string; body: string }> = [];
   for (const name of Object.keys(files).sort()) {
     const stem = name.slice(0, -3);
     const body = files[name];
     if (body === undefined || stem === item.id || stem.length === 0) continue;
-    draft.ops.push({
-      host,
-      kind: "instructions",
-      id: stem,
-      path: target,
-      action: "upsert-segment",
-      segment: renderInstructionSegment({ ...item, id: stem }, host, body)
-    });
+    segments.push({ id: stem, body });
   }
+  return segments;
 }
 
-function canRenderInstruction(state: PlanObservation["state"], memory: boolean): boolean {
-  if (memory) return state === "absent" || state === "foreign";
-  return state === "absent";
+function holdsSegment(found: PlanObservation, id: string, body: string): boolean {
+  return found.segments !== undefined && Object.hasOwn(found.segments, id) && found.segments[id] === segmentText(body);
+}
+
+/** The bytes `upsertSegment` stores between the markers for this body. */
+function segmentText(body: string): string {
+  return body.endsWith("\n") ? body : `${body}\n`;
+}
+
+function priorHash(found: PlanObservation): { priorHash?: string } {
+  return found.hash === undefined ? {} : { priorHash: found.hash };
 }
 
 function guard(draft: Draft, kind: ArtifactKind, id: string, host: string, allowForeign = false): PlanObservation | undefined {
